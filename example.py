@@ -41,17 +41,17 @@ prob.set_print_options( prt )
 
 if( prob.check_errors() and prob.check_gradient() ):
     # prob.print_options['print_file'] = 'snopt.out'
-    answer, finalX, status = prob.solve( 'SNOPT' )
-    print( "\nSNOPT answer: " + str( answer ) )
+#    answer, finalX, status = prob.solve( 'SNOPT' )
+#    print( "\nSNOPT answer: " + str( answer ) )
+#    print( "x1: " + str( finalX[0] ) + " x2: " + str( finalX[1] ) )
+#    print( "status: " + status )
+
+    prob.print_options['print_level'] = 1
+    prob.print_options['print_file'] = 'npsol.out'
+    answer, finalX, status = prob.solve( 'NPSOL' )
+    print( "\nNPSOL answer: " + str( answer ) )
     print( "x1: " + str( finalX[0] ) + " x2: " + str( finalX[1] ) )
     print( "status: " + status )
-
-    # prob.print_options['print_level'] = 1
-    # prob.print_options['print_file'] = 'npsol.out'
-    # answer, finalX, status = prob.solve( 'NPSOL' )
-    # print( "\nNPSOL answer: " + str( answer ) )
-    # print( "x1: " + str( finalX[0] ) + " x2: " + str( finalX[1] ) )
-    # print( "status: " + status )
 
     # answer,finalX,status=prob.solve('NLOPT AUGLAG')
     # print("\nNLOPT answer: "+str(answer))
@@ -66,3 +66,4 @@ if( prob.check_errors() and prob.check_gradient() ):
     # print("\nIPOPT answer: "+str(answer))
     # print("x1: "+str(finalX[0])+" x2: "+str(finalX[1]))
     # print("status: "+status)
+interactive()
