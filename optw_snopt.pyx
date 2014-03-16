@@ -5,12 +5,12 @@ cimport cpython.pycapsule as pycapsule
 
 cdef object objfun
 
-cdef int callback( csnopt.integer* status, csnopt.integer* n, csnopt.doublereal* x,
-                   csnopt.integer* needF, csnopt.integer* neF, csnopt.doublereal* F,
-                   csnopt.integer* needG, csnopt.integer* neG, csnopt.doublereal* G,
-                   char* cu, csnopt.integer* lencu,
-                   csnopt.integer* iu, csnopt.integer* leniu,
-                   csnopt.doublereal* ru, csnopt.integer* lenru ):
+cdef int callback( csnopt.integer *status, csnopt.integer *n, csnopt.doublereal *x,
+                   csnopt.integer *needF, csnopt.integer *neF, csnopt.doublereal *F,
+                   csnopt.integer *needG, csnopt.integer *neG, csnopt.doublereal *G,
+                   char *cu, csnopt.integer *lencu,
+                   csnopt.integer *iu, csnopt.integer *leniu,
+                   csnopt.doublereal *ru, csnopt.integer *lenru ):
     px = plist( pycapsule.PyCapsule_New( x, NULL, NULL ), n[0] )
     pF = plist( pycapsule.PyCapsule_New( F, NULL, NULL ), neF[0] )
     pG = plist( pycapsule.PyCapsule_New( G, NULL, NULL ), neG[0] )
@@ -111,11 +111,11 @@ cdef class SnoptSolver:
         self.printLevel[0] = kwargs['printLevel']
         self.summaryLevel[0] = kwargs['summaryLevel']
         if( self.summaryLevel[0] > 0 ):
-            self.iSumm[0]=6
+            self.iSumm[0] = 6
         if( kwargs['printFile'] == None ):
-            self.iPrint[0]=0
+            self.iPrint[0] = 0
         else:
-            self.iPrint[0]=9
+            self.iPrint[0] = 9
             ## Sketchy code. I'm sure there are easier ways to open a file.
             # self.ol[0].oerr=1
             # self.ol[0].ounit=self.iPrint[0]
@@ -226,6 +226,7 @@ cdef class SnoptSolver:
             self.jAvar[k] = <csnopt.integer> j[k]
 
     def G_indices( self, i, j ):
+        ### TODO: maybe this is the problem ###
         for k in xrange( self.lenG[0] ):
             self.iGfun[k] = <csnopt.integer> i[k]
             self.jGvar[k] = <csnopt.integer> j[k]
@@ -278,17 +279,18 @@ cdef class SnoptSolver:
         cdef csnopt.integer mincw[1]
         cdef csnopt.integer miniw[1]
         cdef csnopt.integer minrw[1]
-        cdef csnopt.integer ltmpcw[1]
-        cdef csnopt.integer ltmpiw[1]
-        cdef csnopt.integer ltmprw[1]
+        cdef csnopt.integer lencw[1]
+        cdef csnopt.integer leniw[1]
+        cdef csnopt.integer lenrw[1]
         cdef char tmpcw[1000*8]
         cdef csnopt.integer tmpiw[1000]
         cdef csnopt.doublereal tmprw[1000]
-        ltmpcw[0] = ltmpiw[0] = ltmprw[0] = 1000
+        lencw[0] = leniw[0] = lenrw[0] = 1000
 
+        print( "1. sninit" )
         csnopt.sninit_( self.iPrint, self.iSumm,
-                        tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw,
-                        ltmpcw[0]*8 )
+                        tmpcw, lencw, tmpiw, leniw, tmprw, lenrw,
+                        lencw[0]*8 )
 
         print( "nF: " + str( self.neF[0] ) + " "
                "n: " + str( self.n[0] ) + " "
@@ -297,83 +299,122 @@ cdef class SnoptSolver:
                "lenA: " + str( self.lenA[0] ) + " "
                "lenG: " + str( self.lenG[0] ) )
 
+        print( "2. snmema" )
         csnopt.snmema_( self.INFO, self.neF, self.n, self.nxname, self.nFname, self.lenA, self.lenG,
                         mincw, miniw, minrw,
-                        tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw,
-                        ltmpcw[0]*8 )
+                        tmpcw, lencw, tmpiw, leniw, tmprw, lenrw,
+                        lencw[0]*8 )
 
         print( "info: " + str( self.INFO[0] ) + " "
                "cw: " + str( mincw[0] ) + " "
                "iw: " + str( miniw[0] ) + " "
                "rw: " + str( minrw[0] ) )
+        lencw[0] = mincw[0]
+        leniw[0] = miniw[0]
+        lenrw[0] = minrw[0]
 
-        self.cw = <char *> calloc( mincw[0], 8 * sizeof( char ) )
-        self.iw = <csnopt.integer *> calloc( miniw[0], sizeof( csnopt.integer ) )
-        self.rw = <csnopt.doublereal *> calloc( minrw[0], sizeof( csnopt.doublereal ) )
+        self.cw = <char *> calloc( lencw[0]*2, 8 * sizeof( char ) )
+        self.iw = <csnopt.integer *> calloc( leniw[0]*2, sizeof( csnopt.integer ) )
+        self.rw = <csnopt.doublereal *> calloc( lenrw[0]*2, sizeof( csnopt.doublereal ) )
 
         if( self.iw is NULL or
             self.rw is NULL or
             self.cw is NULL ):
             raise MemoryError()
 
+        print( "3. sninit" )
         csnopt.sninit_( self.iPrint, self.iSumm,
-                        self.cw, mincw, self.iw, miniw, self.rw, minrw,
-                        mincw[0]*8 )
+                        self.cw, lencw, self.iw, leniw, self.rw, lenrw,
+                        lencw[0]*8 )
 
         ## Done with the setup of cw, iw, and rw.
         ## Continuing
-        self.option[0] = 1
+        self.option[0] = 1 # TODO: Hardcoding the derivative option is wrong.
+
+        print( "4. snseti minimize/maximize" )
         if( self.maximize==0 ):
             csnopt.snseti_( csnopt.STR_MINIMIZE, self.option,
                             self.iPrint, self.iSumm, self.INFO,
-                            self.cw, mincw, self.iw, miniw, self.rw, minrw,
-                            len( csnopt.STR_MINIMIZE ), mincw[0]*8 )
+                            self.cw, lencw, self.iw, leniw, self.rw, lenrw,
+                            len( csnopt.STR_MINIMIZE ), lencw[0]*8 )
         else:
             csnopt.snseti_( csnopt.STR_MAXIMIZE, self.option,
                             self.iPrint, self.iSumm, self.INFO,
-                            self.cw, mincw, self.iw, miniw, self.rw, minrw,
-                            len( csnopt.STR_MAXIMIZE ), mincw[0]*8 )
+                            self.cw, lencw, self.iw, leniw, self.rw, lenrw,
+                            len( csnopt.STR_MAXIMIZE ), lencw[0]*8 )
 
+        print( "5. snseti der option" )
         csnopt.snseti_( csnopt.STR_DERIVATIVE_OPTION, self.option,
                         self.iPrint, self.iSumm, self.INFO,
-                        self.cw, mincw, self.iw, miniw, self.rw, minrw,
-                        len( csnopt.STR_DERIVATIVE_OPTION ), mincw[0]*8 )
+                        self.cw, lencw, self.iw, leniw, self.rw, lenrw,
+                        len( csnopt.STR_DERIVATIVE_OPTION ), lencw[0]*8 )
 
-        self.option[0] = self.printLevel[0]
+        print( "6. snseti print level" )
+        self.option[0] = self.printLevel[0] # TODO: Recycling 'option' is wrong.
         csnopt.snseti_( csnopt.STR_MAJOR_PRINT_LEVEL, self.option,
                         self.iPrint, self.iSumm, self.INFO,
-                        self.cw, mincw, self.iw, miniw, self.rw, minrw,
-                        len( csnopt.STR_MAJOR_PRINT_LEVEL ), mincw[0]*8 )
+                        self.cw, lencw, self.iw, leniw, self.rw, lenrw,
+                        len( csnopt.STR_MAJOR_PRINT_LEVEL ), lencw[0]*8 )
+
+        print( "7. snseti iter limit" )
         csnopt.snseti_( csnopt.STR_ITERATIONS_LIMIT, self.maxeval,
                         self.iPrint, self.iSumm, self.INFO,
-                        self.cw, mincw, self.iw, miniw, self.rw, minrw,
-                        len( csnopt.STR_ITERATIONS_LIMIT ), mincw[0]*8 )
+                        self.cw, lencw, self.iw, leniw, self.rw, lenrw,
+                        len( csnopt.STR_ITERATIONS_LIMIT ), lencw[0]*8 )
 
+        print( "8. snseti warm start" )
         if( self.status[0] == 1 ):
             csnopt.snseti_( csnopt.STR_WARM_START, self.option,
                             self.iPrint, self.iSumm, self.INFO,
-                            self.cw, mincw, self.iw, miniw, self.rw, minrw,
-                            len( csnopt.STR_WARM_START ), mincw[0]*8 )
+                            self.cw, lencw, self.iw, leniw, self.rw, lenrw,
+                            len( csnopt.STR_WARM_START ), lencw[0]*8 )
+
+        print( "9. snsetr major feas tol" )
         csnopt.snsetr_( csnopt.STR_MAJOR_FEASIBILITY_TOLERANCE, self.constraint_violation,
                         self.iPrint, self.iSumm, self.INFO,
-                        self.cw, mincw, self.iw, miniw, self.rw, minrw,
-                        len( csnopt.STR_MAJOR_FEASIBILITY_TOLERANCE ), mincw[0]*8 )
+                        self.cw, lencw, self.iw, leniw, self.rw, lenrw,
+                        len( csnopt.STR_MAJOR_FEASIBILITY_TOLERANCE ), lencw[0]*8 )
+
+        print( "10. snsetr major opt tol" )
         csnopt.snsetr_( csnopt.STR_MAJOR_OPTIMALITY_TOLERANCE, self.ftol,
                         self.iPrint, self.iSumm, self.INFO,
-                        self.cw, mincw, self.iw, miniw, self.rw, minrw,
-                        len( csnopt.STR_MAJOR_OPTIMALITY_TOLERANCE ), mincw[0]*8 )
+                        self.cw, lencw, self.iw, leniw, self.rw, lenrw,
+                        len( csnopt.STR_MAJOR_OPTIMALITY_TOLERANCE ), lencw[0]*8 )
 
-        csnopt.snopta_( self.status, self.neF, self.n, self.nxname, self.nFname,
-                        self.ObjAdd, self.ObjRow, self.prob, <csnopt.U_fp> callback,
+        print( "11. snopta" )
+        csnopt.snopta_( self.status, self.neF,
+                        self.n, self.nxname, self.nFname,
+                        self.ObjAdd, self.ObjRow, self.prob,
+                        <csnopt.U_fp> callback,
                         self.iAfun, self.jAvar, self.lenA, self.lenA, self.A,
                         self.iGfun, self.jGvar, self.lenG, self.lenG,
-                        self.xlow, self.xupp, self.xnames, self.Flow, self.Fupp, self.Fnames,
-                        self.x, self.xstate, self.xmul, self.F, self.Fstate, self.Fmul,
-                        self.INFO, mincw, miniw, minrw,
+                        self.xlow, self.xupp, self.xnames,
+                        self.Flow, self.Fupp, self.Fnames,
+                        self.x, self.xstate, self.xmul,
+                        self.F, self.Fstate, self.Fmul,
+                        self.INFO,
+                        mincw, miniw, minrw,
                         self.nS, self.nInf, self.sInf,
-                        self.cw, mincw, self.iw, miniw, self.rw, minrw,
-                        self.cw, mincw, self.iw, miniw, self.rw, minrw,
-                        len( self.prob ), len( self.xnames ), len( self.Fnames ), mincw[0]*8, mincw[0]*8 )
+                        self.cw, lencw, self.iw, leniw, self.rw, lenrw,
+                        self.cw, lencw, self.iw, leniw, self.rw, lenrw,
+                        len(self.prob), self.nxname[0], self.nFname[0],
+                        lencw[0]*8, lencw[0]*8 )
+
+        # int snopta_( integer *start, integer *nf, integer *n,
+        #          integer *nxname, integer *nfname, doublereal *objadd, integer *objrow,
+        #          char *prob, U_fp usrfun, integer *iafun, integer *javar,
+        #          integer *lena, integer *nea, doublereal *a, integer *igfun,
+        #          integer *jgvar, integer *leng, integer *neg,
+        #          doublereal *xlow, doublereal *xupp,
+        #          char *xnames, doublereal *flow, doublereal *fupp, char *fnames,
+        #          doublereal *x, integer *xstate, doublereal *xmul, doublereal *f,
+        #          integer *fstate, doublereal *fmul, integer *info, integer *mincw,
+        #          integer *miniw, integer *minrw, integer *ns, integer *ninf,
+        #          doublereal *sinf, char *cu, integer *lencu, integer *iu, integer *leniu,
+        #          doublereal *ru, integer *lenru, char *cw, integer *lencw,
+        #          integer *iw, integer *leniw, doublereal *rw, integer *lenrw,
+        #          ftnlen prob_len, ftnlen xnames_len, ftnlen fnames_len, ftnlen cu_len,
+        #          ftnlen cw_len )
 
         # print( "info: " + str( self.INFO[0] ) )
         return self.F[0]

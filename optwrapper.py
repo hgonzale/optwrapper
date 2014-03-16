@@ -382,7 +382,7 @@ class OptProblem:
                                 printFile = self.print_options['print_file'],
                                 maximize = int(self.maximize) )
             prob.x_bounds( self.xlow, self.xupp )
-            prob.F_bounds( np.append([-1e6], self.Flow), np.append([1e6], self.Fupp ) )
+            prob.F_bounds( np.append( [-1e20], self.Flow), np.append( [1e20], self.Fupp ) )
             prob.set_x( self.x )
             if( self.jacobian_style == 'sparse' ):
                 indGx = [1 for j in range( 1, self.n+1 ) ]
@@ -392,30 +392,42 @@ class OptProblem:
             else:
                 indGx = [ i for i in range( 1, self.nconstraint + 2 ) for j in range( 1, self.n + 1 ) ]
                 indGy = [ j for i in range( 1, self.nconstraint + 2 ) for j in range( 1, self.n + 1 ) ]
+            print( indGx )
+            print( indGy )
             prob.G_indices( indGx, indGy )
 
             ## Page 23, Section 3.6, of SNOPT's manual
-            def callback( status, n, x, needF, neF, F, needG, neG, G ):
+            def snoptcallback( status, n, x, needF, neF, F, needG, neG, G ):
                 if( needF > 0 ):
                     F[0] = self.objf(x)
                     con = self.con(x)
-                    for i in range( 1, self.nconstraint + 1 ):
-                        F[i] = con[i-1]
+                    for i in range( 0, self.nconstraint ):
+                        F[i+1] = con[i]
+
                 if( needG > 0 ):
                     objgrad = self.objgrad(x)
                     for i in range( 0, self.n ):
                         G[i] = objgrad[i]
+
                     if( self.jacobian_style == 'sparse' ):
                         congrad = self.congrad(x)
                     else:
                         congrad = np.asarray( self.congrad(x) ).reshape(-1)
+
                     for i in range( 0, len(congrad) ):
                         G[i + self.n] = congrad[i]
 
-            prob.set_funobj( callback )
-            prob.set_options( int( self.solve_options['warm_start'] ), self.stop_options['maxeval'],
-                              self.solve_options['constraint_violation'], self.stop_options['ftol'] )
+                print( "F: " + str(F) + " G: " + str(G) )
+                assert( len(F) == neF and len(G) == neG ) # Just being a bit paranoid.
+
+            prob.set_funobj( snoptcallback )
+            prob.set_options( int( self.solve_options['warm_start'] ),
+                              self.stop_options['maxeval'],
+                              self.solve_options['constraint_violation'],
+                              self.stop_options['ftol'] )
+
             answer = prob.solve()
+
             finalX = prob.get_x()
             status = prob.get_status()
             finalXArray = [ finalX[i] for i in range( 0, len(finalX) ) ]

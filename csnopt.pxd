@@ -1,14 +1,5 @@
 cdef extern from "snopt.h":
 
-    cdef char* STR_MINIMIZE
-    cdef char* STR_MAXIMIZE
-    cdef char* STR_DERIVATIVE_OPTION
-    cdef char* STR_MAJOR_PRINT_LEVEL
-    cdef char* STR_ITERATIONS_LIMIT
-    cdef char* STR_WARM_START
-    cdef char* STR_MAJOR_FEASIBILITY_TOLERANCE
-    cdef char* STR_MAJOR_OPTIMALITY_TOLERANCE
-
     ctypedef long int integer
     ctypedef double doublereal
     ctypedef long int ftnlen
@@ -18,7 +9,17 @@ cdef extern from "snopt.h":
                           integer *needf, integer *nF, doublereal *f,
                           integer *needG, integer *lenG, doublereal *G,
                           char *cu, integer *lencu, integer *iu, integer *leniu,
-                          doublereal *ru, integer *lenru )
+                          doublereal *ru, integer *lenru, ftnlen cu_len )
+
+    cdef doublereal INFBND
+    cdef char* STR_MINIMIZE
+    cdef char* STR_MAXIMIZE
+    cdef char* STR_DERIVATIVE_OPTION
+    cdef char* STR_MAJOR_PRINT_LEVEL
+    cdef char* STR_ITERATIONS_LIMIT
+    cdef char* STR_WARM_START
+    cdef char* STR_MAJOR_FEASIBILITY_TOLERANCE
+    cdef char* STR_MAJOR_OPTIMALITY_TOLERANCE
 
     # ctypedef struct olist:
     #   flag oerr

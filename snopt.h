@@ -7,6 +7,7 @@
 
 #pragma once
 
+#define INFBND (1.0e20)
 #define STR_MINIMIZE "Minimize"
 #define STR_MAXIMIZE "Maximize"
 #define STR_DERIVATIVE_OPTION "Derivative option"
