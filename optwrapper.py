@@ -269,7 +269,7 @@ class OptProblem:
             raise ValueError( 'start_x size does not match problem size(' + str(self.n) + ')' )
         self.x = np.asarray( val )
 
-    def check_gradient( self, h=1e-6, tol=1e-4 ):
+    def check_gradient( self, h=1e-5, tol=1e-4 ):
         '''
         Checks the user-defined gradients for the problem
         using a finite difference method with:
@@ -300,15 +300,16 @@ class OptProblem:
                 usrgrad[ self.iG[p]+1, self.jG[p] ] = A[p]
         else:
             usrgrad[1:,:] = self.congrad( self.x )
-        err = abs( usrgrad - numgrad ).max()
-        err_index = int( abs( usrgrad - numgrad ).argmax() )
-        print( 'Check gradient: maximum error in gradient = ' + str(err) )
-        if( err < tol ):
+        err = abs( usrgrad - numgrad )
+        err_maxix = np.argmax(err)
+        print( 'Check gradient: maximum error in gradient = ' + str(err.max()) )
+        if( err.max() < tol ):
             return True
         else:
+            incorr_index = np.unravel_index(err_maxix, err.shape)
             print( 'Gradient may be incorrect for Row: ' +
-                    str( err_index / ( self.nconstraint + 1 ) ) + ', Column: ' +
-                    str( err_index % ( self.nconstraint + 1 ) ) )
+                    str(incorr_index[0]) + ', Column: ' +
+                    str(incorr_index[1]) )
             return False
 
     def check_errors( self ):

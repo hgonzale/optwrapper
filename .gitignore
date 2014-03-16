@@ -1,0 +1,72 @@
+## Python byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+## C extensions
+*.so
+
+## Python distribution / packaging
+.Python
+env/
+bin/
+build/
+develop-eggs/
+dist/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+## SQLite
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+## Mac OSX and other OS stuff
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+ehthumbs.db
+Thumbs.db
+
+## Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+## Libraries
+*.lib
+*.a
+
+## Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+## Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+*.mexmaci64
+*.mexa64
+
+## Emacs
+\#*
+.#*
+*~
+
+## Fortran
+fort.*
