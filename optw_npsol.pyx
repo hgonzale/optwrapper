@@ -1,18 +1,16 @@
 cimport cnpsol
-cimport cpython
 from libc.stdlib cimport calloc,free
 cimport numpy as np
-cimport cpython.pycapsule as pycapsule
-from arrayWrapper cimport wrapPtr
+cimport arrayWrapper as arrwrap
 
 cdef object objfun,confun
 
 cdef int objcallback( cnpsol.integer* mode, cnpsol.integer* n,
                       cnpsol.doublereal* x, cnpsol.doublereal* f, cnpsol.doublereal* g,
                       cnpsol.integer* nstate):
-    px = wrapPtr( x, n[0], np.NPY_DOUBLE )
-    pF = wrapPtr( f, 1, np.NPY_DOUBLE )
-    pG = wrapPtr( g, n[0], np.NPY_DOUBLE )
+    px = arrwrap.wrapPtr( x, n[0], np.NPY_DOUBLE )
+    pF = arrwrap.wrapPtr( f, 1, np.NPY_DOUBLE )
+    pG = arrwrap.wrapPtr( g, n[0], np.NPY_DOUBLE )
     objfun( px, pF, pG )
 
 ## note that the gradient must be defined in Fortran-style indexing
@@ -20,9 +18,9 @@ cdef int concallback( cnpsol.integer* mode, cnpsol.integer* ncnln,
                       cnpsol.integer* n, cnpsol.integer* ldJ, cnpsol.integer* needc,
                       cnpsol.doublereal* x, cnpsol.doublereal* c, cnpsol.doublereal* cJac,
                       cnpsol.integer* nstate):
-    px = wrapPtr( x, n[0], np.NPY_DOUBLE )
-    pC = wrapPtr( c, ncnln[0], np.NPY_DOUBLE )
-    pJ = wrapPtr( cJac, ldJ[0] * n[0], np.NPY_DOUBLE )
+    px = arrwrap.wrapPtr( x, n[0], np.NPY_DOUBLE )
+    pC = arrwrap.wrapPtr( c, ncnln[0], np.NPY_DOUBLE )
+    pJ = arrwrap.wrapPtr( cJac, ldJ[0] * n[0], np.NPY_DOUBLE )
     confun( px, pC, pJ )
 
 cdef class NpsolSolver:
@@ -176,7 +174,7 @@ cdef class NpsolSolver:
         objfun = of
 
     def get_x( self ):
-        return wrapPtr( self.x, self.n[0], np.NPY_DOUBLE )
+        return arrwrap.wrapPtr( self.x, self.n[0], np.NPY_DOUBLE )
 
     def get_status( self ):
         if( self.inform[0] == 0 ):

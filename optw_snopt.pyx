@@ -1,7 +1,7 @@
 cimport csnopt
-cimport cpython
 from libc.stdlib cimport calloc, free
-cimport cpython.pycapsule as pycapsule
+cimport numpy as np
+cimport arrayWrapper as arrwrap
 
 cdef object objfun
 
@@ -11,45 +11,10 @@ cdef int callback( csnopt.integer *status, csnopt.integer *n, csnopt.doublereal 
                    char *cu, csnopt.integer *lencu,
                    csnopt.integer *iu, csnopt.integer *leniu,
                    csnopt.doublereal *ru, csnopt.integer *lenru ):
-    px = plist( pycapsule.PyCapsule_New( x, NULL, NULL ), n[0] )
-    pF = plist( pycapsule.PyCapsule_New( F, NULL, NULL ), neF[0] )
-    pG = plist( pycapsule.PyCapsule_New( G, NULL, NULL ), neG[0] )
+    px = arrwrap.wrapPtr( x, n[0], np.NPY_DOUBLE )
+    pF = arrwrap.wrapPtr( F, neF[0], np.NPY_DOUBLE )
+    pG = arrwrap.wrapPtr( G, neG[0], np.NPY_DOUBLE )
     objfun( status[0], n[0], px, needF[0], neF[0], pF, needG[0], neG[0], pG )
-
-cdef class plist:
-    cdef csnopt.doublereal* val
-    cdef int len
-
-    def __cinit__( self, capsule, int size ):
-        self.val = <csnopt.doublereal*> pycapsule.PyCapsule_GetPointer( capsule, NULL )
-        self.len = size
-
-    def __len__( self ):
-        return self.len
-
-    def __getitem__( self, i ):
-        if( type(i) == int and i >= 0 and i < self.len ):
-            return self.val[i]
-        else:
-            raise ValueError( 'invalid index on getitem: ' + str(i) )
-
-    def __delitem__( self, i ):
-        raise AttributeError( 'cannot delete item' )
-
-    def __setitem__( self, i, v ):
-        if( type(i) == int and i >= 0 and i < len ):
-            self.val[i] = <csnopt.doublereal> v
-        else:
-            raise ValueError( 'invalid index on setitem: ' + str(i) )
-
-    def __str__( self ):
-        s = "["
-        for i in range( 0, self.len ):
-            s = s + str( self.val[i] ) + ","
-        return s + "]"
-
-    def insert( self, i, v ):
-        raise AttributeError( 'cannot insert item' )
 
 cdef class SnoptSolver:
     cdef csnopt.integer status[1]
@@ -244,7 +209,7 @@ cdef class SnoptSolver:
         objfun = usr_function
 
     def get_x(self):
-        return plist( pycapsule.PyCapsule_New( self.x, NULL, NULL), self.n[0] )
+        return arrwrap.wrapPtr( self.x, self.n[0], np.NPY_DOUBLE )
 
     def get_status(self):
         if( self.INFO[0] == 1 ):
