@@ -1,6 +1,7 @@
 from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
+import numpy as np
 
 setup( cmdclass = {'build_ext': build_ext},
        ext_modules = [ Extension( "optw_snopt", [ "optw_snopt.pyx" ],
@@ -15,8 +16,13 @@ setup( cmdclass = {'build_ext': build_ext},
                                                 "m"] ) ] )
 
 setup( cmdclass = {'build_ext': build_ext},
-       ext_modules = [ Extension( "optw_npsol", ["optw_npsol.pyx"],
+       ext_modules = [ Extension( "arrayWrapper", ["arrayWrapper.pyx" ],
+                                  include_dirs = [ np.get_include() ] ) ] )
+
+setup( cmdclass = {'build_ext': build_ext},
+       ext_modules = [ Extension( "optw_npsol", ["optw_npsol.pyx" ],
                                   extra_objects = ["dummy.o"],
+                                  include_dirs = [ np.get_include() ],
                                   libraries = [ "npsol_c",
                                                 "lssol_c",
                                                 "npsol",

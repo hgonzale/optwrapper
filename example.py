@@ -66,4 +66,3 @@ if( prob.check_errors() and prob.check_gradient() ):
     # print("\nIPOPT answer: "+str(answer))
     # print("x1: "+str(finalX[0])+" x2: "+str(finalX[1]))
     # print("status: "+status)
-interactive()

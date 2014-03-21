@@ -1,16 +1,18 @@
 cimport cnpsol
 cimport cpython
 from libc.stdlib cimport calloc,free
+cimport numpy as np
 cimport cpython.pycapsule as pycapsule
+from arrayWrapper cimport wrapPtr
 
 cdef object objfun,confun
 
 cdef int objcallback( cnpsol.integer* mode, cnpsol.integer* n,
                       cnpsol.doublereal* x, cnpsol.doublereal* f, cnpsol.doublereal* g,
                       cnpsol.integer* nstate):
-    px = plist( pycapsule.PyCapsule_New( x, NULL, NULL ), n[0] )
-    pF = plist( pycapsule.PyCapsule_New( f, NULL, NULL ), 1 )
-    pG = plist( pycapsule.PyCapsule_New( g, NULL, NULL ), n[0] )
+    px = wrapPtr( x, n[0], np.NPY_DOUBLE )
+    pF = wrapPtr( f, 1, np.NPY_DOUBLE )
+    pG = wrapPtr( g, n[0], np.NPY_DOUBLE )
     objfun( px, pF, pG )
 
 ## note that the gradient must be defined in Fortran-style indexing
@@ -18,38 +20,10 @@ cdef int concallback( cnpsol.integer* mode, cnpsol.integer* ncnln,
                       cnpsol.integer* n, cnpsol.integer* ldJ, cnpsol.integer* needc,
                       cnpsol.doublereal* x, cnpsol.doublereal* c, cnpsol.doublereal* cJac,
                       cnpsol.integer* nstate):
-    px = plist( pycapsule.PyCapsule_New( x, NULL, NULL ), n[0] )
-    pC = plist( pycapsule.PyCapsule_New( c, NULL, NULL ), ncnln[0] )
-    pJ = plist( pycapsule.PyCapsule_New( cJac, NULL, NULL ), ldJ[0]*n[0] )
+    px = wrapPtr( x, n[0], np.NPY_DOUBLE )
+    pC = wrapPtr( c, ncnln[0], np.NPY_DOUBLE )
+    pJ = wrapPtr( cJac, ldJ[0] * n[0], np.NPY_DOUBLE )
     confun( px, pC, pJ )
-
-cdef class plist:
-    cdef cnpsol.doublereal* val
-    cdef int len
-    def __cinit__( self, capsule, int size ):
-        self.val = <cnpsol.doublereal*> pycapsule.PyCapsule_GetPointer( capsule, NULL )
-        self.len = size
-    def __len__( self ):
-        return self.len
-    def __getitem__( self, i ):
-        if( type(i) == int and i >= 0 and i < self.len ):
-            return self.val[i]
-        else:
-            raise ValueError( 'invalid index on getitem: ' + str(i) )
-    def __delitem__( self, i ):
-        raise AttributeError( 'cannot delete item' )
-    def __setitem__( self, i, v ):
-        if( type(i) == int and i >= 0 and i < len ):
-            self.val[i] = <cnpsol.doublereal> v
-        else:
-            raise ValueError( 'invalid index on setitem: ' + str(i) )
-    def __str__( self ):
-        s="["
-        for i in range( 0, self.len ):
-            s = s + str( self.val[i] ) + ","
-        return s + "]"
-    def insert( self, i, v ):
-        raise AttributeError( 'cannot insert item' )
 
 cdef class NpsolSolver:
     cdef cnpsol.integer iPrint[1]
@@ -110,7 +84,7 @@ cdef class NpsolSolver:
         self.maxeval[0] = 3*self.maxbnd[0]
         self.constraint_violation[0] = 1e-8
         self.ftol[0] = 1e-12
-        if( kwargs['printFile']==None ):
+        if( kwargs['printFile'] == None ):
             self.iPrint[0]=0
         else:
             self.iPrint[0]=9
@@ -202,7 +176,7 @@ cdef class NpsolSolver:
         objfun = of
 
     def get_x( self ):
-        return plist( pycapsule.PyCapsule_New( self.x, NULL, NULL ), self.n[0] )
+        return wrapPtr( self.x, self.n[0], np.NPY_DOUBLE )
 
     def get_status( self ):
         if( self.inform[0] == 0 ):
