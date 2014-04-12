@@ -228,3 +228,52 @@ cdef class NpsolSolver:
                        self.w, self.lenw )
 
         return self.objf[0]
+
+    def solve_old( self ):
+        prob = NpsolSolver( n = self.n, nclin = 0, ncnln = self.nconstraint,
+                            printLevel = self.print_options["print_level"],
+                            printFile = self.print_options["print_file"],
+                            maximize = int(self.maximize) )
+        prob.set_bounds( self.xlow, self.xupp, None, None, self.Flow, self.Fupp )
+        prob.set_x( self.x )
+
+        def objcallback( x, f, g ):
+            of = self.objf(x)
+            og = self.objgrad(x)
+            if( self.maximize ):
+                f[0] = -of
+                for i in range( 0, self.n ):
+                    g[i] = -og[i]
+            else:
+                f[0] = of
+                for i in range( 0, self.n ):
+                    g[i] = og[i]
+
+        if( self.jacobian_style == "sparse" ):
+            def concallback( x, c, j ):
+                con = self.con(x)
+                for i in range( 0, self.nconstraint ):
+                    c[i] = con[i]
+                conm = np.zeros( [ self.nconstraint, self.n ] )
+                A = self.congrad(x)
+                for p in range( 0, len(self.iG) ):
+                    conm[ self.iG[p], self.jG[p] ] = A[p]
+                conm = np.asarray( conm.transpose() ).reshape(-1)
+                for i in range( 0, len(conm) ):
+                    j[i] = conm[i]
+        else:
+            def concallback( x, c, j ):
+                con = self.con(x)
+                for i in range( 0, self.nconstraint ):
+                    c[i] = con[i]
+                congrad = np.asarray( self.congrad(x).transpose() ).reshape(-1)
+                for i in range( 0, len(congrad) ):
+                    j[i] = congrad[i]
+        prob.set_user_function( concallback, objcallback )
+        prob.set_options( int( self.solve_options["warm_start"] ), self.stop_options["maxeval"],
+                          self.solve_options["constraint_violation"], self.stop_options["ftol"] )
+        answer = prob.solve()
+        finalX = prob.get_x()
+        status = prob.get_status()
+        finalXArray = [ finalX[i] for i in range( 0, len(finalX) ) ]
+        return answer, finalXArray, status
