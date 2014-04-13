@@ -5,7 +5,7 @@ import numpy as np
 # from optw_snopt import SnoptSolver
 # from optw_npsol import NpsolSolver
 
-class optProblem:
+class optwProblem:
     """
     General nonlinear programming optimization problem.
     Requires a nonlinear objective function and its gradient.
@@ -406,7 +406,7 @@ class optProblem:
         return True
 
 
-class optSolver:
+class optwSolver:
     def __init__():
         self.stopOpts = { "stopval":None,
                           "maxeval":1000,
