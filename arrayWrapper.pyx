@@ -13,3 +13,6 @@ cdef np.ndarray wrapPtr( void* array, int size, int typenum ):
     ndarray = np.PyArray_SimpleNewFromData( 1, shape, typenum, array )
 
     return ndarray
+
+cdef void* retPtr( np.ndarray[double, ndim=2, mode="fortran"] input ):
+    return &input[0,0]

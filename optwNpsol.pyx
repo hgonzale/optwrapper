@@ -1,11 +1,51 @@
-from libc.stdlib cimport calloc,free,memcpy
-from optwF2c cimport *
-cimport optwNpsol as npsol
+from libc.stdlib cimport calloc,free
+from libc.string cimport memcpy
 import numpy as np
 cimport numpy as np
-cimport arrayWrapper as arrwrap
 
-cdef class optwNpsol( optwSolver ):
+from optwF2c cimport *
+cimport optwNpsol as npsol
+cimport arrayWrapper as arrwrap
+from optwSolver import *
+
+
+## These functions should be static methods in optwNpsol, but it appears that
+## Cython doesn't support static cdef methods yet.
+## Instead, this is a reasonable hack.
+cdef object extprob
+
+## pg. 17, Section 7.1
+cdef int funobj( integer* mode, integer* n,
+                 doublereal* x, doublereal* f, doublereal* g,
+                 integer* nstate ):
+    xarr = arrwrap.wrapPtr( x, extprob.N, np.NPY_DOUBLE )
+
+    if( mode[0] != 1 ):
+        valf = extprob.objf( xarr )
+        f[0] = valf[0]
+
+    if( mode[0] > 0 ):
+        memcpy( g, <doublereal *> arrwrap.retPtr( extprob.objg( xarr ) ),
+                extprob.N * sizeof( doublereal ) )
+
+## pg. 18, Section 7.2
+cdef int funcon( integer* mode, integer* ncnln,
+                 integer* n, integer* ldJ, integer* needc,
+                 doublereal* x, doublereal* c, doublereal* cJac,
+                 integer* nstate ):
+    xarr = arrwrap.wrapPtr( x, extprob.N, np.NPY_DOUBLE )
+
+    if( mode[0] != 1 ):
+        valf = np.asfortranarray( extprob.consf( xarr ), dtype=np.float64 )
+        memcpy( c, <doublereal *> arrwrap.retPtr( extprob.consf( xarr ) ),
+                extprob.Ncons * sizeof( doublereal ) )
+
+    if( mode[0] > 0 ):
+        memcpy( cJac, <doublereal *> arrwrap.retPtr( self.prob.consg( xarr ) ),
+                extprob.Ncons * extprob.N * sizeof( doublereal ) )
+
+
+cdef class optwNpsol:
     cdef integer n[1]
     cdef integer nclin[1]
     cdef integer ncnln[1]
@@ -30,12 +70,16 @@ cdef class optwNpsol( optwSolver ):
     cdef doublereal *A
     cdef doublereal *R
 
-    def __cinit__( self, optwProblem prob ):
+    def __cinit__( self, prob ):
+        if( not prob is optwProblem ):
+            raise StandardError( "Argument 'prob' must be optwProblem." )
         self.prob = prob ## Save a copy of the pointer
         setupProblem( self.prob )
 
 
-    def setupProblem( prob ):
+    def setupProblem( self, prob ):
+        extprob = prob ## Save static point for funcon and funobj
+
         self.nctotl = prob.N + prob.Nconslin + prob.Ncons
 
         self.inform[0] = 0
@@ -110,16 +154,10 @@ cdef class optwNpsol( optwSolver ):
             tmpbl = np.vstack( tmpbl, prob.conslb )
             tmpbu = np.vstack( tmpbu, prob.consub )
         ## Make sure arrays are contiguous, fortran-ordered, and float64
-        tmpbl = np.asfortranarray( tmpbl, dtype=np.float64 )
-        tmpbu = np.asfortranarray( tmpbu, dtype=np.float64 )
-        self.bl = &tmpbl[0]
-        self.bu = &tmpbu[0]
-
-        tmpA = np.asfortranarray( prob.conslinA, dtype=np.float64 )
-        self.A = &tmpA[0]
-
-        tmpx = np.asfortranarray( prob.init, dtype=np.float64 )
-        self.x = &tmpx[0]
+        self.bl = <doublereal *> arrwrap.retPtr( tmpbl )
+        self.bu = <doublereal *> arrwrap.retPtr( tmpbu )
+        self.A = <doublereal *> arrwrap.retPtr( prob.conslinA )
+        self.x = <doublereal *> arrwrap.retPtr( prob.init )
 
 
     def __dealloc__( self ):
@@ -165,55 +203,26 @@ cdef class optwNpsol( optwSolver ):
     #     if( not ftol is None ):
     #         self.ftol[0] = <doublereal> ftol
 
-    ## pg. 17, Section 7.1
-    cdef int funobj( integer* mode, integer* n,
-                     doublereal* x, doublereal* f, doublereal* g,
-                     integer* nstate ):
-        xarr = arrwrap.wrapPtr( x, self.prob.N, np.NPY_DOUBLE )
-
-        if( mode[0] != 1 ):
-            valf = self.prob.objf( xarr )
-            f[0] = valf[0]
-
-        if( mode[0] > 0 ):
-            valg = np.asfortranarray( self.prob.objg( xarr ), dtype=np.float64 )
-            memcpy( g, &valg[0], self.prob.N * sizeof( doublereal ) )
-
-    ## pg. 18, Section 7.2
-    cdef int funcon( integer* mode, integer* ncnln,
-                     integer* n, integer* ldJ, integer* needc,
-                     doublereal* x, doublereal* c, doublereal* cJac,
-                     integer* nstate ):
-        xarr = arrwrap.wrapPtr( x, self.prob.N, np.NPY_DOUBLE )
-
-        if( mode[0] != 1 ):
-            valf = np.asfortranarray( self.prob.consf( xarr ), dtype=np.float64 )
-            memcpy( c, &valf[0], self.prob.Ncons * sizeof( doublereal ) )
-
-        if( mode[0] > 0 ):
-            valg = np.asfortranarray( self.prob.consg( xarr ), dtype=np.float64 )
-            memcpy( cJac, &valf[0], self.prob.Ncons * self.prob.N * sizeof( doublereal ) )
-
     def solve( self ):
         # if( self.warmstart[0] == 1 ):
         #     cnpsol.npopti_( cnpsol.STR_WARM_START, self.warmstart, len(cnpsol.STR_WARM_START) )
 
-        npsol.npopti_( npsol.STR_PRINT_FILE, self.iPrint,
-                       len(cnpsol.STR_PRINT_FILE) )
-        npsol.npopti_( npsol.STR_MAJOR_PRINT_LEVEL, self.printLevel,
-                       len(cnpsol.STR_MAJOR_PRINT_LEVEL) )
-        npsol.npoptr_( npsol.STR_FEASIBILITY_TOLERANCE, self.constraint_violation,
-                       len(cnpsol.STR_FEASIBILITY_TOLERANCE) )
-        npsol.npoptr_( npsol.STR_OPTIMALITY_TOLERANCE, self.ftol,
-                       len(npsol.STR_OPTIMALITY_TOLERANCE) )
-        npsol.npopti_( npsol.STR_MINOR_ITERATIONS_LIMIT, self.maxeval,
-                       len(npsol.STR_MINOR_ITERATIONS_LIMIT) )
+        # npsol.npopti_( npsol.STR_PRINT_FILE, self.iPrint,
+        #                len(cnpsol.STR_PRINT_FILE) )
+        # npsol.npopti_( npsol.STR_MAJOR_PRINT_LEVEL, self.printLevel,
+        #                len(cnpsol.STR_MAJOR_PRINT_LEVEL) )
+        # npsol.npoptr_( npsol.STR_FEASIBILITY_TOLERANCE, self.constraint_violation,
+        #                len(cnpsol.STR_FEASIBILITY_TOLERANCE) )
+        # npsol.npoptr_( npsol.STR_OPTIMALITY_TOLERANCE, self.ftol,
+        #                len(npsol.STR_OPTIMALITY_TOLERANCE) )
+        # npsol.npopti_( npsol.STR_MINOR_ITERATIONS_LIMIT, self.maxeval,
+        #                len(npsol.STR_MINOR_ITERATIONS_LIMIT) )
 
         npsol.npsol_( self.n, self.nclin,
                       self.ncnln, self.ldA,
                       self.ldJ, self.ldR,
                       self.A, self.bl, self.bu,
-                      <npsol.funcon_fp> self.funcon, <npsol.funobj_fp> self.funobj,
+                      <npsol.funcon_fp> funcon, <npsol.funobj_fp> funobj,
                       self.inform_out, self.iter_out, self.istate,
                       self.consf_val, self.consg_val, self.clamda,
                       self.objf_val, self.objg_val, self.R, self.x,

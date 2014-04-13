@@ -16,3 +16,7 @@ cdef extern from *:
     ctypedef short int shortlogical
     ctypedef char logical1
     ctypedef char integer1
+
+    ctypedef long int flag
+    ctypedef long int ftnlen
+    ctypedef long int ftnint
