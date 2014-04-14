@@ -6,7 +6,7 @@ cimport numpy as np
 from optwF2c cimport *
 cimport optwNpsol as npsol
 cimport arrayWrapper as arrwrap
-from optwSolver import *
+from optwSolver cimport *
 
 
 ## These functions should be static methods in optwNpsol, but it appears that
@@ -45,7 +45,7 @@ cdef int funcon( integer* mode, integer* ncnln,
                 extprob.Ncons * extprob.N * sizeof( doublereal ) )
 
 
-cdef class optwNpsol:
+cdef class optwNpsol( optwSolver ):
     cdef integer n[1]
     cdef integer nclin[1]
     cdef integer ncnln[1]

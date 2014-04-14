@@ -70,3 +70,7 @@ Thumbs.db
 
 ## Fortran
 fort.*
+
+## optWrapper specific
+optw*.c
+arrayWrapper.c
