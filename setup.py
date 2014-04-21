@@ -20,6 +20,9 @@ setup( cmdclass = {'build_ext': build_ext},
                                   include_dirs = [ np.get_include() ] ) ] )
 
 setup( cmdclass = {'build_ext': build_ext},
+       ext_modules = [ Extension( "optwSolver", ["optwSolver.pyx" ] ) ] )
+
+setup( cmdclass = {'build_ext': build_ext},
        ext_modules = [ Extension( "optwNpsol", ["optwNpsol.pyx" ],
                                   include_dirs = [ np.get_include() ],
                                   extra_objects = ["dummy.o"],

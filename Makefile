@@ -1,32 +1,14 @@
-all:
-	gcc -c dummy.c
-	python setup.py build_ext -i
+modules = arrayWrapper optwSolver optwNpsol
 
-clean: npsol-clean snopt-clean arrayWrapper-clean
+all: dummy.o
+	python setup.py build_ext --inplace
 
-npsol-clean:
-	rm -rf build
-	rm -f optwNpsol.c
-	rm -f optwNpsol.so
-	rm -f dummy.o
+clean:
+	-rm -f $(modules:%=%.so) $(modules:%=%.c)
+	-rm -rf build
+	-rm -f *.o
 
-snopt-clean:
-	rm -rf build
-	rm -f optwSnopt.c
-	rm -f optwSnopt.so
-	rm -f dummy.o
+test:
+	@$(foreach module,$(modules),python -c "from $(module) import *; print('$(module) works fine.')")
 
-arrayWrapper-clean:
-	rm -rf build
-	rm -f arrayWrapper.c
-	rm -f arrayWrapper.so
-
-test: npsol-test snopt-test
-
-npsol-test:
-	python -c "from optw_npsol import NpsolSolver;print 'NpsolSolver works fine.'"
-
-snopt-test:
-	python -c "from optw_snopt import SnoptSolver;print 'SnoptSolver works fine.'"
-
-.PHONY: all clean npsol-clean snpopt-clean arrayWrapper-clean test npsol-test snopt-test
+.PHONY: all clean test

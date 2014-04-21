@@ -7,6 +7,7 @@ from optwF2c cimport *
 cimport optwNpsol as npsol
 cimport arrayWrapper as arrwrap
 from optwSolver cimport *
+from optwrapper import *
 
 
 ## These functions should be static methods in optwNpsol, but it appears that
@@ -41,7 +42,7 @@ cdef int funcon( integer* mode, integer* ncnln,
                 extprob.Ncons * sizeof( doublereal ) )
 
     if( mode[0] > 0 ):
-        memcpy( cJac, <doublereal *> arrwrap.retPtr( self.prob.consg( xarr ) ),
+        memcpy( cJac, <doublereal *> arrwrap.retPtr( extprob.consg( xarr ) ),
                 extprob.Ncons * extprob.N * sizeof( doublereal ) )
 
 
@@ -207,8 +208,8 @@ cdef class optwNpsol( optwSolver ):
         # if( self.warmstart[0] == 1 ):
         #     cnpsol.npopti_( cnpsol.STR_WARM_START, self.warmstart, len(cnpsol.STR_WARM_START) )
 
-        # npsol.npopti_( npsol.STR_PRINT_FILE, self.iPrint,
-        #                len(cnpsol.STR_PRINT_FILE) )
+        npsol.npopti_( npsol.STR_PRINT_FILE, ## I'm here,
+                       len(cnpsol.STR_PRINT_FILE) )
         # npsol.npopti_( npsol.STR_MAJOR_PRINT_LEVEL, self.printLevel,
         #                len(cnpsol.STR_MAJOR_PRINT_LEVEL) )
         # npsol.npoptr_( npsol.STR_FEASIBILITY_TOLERANCE, self.constraint_violation,
