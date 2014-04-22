@@ -12,11 +12,11 @@ class optwProblem:
     Accepts box, linear, and nonlinear constraints.
     """
 
-    def __init__( self, N, Ncons=0, Nlincons=0 ):
+    def __init__( self, N, Ncons=0, Nconslin=0 ):
         """
         Arguments:
         N         number of optimization variables (required).
-        Nlincons  number of linear constraints (default: 0).
+        Nconslin  number of linear constraints (default: 0).
         Ncons     number of constraints (default: 0).
 
         prob = optProblem( N=2, Ncons=2, Nconslin=3 )
@@ -31,12 +31,12 @@ class optwProblem:
             raise ValueError( "N must be strictly positive" )
 
         try:
-            self.Nlincons = int( Nlincons )
+            self.Nconslin = int( Nconslin )
         except:
-            raise ValueError( "Nlincons was not provided or was not an integer" )
+            raise ValueError( "Nconslin was not provided or was not an integer" )
 
-        if( self.Nlincons < 0 ):
-            raise ValueError( "Nlincons must be positive" )
+        if( self.Nconslin < 0 ):
+            raise ValueError( "Nconslin must be positive" )
 
         try:
             self.Ncons = int( Ncons )
@@ -96,9 +96,9 @@ class optwProblem:
         Defines linear constraints.
 
         Arguments:
-        A   linear constraint matrix, two-dimensional array of size (Nlincons,N).
-        lb  lower bounds, one-dimensional array of size Nlincons.
-        ub  upper bounds, one-dimensional array of size Nlincons.
+        A   linear constraint matrix, two-dimensional array of size (Nconslin,N).
+        lb  lower bounds, one-dimensional array of size Nconslin.
+        ub  upper bounds, one-dimensional array of size Nconslin.
 
         prob.consLinear( [[1,-1],[1,1]], [-1,-2], [1,2] )
         """
@@ -106,7 +106,7 @@ class optwProblem:
         self.conslinlb = np.asarray( lb )
         self.conslinub = np.asarray( ub )
 
-        if( self.conslinA.shape != ( self.Nlincons, self.N ) ):
+        if( self.conslinA.shape != ( self.Nconslin, self.N ) ):
             raise ValueError( "Argument 'A' must have size (" + str(self.Nconslin)
                               + "," + str(self.N) + ")." )
 

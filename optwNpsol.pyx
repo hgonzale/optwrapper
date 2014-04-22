@@ -70,21 +70,20 @@ cdef class optwNpsol( optwSolver ):
     cdef doublereal *w
     cdef doublereal *A
     cdef doublereal *R
+    cdef object prob
+    cdef integer nctotl
 
     def __cinit__( self, prob ):
-        if( not prob is optwProblem ):
+        if( not isinstance( prob, optwProblem ) ):
             raise StandardError( "Argument 'prob' must be of type 'optwProblem'." )
         self.prob = prob ## Save a copy of the pointer
-        setupProblem( self.prob )
+        self.setupProblem( self.prob )
 
 
     def setupProblem( self, prob ):
         extprob = prob ## Save static point for funcon and funobj
 
         self.nctotl = prob.N + prob.Nconslin + prob.Ncons
-
-        self.inform[0] = 0
-        self.printLevel[0] = 0
 
         self.n[0] = prob.N
         self.nclin[0] = prob.Nconslin
@@ -149,15 +148,17 @@ cdef class optwNpsol( optwSolver ):
         tmpbl = prob.lb
         tmpbu = prob.ub
         if( prob.Nconslin > 0 ):
-            tmpbl = np.vstack( tmpbl, prob.conslinlb )
-            tmpbu = np.vstack( tmpbu, prob.conslinub )
+            tmpbl = np.vstack( ( tmpbl, prob.conslinlb ) )
+            tmpbu = np.vstack( ( tmpbu, prob.conslinub ) )
+            self.A = <doublereal *> arrwrap.getPtr( prob.conslinA )
+        else:
+            self.A = <doublereal *> arrwrap.getPtr( np.ones( prob.N ) ) ## ldA = 1
         if( prob.Ncons > 0 ):
-            tmpbl = np.vstack( tmpbl, prob.conslb )
-            tmpbu = np.vstack( tmpbu, prob.consub )
+            tmpbl = np.vstack( ( tmpbl, prob.conslb ) )
+            tmpbu = np.vstack( ( tmpbu, prob.consub ) )
         ## Make sure arrays are contiguous, fortran-ordered, and float64
         self.bl = <doublereal *> arrwrap.getPtr( tmpbl )
         self.bu = <doublereal *> arrwrap.getPtr( tmpbu )
-        self.A = <doublereal *> arrwrap.getPtr( prob.conslinA )
         self.x = <doublereal *> arrwrap.getPtr( prob.init )
 
         ## Set options
