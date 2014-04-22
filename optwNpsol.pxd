@@ -6,7 +6,8 @@ from optwF2c cimport *
 
 DEF STR_WARM_START = "Warm start"
 DEF STR_PRINT_FILE = "Print file"
-DEF STR_MAJOR_PRINT_LEVEL = "Major print level"
+DEF STR_PRINT_LEVEL = "Print level"
+DEF STR_MINOR_PRINT_LEVEL = "Minor print level"
 DEF STR_FEASIBILITY_TOLERANCE = "Feasibility tolerance"
 DEF STR_OPTIMALITY_TOLERANCE = "Optimality tolerance"
 DEF STR_MINOR_ITERATIONS_LIMIT = "Minor iterations limit"

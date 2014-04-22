@@ -26,7 +26,7 @@ cdef int funobj( integer* mode, integer* n,
         f[0] = valf[0]
 
     if( mode[0] > 0 ):
-        memcpy( g, <doublereal *> arrwrap.retPtr( extprob.objg( xarr ) ),
+        memcpy( g, <doublereal *> arrwrap.getPtr( extprob.objg( xarr ) ),
                 extprob.N * sizeof( doublereal ) )
 
 ## pg. 18, Section 7.2
@@ -38,11 +38,11 @@ cdef int funcon( integer* mode, integer* ncnln,
 
     if( mode[0] != 1 ):
         valf = np.asfortranarray( extprob.consf( xarr ), dtype=np.float64 )
-        memcpy( c, <doublereal *> arrwrap.retPtr( extprob.consf( xarr ) ),
+        memcpy( c, <doublereal *> arrwrap.getPtr( extprob.consf( xarr ) ),
                 extprob.Ncons * sizeof( doublereal ) )
 
     if( mode[0] > 0 ):
-        memcpy( cJac, <doublereal *> arrwrap.retPtr( extprob.consg( xarr ) ),
+        memcpy( cJac, <doublereal *> arrwrap.getPtr( extprob.consg( xarr ) ),
                 extprob.Ncons * extprob.N * sizeof( doublereal ) )
 
 
@@ -73,7 +73,7 @@ cdef class optwNpsol( optwSolver ):
 
     def __cinit__( self, prob ):
         if( not prob is optwProblem ):
-            raise StandardError( "Argument 'prob' must be optwProblem." )
+            raise StandardError( "Argument 'prob' must be of type 'optwProblem'." )
         self.prob = prob ## Save a copy of the pointer
         setupProblem( self.prob )
 
@@ -155,10 +155,14 @@ cdef class optwNpsol( optwSolver ):
             tmpbl = np.vstack( tmpbl, prob.conslb )
             tmpbu = np.vstack( tmpbu, prob.consub )
         ## Make sure arrays are contiguous, fortran-ordered, and float64
-        self.bl = <doublereal *> arrwrap.retPtr( tmpbl )
-        self.bu = <doublereal *> arrwrap.retPtr( tmpbu )
-        self.A = <doublereal *> arrwrap.retPtr( prob.conslinA )
-        self.x = <doublereal *> arrwrap.retPtr( prob.init )
+        self.bl = <doublereal *> arrwrap.getPtr( tmpbl )
+        self.bu = <doublereal *> arrwrap.getPtr( tmpbu )
+        self.A = <doublereal *> arrwrap.getPtr( prob.conslinA )
+        self.x = <doublereal *> arrwrap.getPtr( prob.init )
+
+        ## Set options
+        self.printOpts.printLevel = 0
+        self.printOpts.minorPrintLevel = 0
 
 
     def __dealloc__( self ):
@@ -177,22 +181,24 @@ cdef class optwNpsol( optwSolver ):
 
 
     def getStatus( self ):
-        if( self.inform[0] == 0 ):
-            return 'Optimality conditions satisfied'
-        elif( self.inform[0] == 1 ):
-            return 'Feasible point found but no further improvement can be made'
-        elif( self.inform[0] == 2 ):
-            return 'The problem appears to have infeasible linear constraints'
-        elif( self.inform[0] == 3 ):
-            return 'The problem appears to have infeasible nonlinear constraints'
-        elif( self.inform[0] == 4 ):
-            return 'Iteration limit reached'
-        elif( self.inform[0] == 6 ):
-            return 'Point does not satisfy first-order optimality conditions'
-        elif( self.inform[0] == 7 ):
-            return 'Derivatives appear to be incorrect'
+        if( self.inform_out[0] == None ):
+            return "Return information is not defined"
+        elif( self.inform_out[0] == 0 ):
+            return "Optimality conditions satisfied"
+        elif( self.inform_out[0] == 1 ):
+            return "Feasible point found but no further improvement can be made"
+        elif( self.inform_out[0] == 2 ):
+            return "The problem appears to have infeasible linear constraints"
+        elif( self.inform_out[0] == 3 ):
+            return "The problem appears to have infeasible nonlinear constraints"
+        elif( self.inform_out[0] == 4 ):
+            return "Iteration limit reached"
+        elif( self.inform_out[0] == 6 ):
+            return "Point does not satisfy first-order optimality conditions"
+        elif( self.inform_out[0] == 7 ):
+            return "Derivatives appear to be incorrect"
         else:
-            return 'Error in user supplied information'
+            return "Undefined return information value"
 
     # def set_options( self, warmstart, maxeval, constraint_violation, ftol ):
     #     if( not warmstart is None ):
@@ -204,14 +210,62 @@ cdef class optwNpsol( optwSolver ):
     #     if( not ftol is None ):
     #         self.ftol[0] = <doublereal> ftol
 
+
+    def checkPrintOpts( self ):
+        """
+        Check if dictionary self.printOpts is valid.
+
+        Optional entries:
+        printFile        filename for debug information (default: None)
+        printLevel       verbosity level for major iterations (0-None, 1, 5, 10, 20, or 30-Full)
+        minorPrintLevel  verbosity level for minor iterations (0-None, 1, 5, 10, 20, or 30-Full)
+        """
+        try:
+            int( self.printOpts.printLevel ) + 1
+            int( self.printOpts.minorPrintLevel ) + 1
+        except:
+            print( "printOpts.printLevel and printOpts.minorPrintLevel must be integers." )
+            return False
+
+        if( self.printOpts.printFile != None ):
+            try:
+                str( self.printOpts.printFile ) + "x"
+            except:
+                print( "printOpts.printFile must be a string." )
+                return False
+        else:
+            if( self.printOpts.printLevel > 0 ):
+                print( "Must set printOpts.printFile to get debug information." )
+                return False
+
+        return True
+
+
     def solve( self ):
+        cdef integer inform[1]
+        cdef char* printFile = self.printOpts.printFile
+        cdef integer* printFileUnit = [ 90 ] ## Hardcoded since nobody cares
+        cdef integer* printLevel = [ self.printOpts.printLevel ]
+        cdef integer* minorPrintLevel = [ self.printOpts.minorPrintLevel ]
+
+        if( self.printFile != None and
+            self.printLevel > 0 ):
+            npsol.npopenappend_( printFileUnit, printFile, inform,
+                                 len( self.printOpts.printFile ) )
+
+            if( inform[0] != 0 ):
+                raise StandardError( "Could not open file " + self.printOpts.printFile )
+
+            npsol.npopti_( npsol.STR_PRINT_FILE, printFileUnit,
+                           len( npsol.STR_PRINT_FILE ) )
+
+        npsol.npopti_( npsol.STR_PRINT_LEVEL, printLevel,
+                       len( npsol.STR_PRINT_LEVEL ) )
+        npsol.npopti_( npsol.STR_MINOR_PRINT_LEVEL, minorPrintLevel,
+                       len( npsol.STR_MINOR_PRINT_LEVEL ) )
+
         # if( self.warmstart[0] == 1 ):
         #     cnpsol.npopti_( cnpsol.STR_WARM_START, self.warmstart, len(cnpsol.STR_WARM_START) )
-
-        npsol.npopti_( npsol.STR_PRINT_FILE, ## I'm here,
-                       len(cnpsol.STR_PRINT_FILE) )
-        # npsol.npopti_( npsol.STR_MAJOR_PRINT_LEVEL, self.printLevel,
-        #                len(cnpsol.STR_MAJOR_PRINT_LEVEL) )
         # npsol.npoptr_( npsol.STR_FEASIBILITY_TOLERANCE, self.constraint_violation,
         #                len(cnpsol.STR_FEASIBILITY_TOLERANCE) )
         # npsol.npoptr_( npsol.STR_OPTIMALITY_TOLERANCE, self.ftol,
@@ -237,7 +291,7 @@ cdef class optwNpsol( optwSolver ):
         self.prob.Niters = int( self.iter_out[0] )
         self.prob.retval = int( self.inform_out[0] )
 
-        return self.objf[0]
+        return( self.prob.final, self.prob.value, self.prob.retval )
 
 
 

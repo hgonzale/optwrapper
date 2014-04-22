@@ -7,12 +7,9 @@ cdef class optwSolver:
                           "maxtime":1e4,
                           "xtol":1e-6,
                           "ftol":1e-6 }
-        self.printOpts = { "print_level":0,
-                           "summary_level":0,
-                           "options_file":None,
-                           "print_file":None }
-        self.solveOpts = { "warm_start":False,
-                           "constraint_violation":1e-8 }
+        self.printOpts = { "printFile":None }
+        self.solveOpts = { "warmStart":False,
+                           "constraintViolation":1e-8 }
 
     def checkStopOpts( self ):
         """
@@ -25,8 +22,6 @@ cdef class optwSolver:
         """
         Check if dictionary self.printOpts is valid.
         """
-        # print_level: verbosity of file output (0-11 for SNOPT, 0-30 for NPSOL, 0-12 for IPOPT)
-        # summary_level: verbosity of output to screen (0-1 for SNOPT, 0-12 for IPOPT)
         return True
 
 

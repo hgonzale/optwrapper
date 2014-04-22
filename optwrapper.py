@@ -12,7 +12,7 @@ class optwProblem:
     Accepts box, linear, and nonlinear constraints.
     """
 
-    def __init__( self, N, Ncons=0, Nconslin=0 ):
+    def __init__( self, N, Ncons=0, Nlincons=0 ):
         """
         Arguments:
         N         number of optimization variables (required).
@@ -70,7 +70,7 @@ class optwProblem:
         self.init = np.asarray( init )
 
         if( self.init.shape != ( self.N, ) ):
-            raise ValueError( "Argument must have size (" + str(self.N) ",)." )
+            raise ValueError( "Argument must have size (" + str(self.N) + ",)." )
 
 
     def consBox( self, lb, ub ):
@@ -88,7 +88,7 @@ class optwProblem:
 
         if( self.lb.shape != ( self.N, ) or
             self.ub.shape != ( self.N, ) ):
-            raise ValueError( "Bound must have size (" + str(self.N) ",)." )
+            raise ValueError( "Bound must have size (" + str(self.N) + ",)." )
 
 
     def consLinear( self, A, lb, ub ):
@@ -112,7 +112,7 @@ class optwProblem:
 
         if( self.conslinlb.shape != ( self.Nconslin, ) or
             self.conslinub.shape != ( self.Nconslin, ) ):
-            raise ValueError( "Bounds must have size (" + str(self.Nconslin) ",)." )
+            raise ValueError( "Bounds must have size (" + str(self.Nconslin) + ",)." )
 
 
     def objFctn( self, objf ):
@@ -156,10 +156,10 @@ class optwProblem:
         Arguments:
         consf  constraint function, must return a one-dimensional array of
                size Ncons.
-        lb  lower bounds, one-dimensional array of size Ncons (default: vector
-            of -inf).
-        ub  upper bounds, one-dimensional array of size Ncons (default: vector
-            of zeros).
+        lb     lower bounds, one-dimensional array of size Ncons (default: vector
+               of -inf).
+        ub     upper bounds, one-dimensional array of size Ncons (default: vector
+               of zeros).
 
         def consf(x):
             return np.array( [ x[0] - x[1],
@@ -181,7 +181,7 @@ class optwProblem:
 
         if( self.conslb.shape != ( self.Ncons, ) or
             self.consub.shape != ( self.Ncons, ) ):
-            raise ValueError( "Bound must have size (" + str(self.Ncons) ",)." )
+            raise ValueError( "Bound must have size (" + str(self.Ncons) + ",)." )
 
 
     def consGrad( self, consg ):
@@ -266,7 +266,7 @@ class optwProblem:
         else:
             point = np.asarray( point )
             if( point.shape != ( self.N, ) ):
-                rause ValueError( "Argument 'point' must have size (" + str(self.N) + ",)." )
+                raise ValueError( "Argument 'point' must have size (" + str(self.N) + ",)." )
 
         usrgrad = np.zeros( [ self.Ncons + 1, self.N ] )
         numgrad = np.zeros( [ self.Ncons + 1, self.N ] )
@@ -301,7 +301,7 @@ class optwProblem:
             raise ValueError( "Gradient returned NaN or inf." )
 
         errgrad = abs( usrgrad - numgrad )
-        if( errgrad.max() < tol ):
+        if( errgrad.max() < etol ):
             return( True, errgrad.max(), errgrad )
         else:
             if( debug ):
