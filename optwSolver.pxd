@@ -1,2 +1,4 @@
 cdef class optwSolver:
-    pass
+    cdef public dict stopOpts
+    cdef public dict printOpts
+    cdef public dict solveOpts

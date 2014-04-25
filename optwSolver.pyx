@@ -1,5 +1,3 @@
-from optwSolver cimport *
-
 cdef class optwSolver:
     def __init__( self ):
         self.stopOpts = { "stopval":None,
@@ -15,6 +13,7 @@ cdef class optwSolver:
         """
         Check if dictionary self.stopOpts is valid.
         """
+        print( self.stopOpts )
         return True
 
 
@@ -22,6 +21,7 @@ cdef class optwSolver:
         """
         Check if dictionary self.printOpts is valid.
         """
+        print( self.printOpts )
         return True
 
 

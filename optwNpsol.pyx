@@ -73,7 +73,9 @@ cdef class optwNpsol( optwSolver ):
     cdef object prob
     cdef integer nctotl
 
-    def __cinit__( self, prob ):
+    def __init__( self, prob ):
+        super().__init__()
+
         if( not isinstance( prob, optwProblem ) ):
             raise StandardError( "Argument 'prob' must be of type 'optwProblem'." )
         self.prob = prob ## Save a copy of the pointer
@@ -141,6 +143,13 @@ cdef class optwNpsol( optwSolver ):
             self.R is NULL ):
             raise MemoryError( "At least one memory allocation failed." )
 
+        ## Set options
+        self.printOpts[ "printLevel" ] = 0
+        self.printOpts[ "minorPrintLevel" ] = 0
+
+
+    ## This function should be removed at some point.
+    def loadProblem( self ):
         ## We are assuming np.float64 equals doublereal from now on
         ## At least we need to be sure that doublereal is 8 bytes in this architecture
         assert( sizeof( doublereal ) == 8 )
@@ -161,9 +170,6 @@ cdef class optwNpsol( optwSolver ):
         self.bu = <doublereal *> arrwrap.getPtr( tmpbu )
         self.x = <doublereal *> arrwrap.getPtr( prob.init )
 
-        ## Set options
-        self.printOpts.printLevel = 0
-        self.printOpts.minorPrintLevel = 0
 
 
     def __dealloc__( self ):
@@ -222,20 +228,20 @@ cdef class optwNpsol( optwSolver ):
         minorPrintLevel  verbosity level for minor iterations (0-None, 1, 5, 10, 20, or 30-Full)
         """
         try:
-            int( self.printOpts.printLevel ) + 1
-            int( self.printOpts.minorPrintLevel ) + 1
+            int( self.printOpts[ "printLevel" ] ) + 1
+            int( self.printOpts[ "minorPrintLevel" ] ) + 1
         except:
-            print( "printOpts.printLevel and printOpts.minorPrintLevel must be integers." )
+            print( "printOpts['printLevel'] and printOpts['minorPrintLevel'] must be integers." )
             return False
 
-        if( self.printOpts.printFile != None ):
+        if( self.printOpts[ "printFile" ] != None ):
             try:
-                str( self.printOpts.printFile ) + "x"
+                str( self.printOpts[ "printFile" ] ) + "x"
             except:
-                print( "printOpts.printFile must be a string." )
+                print( "printOpts['printFile'] must be a string." )
                 return False
         else:
-            if( self.printOpts.printLevel > 0 ):
+            if( self.printOpts[ "printLevel" ] > 0 ):
                 print( "Must set printOpts.printFile to get debug information." )
                 return False
 
@@ -244,18 +250,18 @@ cdef class optwNpsol( optwSolver ):
 
     def solve( self ):
         cdef integer inform[1]
-        cdef char* printFile = self.printOpts.printFile
+        cdef char* printFile = self.printOpts[ "printFile" ]
         cdef integer* printFileUnit = [ 90 ] ## Hardcoded since nobody cares
-        cdef integer* printLevel = [ self.printOpts.printLevel ]
-        cdef integer* minorPrintLevel = [ self.printOpts.minorPrintLevel ]
+        cdef integer* printLevel = [ self.printOpts[ "printLevel" ] ]
+        cdef integer* minorPrintLevel = [ self.printOpts[ "minorPrintLevel" ] ]
 
         if( self.printFile != None and
             self.printLevel > 0 ):
             npsol.npopenappend_( printFileUnit, printFile, inform,
-                                 len( self.printOpts.printFile ) )
+                                 len( self.printOpts[ "printFile" ] ) )
 
             if( inform[0] != 0 ):
-                raise StandardError( "Could not open file " + self.printOpts.printFile )
+                raise StandardError( "Could not open file " + self.printOpts[ "printFile" ] )
 
             npsol.npopti_( npsol.STR_PRINT_FILE, printFileUnit,
                            len( npsol.STR_PRINT_FILE ) )
