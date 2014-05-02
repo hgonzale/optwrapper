@@ -9,6 +9,15 @@ cimport arrayWrapper as arrwrap
 from optwSolver cimport *
 from optwrapper import *
 
+## NPSOL's option strings
+cdef char* STR_WARM_START = "Warm start"
+cdef char* STR_PRINT_FILE = "Print file"
+cdef char* STR_PRINT_LEVEL = "Print level"
+cdef char* STR_MINOR_PRINT_LEVEL = "Minor print level"
+cdef char* STR_FEASIBILITY_TOLERANCE = "Feasibility tolerance"
+cdef char* STR_OPTIMALITY_TOLERANCE = "Optimality tolerance"
+cdef char* STR_MINOR_ITERATIONS_LIMIT = "Minor iterations limit"
+
 
 ## These functions should be static methods in optwNpsol, but it appears that
 ## Cython doesn't support static cdef methods yet.
@@ -111,9 +120,9 @@ cdef class optwNpsol( optwSolver ):
         self.iter_out[0] = 0
         self.inform_out[0] = 100
 
-        # self.x = <doublereal *> calloc( prob.N, sizeof( doublereal ) )
-        # self.bl = <doublereal *> calloc( self.nctotl, sizeof( doublereal ) )
-        # self.bu = <doublereal *> calloc( self.nctotl, sizeof( doublereal ) )
+        self.x = <doublereal *> calloc( prob.N, sizeof( doublereal ) )
+        self.bl = <doublereal *> calloc( self.nctotl, sizeof( doublereal ) )
+        self.bu = <doublereal *> calloc( self.nctotl, sizeof( doublereal ) )
 
         self.objf_val[0] = 0.0
         self.objg_val = <doublereal *> calloc( prob.N, sizeof( doublereal ) )
@@ -126,12 +135,12 @@ cdef class optwNpsol( optwSolver ):
         self.iw = <integer *> calloc( self.leniw[0], sizeof( integer ) )
         self.w = <doublereal *> calloc( self.lenw[0], sizeof( doublereal ) )
 
-        # self.A = <doublereal *> calloc( self.ldA[0] * prob.N, sizeof( doublereal ) )
+        self.A = <doublereal *> calloc( self.ldA[0] * prob.N, sizeof( doublereal ) )
         self.R = <doublereal *> calloc( prob.N * prob.N, sizeof( doublereal ) )
 
-        if( # self.x is NULL or
-            # self.bl is NULL or
-            # self.bu is NULL or
+        if( self.x is NULL or
+            self.bl is NULL or
+            self.bu is NULL or
             self.objg_val is NULL or
             self.consf_val is NULL or
             self.consg_val is NULL or
@@ -139,7 +148,7 @@ cdef class optwNpsol( optwSolver ):
             self.istate is NULL or
             self.iw is NULL or
             self.w is NULL or
-            # self.A is NULL or
+            self.A is NULL or
             self.R is NULL ):
             raise MemoryError( "At least one memory allocation failed." )
 
@@ -147,9 +156,6 @@ cdef class optwNpsol( optwSolver ):
         self.printOpts[ "printLevel" ] = 0
         self.printOpts[ "minorPrintLevel" ] = 0
 
-
-    ## This function should be removed at some point.
-    def loadProblem( self ):
         ## We are assuming np.float64 equals doublereal from now on
         ## At least we need to be sure that doublereal is 8 bytes in this architecture
         assert( sizeof( doublereal ) == 8 )
@@ -159,23 +165,25 @@ cdef class optwNpsol( optwSolver ):
         if( prob.Nconslin > 0 ):
             tmpbl = np.vstack( ( tmpbl, prob.conslinlb ) )
             tmpbu = np.vstack( ( tmpbu, prob.conslinub ) )
-            self.A = <doublereal *> arrwrap.getPtr( prob.conslinA )
-        else:
-            self.A = <doublereal *> arrwrap.getPtr( np.ones( prob.N ) ) ## ldA = 1
+            memcpy( self.A, <doublereal *> arrwrap.getPtr( prob.conslinA ),
+                    self.ldA[0] * prob.N * sizeof( doublereal ) )
         if( prob.Ncons > 0 ):
             tmpbl = np.vstack( ( tmpbl, prob.conslb ) )
             tmpbu = np.vstack( ( tmpbu, prob.consub ) )
         ## Make sure arrays are contiguous, fortran-ordered, and float64
-        self.bl = <doublereal *> arrwrap.getPtr( tmpbl )
-        self.bu = <doublereal *> arrwrap.getPtr( tmpbu )
-        self.x = <doublereal *> arrwrap.getPtr( prob.init )
+        memcpy( self.bl, <doublereal *> arrwrap.getPtr( tmpbl ),
+                self.nctotl * sizeof( doublereal ) )
+        memcpy( self.bu, <doublereal *> arrwrap.getPtr( tmpbu ),
+                self.nctotl * sizeof( doublereal ) )
+        memcpy( self.x, <doublereal *> arrwrap.getPtr( prob.init ),
+                prob.N * sizeof( doublereal ) )
 
 
 
     def __dealloc__( self ):
-        # free( self.x )
-        # free( self.bl )
-        # free( self.bu )
+        free( self.x )
+        free( self.bl )
+        free( self.bu )
         free( self.objg_val )
         free( self.consf_val )
         free( self.consg_val )
@@ -183,7 +191,7 @@ cdef class optwNpsol( optwSolver ):
         free( self.istate )
         free( self.iw )
         free( self.w )
-        # free( self.A )
+        free( self.A )
         free( self.R )
 
 
@@ -250,26 +258,22 @@ cdef class optwNpsol( optwSolver ):
 
     def solve( self ):
         cdef integer inform[1]
-        cdef char* printFile = self.printOpts[ "printFile" ]
+        cdef bytes printFileTmp = self.printOpts[ "printFile" ].encode() ## temp container
+        cdef char* printFile = printFileTmp
         cdef integer* printFileUnit = [ 90 ] ## Hardcoded since nobody cares
         cdef integer* printLevel = [ self.printOpts[ "printLevel" ] ]
         cdef integer* minorPrintLevel = [ self.printOpts[ "minorPrintLevel" ] ]
 
-        if( self.printFile != None and
-            self.printLevel > 0 ):
+        if( self.printOpts[ "printFile" ] != None and
+            self.printOpts[ "printLevel" ] > 0 ):
             npsol.npopenappend_( printFileUnit, printFile, inform,
                                  len( self.printOpts[ "printFile" ] ) )
-
             if( inform[0] != 0 ):
                 raise StandardError( "Could not open file " + self.printOpts[ "printFile" ] )
+            npsol.npopti_( STR_PRINT_FILE, printFileUnit, len( STR_PRINT_FILE ) )
 
-            npsol.npopti_( npsol.STR_PRINT_FILE, printFileUnit,
-                           len( npsol.STR_PRINT_FILE ) )
-
-        npsol.npopti_( npsol.STR_PRINT_LEVEL, printLevel,
-                       len( npsol.STR_PRINT_LEVEL ) )
-        npsol.npopti_( npsol.STR_MINOR_PRINT_LEVEL, minorPrintLevel,
-                       len( npsol.STR_MINOR_PRINT_LEVEL ) )
+        npsol.npopti_( STR_PRINT_LEVEL, printLevel, len( STR_PRINT_LEVEL ) )
+        npsol.npopti_( STR_MINOR_PRINT_LEVEL, minorPrintLevel, len( STR_MINOR_PRINT_LEVEL ) )
 
         # if( self.warmstart[0] == 1 ):
         #     cnpsol.npopti_( cnpsol.STR_WARM_START, self.warmstart, len(cnpsol.STR_WARM_START) )
