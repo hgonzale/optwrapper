@@ -10,13 +10,27 @@ from optwSolver cimport *
 from optwrapper import *
 
 ## NPSOL's option strings
+cdef char* STR_NOLIST = "Nolist"
 cdef char* STR_WARM_START = "Warm start"
 cdef char* STR_PRINT_FILE = "Print file"
 cdef char* STR_PRINT_LEVEL = "Print level"
 cdef char* STR_MINOR_PRINT_LEVEL = "Minor print level"
+cdef char* STR_INFINITE_BOUND_SIZE = "Infinite bound size"
+cdef char* STR_ITERATION_LIMIT = "Iteration limit"
+cdef char* STR_MINOR_ITERATIONS_LIMIT = "Minor iterations limit"
+
 cdef char* STR_FEASIBILITY_TOLERANCE = "Feasibility tolerance"
 cdef char* STR_OPTIMALITY_TOLERANCE = "Optimality tolerance"
-cdef char* STR_MINOR_ITERATIONS_LIMIT = "Minor iterations limit"
+cdef tuple statusInfo = ( "Optimality conditions satisfied",
+                          "Optimality conditions satisfied, but sequence has not converged",
+                          "Linear constraints could not be satisfied",
+                          "Nonlinear constraints could not be satisfied",
+                          "Iteration limit reached",
+                          "N/A",
+                          "Optimality conditions not satisfied, no improvement can be made",
+                          "Derivatives appear to be incorrect",
+                          "N/A",
+                          "Invalid input parameter" )
 
 
 ## These functions should be static methods in optwNpsol, but it appears that
@@ -86,12 +100,13 @@ cdef class optwNpsol( optwSolver ):
     cdef doublereal *R
     cdef object prob
     cdef integer nctotl
+    cdef integer def_iter_limit
 
     def __init__( self, prob ):
         super().__init__()
 
         if( not isinstance( prob, optwProblem ) ):
-            raise StandardError( "Argument 'prob' must be of type 'optwProblem'." )
+            raise StandardError( "Argument 'prob' must be of type 'optwProblem'" )
         self.prob = prob ## Save a copy of the pointer
         self.setupProblem( self.prob )
 
@@ -101,6 +116,7 @@ cdef class optwNpsol( optwSolver ):
         extprob = prob ## Save static point for funcon and funobj
 
         self.nctotl = prob.N + prob.Nconslin + prob.Ncons
+        self.def_iter_limit = max( 50, 3*( prob.N + prob.Nconslin ) + 10*prob.Ncons )
 
         self.n[0] = prob.N
         self.nclin[0] = prob.Nconslin
@@ -156,11 +172,17 @@ cdef class optwNpsol( optwSolver ):
             self.w is NULL or
             self.A is NULL or
             self.R is NULL ):
-            raise MemoryError( "At least one memory allocation failed." )
+            raise MemoryError( "At least one memory allocation failed" )
 
         ## Set options
         self.printOpts[ "printLevel" ] = 0
         self.printOpts[ "minorPrintLevel" ] = 0
+        self.solveOpts[ "infValue" ] = 1e20
+        self.solveOpts[ "iterLimit" ] = self.def_iter_limit
+        self.solveOpts[ "minorIterLimit" ] = self.def_iter_limit
+        self.solveOpts[ "lineSearchTol" ] = 0.9
+        self.solveOpts[ "feasibilityTol" ] = None
+        self.solveOpts[ "optimalityTol" ] = None
 
         ## We are assuming np.float64 equals doublereal from now on
         ## At least we need to be sure that doublereal is 8 bytes in this architecture
@@ -213,24 +235,14 @@ cdef class optwNpsol( optwSolver ):
 
 
     def getStatus( self ):
-        if( self.inform_out[0] == None ):
-            return "Return information is not defined"
-        elif( self.inform_out[0] == 0 ):
-            return "Optimality conditions satisfied"
-        elif( self.inform_out[0] == 1 ):
-            return "Feasible point found but no further improvement can be made"
-        elif( self.inform_out[0] == 2 ):
-            return "The problem appears to have infeasible linear constraints"
-        elif( self.inform_out[0] == 3 ):
-            return "The problem appears to have infeasible nonlinear constraints"
-        elif( self.inform_out[0] == 4 ):
-            return "Iteration limit reached"
-        elif( self.inform_out[0] == 6 ):
-            return "Point does not satisfy first-order optimality conditions"
-        elif( self.inform_out[0] == 7 ):
-            return "Derivatives appear to be incorrect"
+        if( self.inform_out[0] == 100 ):
+            return "Return information is not defined yet"
+        elif( self.inform_out[0] < 0 ):
+            return "Execution terminated by user defined function (should not occur)"
+        elif( self.inform_out[0] >= 10 ):
+            return "Invalid value"
         else:
-            return "Undefined return information value"
+            return statusInfo[ self.inform_out[0] ]
 
 
     def checkPrintOpts( self ):
@@ -242,23 +254,65 @@ cdef class optwNpsol( optwSolver ):
         printLevel       verbosity level for major iterations (0-None, 1, 5, 10, 20, or 30-Full)
         minorPrintLevel  verbosity level for minor iterations (0-None, 1, 5, 10, 20, or 30-Full)
         """
+        if( super().checkPrintOpts() == False ):
+            return False
+
         try:
             int( self.printOpts[ "printLevel" ] ) + 1
             int( self.printOpts[ "minorPrintLevel" ] ) + 1
         except:
-            print( "printOpts['printLevel'] and printOpts['minorPrintLevel'] must be integers." )
+            print( "printOpts['printLevel'] and printOpts['minorPrintLevel'] must be integers" )
             return False
 
-        if( self.printOpts[ "printFile" ] != None ):
-            try:
-                str( self.printOpts[ "printFile" ] ) + "x"
-            except:
-                print( "printOpts['printFile'] must be a string." )
+        if( self.printOpts[ "printFile" ] == None and
+            self.printOpts[ "printLevel" ] > 0 ):
+                print( "Must set printOpts['printFile'] whenever printOpts['printLevel'] > 0" )
                 return False
-        else:
-            if( self.printOpts[ "printLevel" ] > 0 ):
-                print( "Must set printOpts.printFile to get debug information." )
-                return False
+
+        return True
+
+
+    def checkSolveOpts( self ):
+        """
+        Check if dictionary self.solveOpts is valid.
+
+        Optional entries:
+        infValue        Value above which is considered infinity (default: 1e20)
+        iterLimit       Maximum number of iterations (default: max{50,3*(N+Nconslin)+10*Ncons})
+        minorIterLimit  Maximum number of minor iterations (default: max{50,3*(N+Nconslin)+10*Ncons})
+        lineSearchTol   Line search tolerance parameter (default: 0.9)
+        """
+        try:
+            float( self.solveOpts[ "infValue" ] ) + 1.1
+            float( self.solveOpts[ "lineSearchTol" ] ) + 1.1
+        except:
+            print( "solveOpts['infValue'] and solveOpts['lineSearchTol'] must be floats" )
+            return False
+
+        if( self.solveOpts[ "infValue" ] < 0 ):
+            print( "solveOpts['infValue'] must be positive" )
+            return False
+        elif( self.solveOpts[ "infValue" ] > 1e20 ):
+            print( "Values for solveOpts['infValue'] above 1e20 are ignored" )
+
+        if( self.solveOpts[ "lineSearchTol" ] < 0 or
+            self.solveOpts[ "lineSearchTol" ] >= 1 ):
+            print( "solveOpts['lineSearchTol'] must belong to the interval [0,1)" )
+            return False
+
+        try:
+            int( self.solveOpts[ "iterLimit" ] ) + 1
+            int( self.solveOpts[ "minorIterLimit" ] ) + 1
+        except:
+            print( "solveOpts['iterLimit'] and solveOpts['minorIterLimit'] must be integers" )
+            return False
+
+        if( self.solveOpts[ "iterLimit" ] < self.def_iter_limit ):
+            print( "Values for solveOpts['iterLimit'] below "
+                   + str( self.def_iter_limit ) + " are ignored" )
+        if( self.solveOpts[ "minorIterLimit" ] < self.def_iter_limit ):
+            print( "Values for solveOpts['minorIterLimit'] below "
+                   + str( self.def_iter_limit ) + " are ignored" )
 
         return True
 
@@ -270,7 +324,15 @@ cdef class optwNpsol( optwSolver ):
         cdef integer* printFileUnit = [ 90 ] ## Hardcoded since nobody cares
         cdef integer* printLevel = [ self.printOpts[ "printLevel" ] ]
         cdef integer* minorPrintLevel = [ self.printOpts[ "minorPrintLevel" ] ]
+        cdef doublereal* infValue = [ self.solveOpts["infValue"] ]
+        cdef integer* iterLimit = [ self.solveOpts[ "iterLimit" ] ]
+        cdef integer* minorIterLimit = [ self.solveOpts[ "minorIterLimit" ] ]
+        cdef doublereal* lineSearchTol = [ self.solveOpts["lineSearchTol"] ]
 
+        ## Supress echo options
+        npsol.npoptn_( STR_NOLIST, len( STR_NOLIST ) )
+
+        ## Open file if necessary
         if( self.printOpts[ "printFile" ] != None and
             self.printOpts[ "printLevel" ] > 0 ):
             npsol.npopenappend_( printFileUnit, printFile, inform,
@@ -279,8 +341,23 @@ cdef class optwNpsol( optwSolver ):
                 raise StandardError( "Could not open file " + self.printOpts[ "printFile" ] )
             npsol.npopti_( STR_PRINT_FILE, printFileUnit, len( STR_PRINT_FILE ) )
 
+        ## Set major and minor print levels
         npsol.npopti_( STR_PRINT_LEVEL, printLevel, len( STR_PRINT_LEVEL ) )
         npsol.npopti_( STR_MINOR_PRINT_LEVEL, minorPrintLevel, len( STR_MINOR_PRINT_LEVEL ) )
+
+        ## Set infinite bound value if necessary
+        if( self.solveOpts["infValue"] < 1e20 ):
+            npsol.npoptr_( STR_INFINITE_BOUND_SIZE, infValue, len( STR_INFINITE_BOUND_SIZE ) )
+
+        ## Set major and minor iteration limits if necessary
+        if( self.solveOpts["iterLimit"] > self.def_iter_limit ):
+            npsol.npopti_( STR_ITERATION_LIMIT, iterLimit, len( STR_ITERATION_LIMIT ) )
+        if( self.solveOpts["minorIterLimit"] > self.def_iter_limit ):
+            npsol.npopti_( STR_MINOR_ITERATION_LIMIT, minorIterLimit,
+                           len( STR_MINOR_ITERATION_LIMIT ) )
+
+        ## Set line search tolerance value
+        npsol.npoptr_( STR_LINE_SEARCH_TOLERANCE, lineSearchTol, len( STR_LINE_SEARCH_TOLERANCE ) )
 
         # if( self.warmstart[0] == 1 ):
         #     cnpsol.npopti_( cnpsol.STR_WARM_START, self.warmstart, len(cnpsol.STR_WARM_START) )
@@ -301,11 +378,11 @@ cdef class optwNpsol( optwSolver ):
                       self.objf_val, self.objg_val, self.R, self.x,
                       self.iw, self.leniw, self.w, self.lenw )
 
-        self.prob.final = arrwrap.wrapPtr( self.x, prob.N, np.NPY_DOUBLE )
+        self.prob.final = np.copy( arrwrap.wrapPtr( self.x, self.prob.N, np.NPY_DOUBLE ) )
         self.prob.value = float( self.objf_val[0] )
-        self.prob.istate = arrwrap.wrapPtr( self.istate, self.nctotl, np.NPY_LONG )
-        self.prob.clamda = arrwrap.wrapPtr( self.clamda, self.nctotl, np.NPY_DOUBLE )
-        self.prob.R = arrwrap.wrapPtr( self.R, prob.N * prob.N, np.NPY_DOUBLE )
+        self.prob.istate = np.copy( arrwrap.wrapPtr( self.istate, self.nctotl, np.NPY_LONG ) )
+        self.prob.clamda = np.copy( arrwrap.wrapPtr( self.clamda, self.nctotl, np.NPY_DOUBLE ) )
+        self.prob.R = np.copy( arrwrap.wrapPtr( self.R, self.prob.N * self.prob.N, np.NPY_DOUBLE ) )
         self.prob.Niters = int( self.iter_out[0] )
         self.prob.retval = int( self.inform_out[0] )
 

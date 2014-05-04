@@ -30,8 +30,8 @@ if( not prob.checkGrad() ):
     raise StandardError( "Gradient does not match function." )
 
 solver = optwNpsol( prob )
-solver.printOpts[ "printFile" ] = "debug.txt"
-solver.printOpts[ "printLevel" ] = 5
+solver.printOpts[ "printFile" ] = "debug2.txt"
+solver.printOpts[ "printLevel" ] = 10
 
 if( not solver.checkPrintOpts() ):
     raise StandardError( "Print options are invalid." )

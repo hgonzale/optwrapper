@@ -20,8 +20,17 @@ cdef class optwSolver:
     def checkPrintOpts( self ):
         """
         Check if dictionary self.printOpts is valid.
+
+        Optional entries:
+        printFile        filename for debug information (default: None)
         """
-        print( self.printOpts )
+        if( self.printOpts[ "printFile" ] == None ):
+            try:
+                str( self.printOpts[ "printFile" ] ) + "x"
+            except:
+                print( "printOpts['printFile'] must be a string." )
+                return False
+
         return True
 
 
