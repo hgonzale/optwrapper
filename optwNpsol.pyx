@@ -31,12 +31,14 @@ cdef int funobj( integer* mode, integer* n,
     xarr = arrwrap.wrapPtr( x, extprob.N, np.NPY_DOUBLE )
 
     if( mode[0] != 1 ):
-        valf = extprob.objf( xarr )
-        f[0] = valf[0]
+        f[0] = extprob.objf( xarr )
 
     if( mode[0] > 0 ):
-        memcpy( g, <doublereal *> arrwrap.getPtr( extprob.objg( xarr ) ),
+        tmpg = extprob.objg( xarr )
+        tmpg = np.require( np.atleast_2d( tmpg ), dtype=np.float64, requirements=['F', 'A'] )
+        memcpy( g, <doublereal *> arrwrap.getPtr( tmpg ),
                 extprob.N * sizeof( doublereal ) )
+
 
 ## pg. 18, Section 7.2
 cdef int funcon( integer* mode, integer* ncnln,
@@ -46,12 +48,15 @@ cdef int funcon( integer* mode, integer* ncnln,
     xarr = arrwrap.wrapPtr( x, extprob.N, np.NPY_DOUBLE )
 
     if( mode[0] != 1 ):
-        valf = np.asfortranarray( extprob.consf( xarr ), dtype=np.float64 )
-        memcpy( c, <doublereal *> arrwrap.getPtr( extprob.consf( xarr ) ),
+        tmpf = extprob.consf( xarr )
+        tmpf = np.require( np.atleast_2d( tmpf ), dtype=np.float64, requirements=['F', 'A'] )
+        memcpy( c, <doublereal *> arrwrap.getPtr( tmpf ),
                 extprob.Ncons * sizeof( doublereal ) )
 
     if( mode[0] > 0 ):
-        memcpy( cJac, <doublereal *> arrwrap.getPtr( extprob.consg( xarr ) ),
+        tmpg = extprob.consg( xarr )
+        tmpg = np.require( np.atleast_2d( tmpg ), dtype=np.float64, requirements=['F', 'A'] )
+        memcpy( cJac, <doublereal *> arrwrap.getPtr( tmpg ),
                 extprob.Ncons * extprob.N * sizeof( doublereal ) )
 
 
@@ -92,6 +97,7 @@ cdef class optwNpsol( optwSolver ):
 
 
     def setupProblem( self, prob ):
+        global extprob
         extprob = prob ## Save static point for funcon and funobj
 
         self.nctotl = prob.N + prob.Nconslin + prob.Ncons
@@ -160,23 +166,34 @@ cdef class optwNpsol( optwSolver ):
         ## At least we need to be sure that doublereal is 8 bytes in this architecture
         assert( sizeof( doublereal ) == 8 )
 
-        tmpbl = prob.lb
-        tmpbu = prob.ub
+        ## Require all arrays we are going to copy to be:
+        ## two-dimensional, float64, fortran contiguous, and type aligned
+        tmpinit = np.require( np.atleast_2d( prob.init ), dtype=np.float64, requirements=['F', 'A'] )
+        tmplb = np.require( np.atleast_2d( prob.lb ), dtype=np.float64, requirements=['F', 'A'] )
+        tmpub = np.require( np.atleast_2d( prob.ub ), dtype=np.float64, requirements=['F', 'A'] )
+        memcpy( self.x, <doublereal *> arrwrap.getPtr( tmpinit ),
+                prob.N * sizeof( doublereal ) )
+        memcpy( &self.bl[0], <doublereal *> arrwrap.getPtr( tmplb ),
+                prob.N * sizeof( doublereal ) )
+        memcpy( &self.bu[0], <doublereal *> arrwrap.getPtr( tmpub ),
+                prob.N * sizeof( doublereal ) )
         if( prob.Nconslin > 0 ):
-            tmpbl = np.vstack( ( tmpbl, prob.conslinlb ) )
-            tmpbu = np.vstack( ( tmpbu, prob.conslinub ) )
-            memcpy( self.A, <doublereal *> arrwrap.getPtr( prob.conslinA ),
+            tmpconslinA = np.require( np.atleast_2d( prob.conslinA ), dtype=np.float64, requirements=['F', 'A'] )
+            tmpconslinlb = np.require( np.atleast_2d( prob.conslinlb ), dtype=np.float64, requirements=['F', 'A'] )
+            tmpconslinub = np.require( np.atleast_2d( prob.conslinub ), dtype=np.float64, requirements=['F', 'A'] )
+            memcpy( &self.bl[prob.N], <doublereal *> arrwrap.getPtr( tmpconslinlb ),
+                    prob.Nconslin * sizeof( doublereal ) )
+            memcpy( &self.bu[prob.N], <doublereal *> arrwrap.getPtr( tmpconslinub ),
+                    prob.Nconslin * sizeof( doublereal ) )
+            memcpy( self.A, <doublereal *> arrwrap.getPtr( tmpconslinA ),
                     self.ldA[0] * prob.N * sizeof( doublereal ) )
         if( prob.Ncons > 0 ):
-            tmpbl = np.vstack( ( tmpbl, prob.conslb ) )
-            tmpbu = np.vstack( ( tmpbu, prob.consub ) )
-        ## Make sure arrays are contiguous, fortran-ordered, and float64
-        memcpy( self.bl, <doublereal *> arrwrap.getPtr( tmpbl ),
-                self.nctotl * sizeof( doublereal ) )
-        memcpy( self.bu, <doublereal *> arrwrap.getPtr( tmpbu ),
-                self.nctotl * sizeof( doublereal ) )
-        memcpy( self.x, <doublereal *> arrwrap.getPtr( prob.init ),
-                prob.N * sizeof( doublereal ) )
+            tmpconslb = np.require( np.atleast_2d( prob.conslb ), dtype=np.float64, requirements=['F', 'A'] )
+            tmpconsub = np.require( np.atleast_2d( prob.consub ), dtype=np.float64, requirements=['F', 'A'] )
+            memcpy( &self.bl[prob.N+prob.Nconslin], <doublereal *> arrwrap.getPtr( tmpconslb ),
+                    prob.Ncons * sizeof( doublereal ) )
+            memcpy( &self.bu[prob.N+prob.Nconslin], <doublereal *> arrwrap.getPtr( tmpconsub ),
+                    prob.Ncons * sizeof( doublereal ) )
 
 
 
@@ -214,16 +231,6 @@ cdef class optwNpsol( optwSolver ):
             return "Derivatives appear to be incorrect"
         else:
             return "Undefined return information value"
-
-    # def set_options( self, warmstart, maxeval, constraint_violation, ftol ):
-    #     if( not warmstart is None ):
-    #         self.warmstart[0] = <integer> warmstart
-    #     if( not maxeval is None ):
-    #         self.maxeval[0] = <integer> maxeval
-    #     if( not constraint_violation is None ):
-    #         self.constraint_violation[0] = <doublereal> constraint_violation
-    #     if( not ftol is None ):
-    #         self.ftol[0] = <doublereal> ftol
 
 
     def checkPrintOpts( self ):

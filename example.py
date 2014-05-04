@@ -18,7 +18,7 @@ def consg(x):
                        [ 2*(x[0]-2), 2*x[1] ] ] )
 
 prob = optwProblem( N=2, Ncons=2 )
-prob.initCond( [1.0, 1.0] )
+prob.initCond( [10.0, 12.0] )
 prob.consBox( [0, -10], [5, 2] )
 
 prob.objFctn( objf )
