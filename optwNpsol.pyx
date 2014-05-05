@@ -14,6 +14,7 @@ from optwrapper import *
 ## NPSOL's option strings
 cdef char* STR_NOLIST = "Nolist"
 cdef char* STR_PRINT_FILE = "Print file"
+cdef char* STR_SUMMARY_FILE = "Summary file"
 cdef char* STR_PRINT_LEVEL = "Print level"
 cdef char* STR_MINOR_PRINT_LEVEL = "Minor print level"
 cdef char* STR_INFINITE_BOUND_SIZE = "Infinite bound size"
@@ -183,6 +184,7 @@ cdef class optwNpsol( optwSolver ):
             raise MemoryError( "At least one memory allocation failed" )
 
         ## Set options
+        self.printOpts[ "summaryFile" ] = ""
         self.printOpts[ "printLevel" ] = 0
         self.printOpts[ "minorPrintLevel" ] = 0
         self.solveOpts[ "infValue" ] = 1e20
@@ -284,7 +286,7 @@ cdef class optwNpsol( optwSolver ):
             not arrwrap.isInt( self.printOpts[ "minorPrintLevel" ] ) ):
             print( "printOpts['printLevel'] and printOpts['minorPrintLevel'] must be integers" )
             return False
-        if( self.printOpts[ "printFile" ] == None and
+        if( self.printOpts[ "printFile" ] == "" and
             self.printOpts[ "printLevel" ] > 0 ):
                 print( "Must set printOpts['printFile'] whenever printOpts['printLevel'] > 0" )
                 return False
@@ -372,6 +374,9 @@ cdef class optwNpsol( optwSolver ):
         cdef integer inform[1]
         cdef bytes printFileTmp = self.printOpts[ "printFile" ].encode() ## temp container
         cdef char* printFile = printFileTmp
+        cdef bytes summaryFileTmp = self.printOpts[ "summaryFile" ].encode() ## temp container
+        cdef char* summaryFile = summaryFileTmp
+        cdef integer* summaryFileUnit = [ 89 ] ## Hardcoded since nobody cares
         cdef integer* printFileUnit = [ 90 ] ## Hardcoded since nobody cares
         cdef integer* printLevel = [ self.printOpts[ "printLevel" ] ]
         cdef integer* minorPrintLevel = [ self.printOpts[ "minorPrintLevel" ] ]
@@ -382,19 +387,26 @@ cdef class optwNpsol( optwSolver ):
         cdef doublereal* fctnPrecision = [ self.solveOpts["fctnPrecision"] ]
         cdef doublereal* feasiblityTol = [ self.solveOpts["feasibilityTol"] ]
         cdef doublereal* optimalityTol = [ self.solveOpts["optimalityTol"] ]
-        cdef integer* verifyLevel = [ 3 ] ## Hardcoded value to check both obj and cons
+        cdef integer verifyLevel[1]
 
         ## Supress echo options
         npsol.npoptn_( STR_NOLIST, len( STR_NOLIST ) )
 
         ## Open file if necessary
-        if( self.printOpts[ "printFile" ] != None and
+        if( self.printOpts[ "printFile" ] != "" and
             self.printOpts[ "printLevel" ] > 0 ):
             npsol.npopenappend_( printFileUnit, printFile, inform,
                                  len( self.printOpts[ "printFile" ] ) )
             if( inform[0] != 0 ):
                 raise StandardError( "Could not open file " + self.printOpts[ "printFile" ] )
             npsol.npopti_( STR_PRINT_FILE, printFileUnit, len( STR_PRINT_FILE ) )
+
+        if( self.printOpts[ "summaryFile" ] != "" ):
+            npsol.npopenappend_( summaryFileUnit, summaryFile, inform,
+                                 len( self.printOpts[ "summaryFile" ] ) )
+            if( inform[0] != 0 ):
+                raise StandardError( "Could not open file " + self.printOpts[ "summaryFile" ] )
+            npsol.npopti_( STR_SUMMARY_FILE, summaryFileUnit, len( STR_SUMMARY_FILE ) )
 
         ## Set major and minor print levels
         npsol.npopti_( STR_PRINT_LEVEL, printLevel, len( STR_PRINT_LEVEL ) )
@@ -425,9 +437,13 @@ cdef class optwNpsol( optwSolver ):
             npsol.npoptr_( STR_OPTIMALITY_TOLERANCE, optimalityTol,
                            len( STR_OPTIMALITY_TOLERANCE ) )
 
-        ## Set verify level if required
+        ## Set verify level if required, pg. 29
         if( self.solveOpts["verifyGrad"] ):
-            npsol.npopti_( STR_VERIFY_LEVEL, verifyLevel, len( STR_VERIFY_LEVEL ) )
+            verifyLevel[0] = 3 ## Check both obj and cons
+            print( "Verifying!" )
+        else:
+            verifyLevel[0] = -1 ## Disabled
+        npsol.npopti_( STR_VERIFY_LEVEL, verifyLevel, len( STR_VERIFY_LEVEL ) )
 
         if( self.warm_start ):
             npsol.npoptn_( STR_WARM_START, len( STR_WARM_START ) )
