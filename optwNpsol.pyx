@@ -2,6 +2,8 @@ from libc.stdlib cimport calloc,free
 from libc.string cimport memcpy
 import numpy as np
 cimport numpy as np
+cimport cpython.mem as mem
+from libc.math cimport sqrt
 
 from optwF2c cimport *
 cimport optwNpsol as npsol
@@ -11,16 +13,19 @@ from optwrapper import *
 
 ## NPSOL's option strings
 cdef char* STR_NOLIST = "Nolist"
-cdef char* STR_WARM_START = "Warm start"
 cdef char* STR_PRINT_FILE = "Print file"
 cdef char* STR_PRINT_LEVEL = "Print level"
 cdef char* STR_MINOR_PRINT_LEVEL = "Minor print level"
 cdef char* STR_INFINITE_BOUND_SIZE = "Infinite bound size"
 cdef char* STR_ITERATION_LIMIT = "Iteration limit"
-cdef char* STR_MINOR_ITERATIONS_LIMIT = "Minor iterations limit"
-
+cdef char* STR_MINOR_ITERATION_LIMIT = "Minor iteration limit"
+cdef char* STR_LINE_SEARCH_TOLERANCE = "Line search tolerance"
 cdef char* STR_FEASIBILITY_TOLERANCE = "Feasibility tolerance"
 cdef char* STR_OPTIMALITY_TOLERANCE = "Optimality tolerance"
+cdef char* STR_FUNCTION_PRECISION = "Function precision"
+cdef char* STR_VERIFY_LEVEL = "Verify level"
+cdef char* STR_WARM_START = "Warm start"
+
 cdef tuple statusInfo = ( "Optimality conditions satisfied",
                           "Optimality conditions satisfied, but sequence has not converged",
                           "Linear constraints could not be satisfied",
@@ -42,15 +47,14 @@ cdef object extprob
 cdef int funobj( integer* mode, integer* n,
                  doublereal* x, doublereal* f, doublereal* g,
                  integer* nstate ):
-    xarr = arrwrap.wrapPtr( x, extprob.N, np.NPY_DOUBLE )
+    xarr = arrwrap.wrap1dPtr( x, extprob.N, np.NPY_DOUBLE )
 
     if( mode[0] != 1 ):
         f[0] = extprob.objf( xarr )
 
     if( mode[0] > 0 ):
-        tmpg = extprob.objg( xarr )
-        tmpg = np.require( np.atleast_2d( tmpg ), dtype=np.float64, requirements=['F', 'A'] )
-        memcpy( g, <doublereal *> arrwrap.getPtr( tmpg ),
+        tmpg = arrwrap.convFortran( extprob.objg( xarr ) )
+        memcpy( g, arrwrap.getPtr( tmpg ),
                 extprob.N * sizeof( doublereal ) )
 
 
@@ -59,18 +63,16 @@ cdef int funcon( integer* mode, integer* ncnln,
                  integer* n, integer* ldJ, integer* needc,
                  doublereal* x, doublereal* c, doublereal* cJac,
                  integer* nstate ):
-    xarr = arrwrap.wrapPtr( x, extprob.N, np.NPY_DOUBLE )
+    xarr = arrwrap.wrap1dPtr( x, extprob.N, np.NPY_DOUBLE )
 
     if( mode[0] != 1 ):
-        tmpf = extprob.consf( xarr )
-        tmpf = np.require( np.atleast_2d( tmpf ), dtype=np.float64, requirements=['F', 'A'] )
-        memcpy( c, <doublereal *> arrwrap.getPtr( tmpf ),
+        tmpf = arrwrap.convFortran( extprob.consf( xarr ) )
+        memcpy( c, arrwrap.getPtr( tmpf ),
                 extprob.Ncons * sizeof( doublereal ) )
 
     if( mode[0] > 0 ):
-        tmpg = extprob.consg( xarr )
-        tmpg = np.require( np.atleast_2d( tmpg ), dtype=np.float64, requirements=['F', 'A'] )
-        memcpy( cJac, <doublereal *> arrwrap.getPtr( tmpg ),
+        tmpg = arrwrap.convFortran( extprob.consg( xarr ) )
+        memcpy( cJac, arrwrap.getPtr( tmpg ),
                 extprob.Ncons * extprob.N * sizeof( doublereal ) )
 
 
@@ -100,7 +102,10 @@ cdef class optwNpsol( optwSolver ):
     cdef doublereal *R
     cdef object prob
     cdef integer nctotl
-    cdef integer def_iter_limit
+    cdef integer default_iter_limit
+    cdef doublereal default_tol
+    cdef doublereal default_fctn_prec
+    cdef int warm_start
 
     def __init__( self, prob ):
         super().__init__()
@@ -113,10 +118,13 @@ cdef class optwNpsol( optwSolver ):
 
     def setupProblem( self, prob ):
         global extprob
-        extprob = prob ## Save static point for funcon and funobj
+        extprob = prob ## Save static prob for funcon and funobj
 
         self.nctotl = prob.N + prob.Nconslin + prob.Ncons
-        self.def_iter_limit = max( 50, 3*( prob.N + prob.Nconslin ) + 10*prob.Ncons )
+        self.default_iter_limit = max( 50, 3*( prob.N + prob.Nconslin ) + 10*prob.Ncons ) ## pg. 25
+        self.default_tol = sqrt( np.spacing(1) ) ## pg. 24
+        self.default_fctn_prec = np.power( np.spacing(1), 0.9 ) ## pg. 24
+        self.warm_start = False
 
         self.n[0] = prob.N
         self.nclin[0] = prob.Nconslin
@@ -142,7 +150,7 @@ cdef class optwNpsol( optwSolver ):
         self.iter_out[0] = 0
         self.inform_out[0] = 100
 
-        self.x = <doublereal *> calloc( prob.N, sizeof( doublereal ) )
+        self.x = <doublereal *> mem.PyMem_Malloc( prob.N * sizeof( doublereal ) )
         self.bl = <doublereal *> calloc( self.nctotl, sizeof( doublereal ) )
         self.bu = <doublereal *> calloc( self.nctotl, sizeof( doublereal ) )
 
@@ -160,29 +168,31 @@ cdef class optwNpsol( optwSolver ):
         self.A = <doublereal *> calloc( self.ldA[0] * prob.N, sizeof( doublereal ) )
         self.R = <doublereal *> calloc( prob.N * prob.N, sizeof( doublereal ) )
 
-        if( self.x is NULL or
-            self.bl is NULL or
-            self.bu is NULL or
-            self.objg_val is NULL or
-            self.consf_val is NULL or
-            self.consg_val is NULL or
-            self.clamda is NULL or
-            self.istate is NULL or
-            self.iw is NULL or
-            self.w is NULL or
-            self.A is NULL or
-            self.R is NULL ):
+        if( self.x == NULL or
+            self.bl == NULL or
+            self.bu == NULL or
+            self.objg_val == NULL or
+            self.consf_val == NULL or
+            self.consg_val == NULL or
+            self.clamda == NULL or
+            self.istate == NULL or
+            self.iw == NULL or
+            self.w == NULL or
+            self.A == NULL or
+            self.R == NULL ):
             raise MemoryError( "At least one memory allocation failed" )
 
         ## Set options
         self.printOpts[ "printLevel" ] = 0
         self.printOpts[ "minorPrintLevel" ] = 0
         self.solveOpts[ "infValue" ] = 1e20
-        self.solveOpts[ "iterLimit" ] = self.def_iter_limit
-        self.solveOpts[ "minorIterLimit" ] = self.def_iter_limit
+        self.solveOpts[ "iterLimit" ] = self.default_iter_limit
+        self.solveOpts[ "minorIterLimit" ] = self.default_iter_limit
         self.solveOpts[ "lineSearchTol" ] = 0.9
-        self.solveOpts[ "feasibilityTol" ] = None
-        self.solveOpts[ "optimalityTol" ] = None
+        self.solveOpts[ "fctnPrecision" ] = 0 ## Invalid value
+        self.solveOpts[ "feasibilityTol" ] = 0 ## Invalid value
+        self.solveOpts[ "optimalityTol" ] = 0 ## Invalid value
+        self.solveOpts[ "verifyGrad" ] = False
 
         ## We are assuming np.float64 equals doublereal from now on
         ## At least we need to be sure that doublereal is 8 bytes in this architecture
@@ -190,37 +200,49 @@ cdef class optwNpsol( optwSolver ):
 
         ## Require all arrays we are going to copy to be:
         ## two-dimensional, float64, fortran contiguous, and type aligned
-        tmpinit = np.require( np.atleast_2d( prob.init ), dtype=np.float64, requirements=['F', 'A'] )
-        tmplb = np.require( np.atleast_2d( prob.lb ), dtype=np.float64, requirements=['F', 'A'] )
-        tmpub = np.require( np.atleast_2d( prob.ub ), dtype=np.float64, requirements=['F', 'A'] )
-        memcpy( self.x, <doublereal *> arrwrap.getPtr( tmpinit ),
+        tmpinit = arrwrap.convFortran( prob.init )
+        memcpy( self.x, arrwrap.getPtr( tmpinit ),
                 prob.N * sizeof( doublereal ) )
-        memcpy( &self.bl[0], <doublereal *> arrwrap.getPtr( tmplb ),
+        tmplb = arrwrap.convFortran( prob.lb )
+        memcpy( &self.bl[0], arrwrap.getPtr( tmplb ),
                 prob.N * sizeof( doublereal ) )
-        memcpy( &self.bu[0], <doublereal *> arrwrap.getPtr( tmpub ),
+        tmpub = arrwrap.convFortran( prob.ub )
+        memcpy( &self.bu[0], arrwrap.getPtr( tmpub ),
                 prob.N * sizeof( doublereal ) )
         if( prob.Nconslin > 0 ):
-            tmpconslinA = np.require( np.atleast_2d( prob.conslinA ), dtype=np.float64, requirements=['F', 'A'] )
-            tmpconslinlb = np.require( np.atleast_2d( prob.conslinlb ), dtype=np.float64, requirements=['F', 'A'] )
-            tmpconslinub = np.require( np.atleast_2d( prob.conslinub ), dtype=np.float64, requirements=['F', 'A'] )
-            memcpy( &self.bl[prob.N], <doublereal *> arrwrap.getPtr( tmpconslinlb ),
+            tmpconslinlb = arrwrap.convFortran( prob.conslinlb )
+            memcpy( &self.bl[prob.N], arrwrap.getPtr( tmpconslinlb ),
                     prob.Nconslin * sizeof( doublereal ) )
-            memcpy( &self.bu[prob.N], <doublereal *> arrwrap.getPtr( tmpconslinub ),
+            tmpconslinub = arrwrap.convFortran( prob.conslinub )
+            memcpy( &self.bu[prob.N], arrwrap.getPtr( tmpconslinub ),
                     prob.Nconslin * sizeof( doublereal ) )
-            memcpy( self.A, <doublereal *> arrwrap.getPtr( tmpconslinA ),
+            tmpconslinA = arrwrap.convFortran( prob.conslinA )
+            memcpy( self.A, arrwrap.getPtr( tmpconslinA ),
                     self.ldA[0] * prob.N * sizeof( doublereal ) )
         if( prob.Ncons > 0 ):
-            tmpconslb = np.require( np.atleast_2d( prob.conslb ), dtype=np.float64, requirements=['F', 'A'] )
-            tmpconsub = np.require( np.atleast_2d( prob.consub ), dtype=np.float64, requirements=['F', 'A'] )
-            memcpy( &self.bl[prob.N+prob.Nconslin], <doublereal *> arrwrap.getPtr( tmpconslb ),
+            tmpconslb = arrwrap.convFortran( prob.conslb )
+            memcpy( &self.bl[prob.N+prob.Nconslin], arrwrap.getPtr( tmpconslb ),
                     prob.Ncons * sizeof( doublereal ) )
-            memcpy( &self.bu[prob.N+prob.Nconslin], <doublereal *> arrwrap.getPtr( tmpconsub ),
+            tmpconsub = arrwrap.convFortran( prob.consub )
+            memcpy( &self.bu[prob.N+prob.Nconslin], arrwrap.getPtr( tmpconsub ),
                     prob.Ncons * sizeof( doublereal ) )
 
+
+    def warmStart( self, istate, clamda, R ):
+        tmpistate = arrwrap.convIntFortran( istate )
+        memcpy( self.istate, arrwrap.getPtr( tmpistate ), self.nctotl * sizeof( integer ) )
+
+        tmpclamda = arrwrap.convFortran( clamda )
+        memcpy( self.clamda, arrwrap.getPtr( tmpclamda ), self.nctotl * sizeof( doublereal ) )
+
+        tmpR = arrwrap.convFortran( R )
+        memcpy( self.R, arrwrap.getPtr( tmpR ), prob.N * prob.N * sizeof( doublereal ) )
+
+        self.warm_start = True
 
 
     def __dealloc__( self ):
-        free( self.x )
+        mem.PyMem_Free( self.x )
         free( self.bl )
         free( self.bu )
         free( self.objg_val )
@@ -257,13 +279,11 @@ cdef class optwNpsol( optwSolver ):
         if( super().checkPrintOpts() == False ):
             return False
 
-        try:
-            int( self.printOpts[ "printLevel" ] ) + 1
-            int( self.printOpts[ "minorPrintLevel" ] ) + 1
-        except:
+        ## printLevel and minorPrintLevel
+        if( not arrwrap.isInt( self.printOpts[ "printLevel" ] ) or
+            not arrwrap.isInt( self.printOpts[ "minorPrintLevel" ] ) ):
             print( "printOpts['printLevel'] and printOpts['minorPrintLevel'] must be integers" )
             return False
-
         if( self.printOpts[ "printFile" ] == None and
             self.printOpts[ "printLevel" ] > 0 ):
                 print( "Must set printOpts['printFile'] whenever printOpts['printLevel'] > 0" )
@@ -282,37 +302,68 @@ cdef class optwNpsol( optwSolver ):
         minorIterLimit  Maximum number of minor iterations (default: max{50,3*(N+Nconslin)+10*Ncons})
         lineSearchTol   Line search tolerance parameter (default: 0.9)
         """
-        try:
-            float( self.solveOpts[ "infValue" ] ) + 1.1
-            float( self.solveOpts[ "lineSearchTol" ] ) + 1.1
-        except:
-            print( "solveOpts['infValue'] and solveOpts['lineSearchTol'] must be floats" )
+        if( super().checkSolveOpts() == False ):
             return False
 
+        ## infValue
+        if( not arrwrap.isFloat( self.solveOpts[ "infValue" ] ) ):
+            print( "solveOpts['infValue'] must be float" )
+            return False
         if( self.solveOpts[ "infValue" ] < 0 ):
             print( "solveOpts['infValue'] must be positive" )
             return False
         elif( self.solveOpts[ "infValue" ] > 1e20 ):
             print( "Values for solveOpts['infValue'] above 1e20 are ignored" )
+            return False
 
+        ## lineSearchTol
+        if( not arrwrap.isFloat( self.solveOpts[ "lineSearchTol" ] ) ):
+            print( "solveOpts['lineSearchTol'] must be float" )
+            return False
         if( self.solveOpts[ "lineSearchTol" ] < 0 or
             self.solveOpts[ "lineSearchTol" ] >= 1 ):
             print( "solveOpts['lineSearchTol'] must belong to the interval [0,1)" )
             return False
 
-        try:
-            int( self.solveOpts[ "iterLimit" ] ) + 1
-            int( self.solveOpts[ "minorIterLimit" ] ) + 1
-        except:
-            print( "solveOpts['iterLimit'] and solveOpts['minorIterLimit'] must be integers" )
+        ## iterLimit
+        if( not arrwrap.isInt( self.solveOpts[ "iterLimit" ] ) ):
+            print( "solveOpts['iterLimit'] must be integer" )
             return False
-
-        if( self.solveOpts[ "iterLimit" ] < self.def_iter_limit ):
+        if( self.solveOpts[ "iterLimit" ] < self.default_iter_limit ):
             print( "Values for solveOpts['iterLimit'] below "
-                   + str( self.def_iter_limit ) + " are ignored" )
-        if( self.solveOpts[ "minorIterLimit" ] < self.def_iter_limit ):
+                   + str( self.default_iter_limit ) + " are ignored" )
+
+        ## minorIterLimit
+        if( not arrwrap.isInt( self.solveOpts[ "minorIterLimit" ] ) ):
+            print( "solveOpts['minorIterLimit'] must be integer" )
+            return False
+        if( self.solveOpts[ "minorIterLimit" ] < self.default_iter_limit ):
             print( "Values for solveOpts['minorIterLimit'] below "
-                   + str( self.def_iter_limit ) + " are ignored" )
+                   + str( self.default_iter_limit ) + " are ignored" )
+
+        ## fctnPrecision
+        if( not arrwrap.isFloat( self.solveOpts[ "fctnPrecision" ] ) ):
+            print( "solveOpts['fctnPrecision'] must be float" )
+            return False
+        if( self.solveOpts[ "fctnPrecision" ] < self.default_fctn_prec ):
+            print( "Values for solveOpts['feasiblityTol'] below "
+                   + str( self.default_fctn_prec ) + " are ignored" )
+
+        ## feasibilityTol
+        if( not arrwrap.isFloat( self.solveOpts[ "feasibilityTol" ] ) ):
+            print( "solveOpts['feasibilityTol'] must be float" )
+            return False
+        if( self.solveOpts[ "feasibilityTol" ] < self.default_tol ):
+            print( "Values for solveOpts['feasiblityTol'] below "
+                   + str( self.default_tol ) + " are ignored" )
+
+        ## optimalityTol
+        if( not arrwrap.isFloat( self.solveOpts[ "optimalityTol" ] ) ):
+            print( "solveOpts['optimalityTol'] must be float" )
+            return False
+        if( self.solveOpts[ "optimalityTol" ] < np.power( self.default_fctn_prec, 0.8 ) ):
+            print( "Values for solveOpts['feasiblityTol'] below "
+                   + str( np.power( self.default_fctn_prec, 0.8 ) ) + " are ignored" )
 
         return True
 
@@ -328,6 +379,10 @@ cdef class optwNpsol( optwSolver ):
         cdef integer* iterLimit = [ self.solveOpts[ "iterLimit" ] ]
         cdef integer* minorIterLimit = [ self.solveOpts[ "minorIterLimit" ] ]
         cdef doublereal* lineSearchTol = [ self.solveOpts["lineSearchTol"] ]
+        cdef doublereal* fctnPrecision = [ self.solveOpts["fctnPrecision"] ]
+        cdef doublereal* feasiblityTol = [ self.solveOpts["feasibilityTol"] ]
+        cdef doublereal* optimalityTol = [ self.solveOpts["optimalityTol"] ]
+        cdef integer* verifyLevel = [ 3 ] ## Hardcoded value to check both obj and cons
 
         ## Supress echo options
         npsol.npoptn_( STR_NOLIST, len( STR_NOLIST ) )
@@ -350,23 +405,32 @@ cdef class optwNpsol( optwSolver ):
             npsol.npoptr_( STR_INFINITE_BOUND_SIZE, infValue, len( STR_INFINITE_BOUND_SIZE ) )
 
         ## Set major and minor iteration limits if necessary
-        if( self.solveOpts["iterLimit"] > self.def_iter_limit ):
+        if( self.solveOpts["iterLimit"] > self.default_iter_limit ):
             npsol.npopti_( STR_ITERATION_LIMIT, iterLimit, len( STR_ITERATION_LIMIT ) )
-        if( self.solveOpts["minorIterLimit"] > self.def_iter_limit ):
+        if( self.solveOpts["minorIterLimit"] > self.default_iter_limit ):
             npsol.npopti_( STR_MINOR_ITERATION_LIMIT, minorIterLimit,
                            len( STR_MINOR_ITERATION_LIMIT ) )
 
         ## Set line search tolerance value
         npsol.npoptr_( STR_LINE_SEARCH_TOLERANCE, lineSearchTol, len( STR_LINE_SEARCH_TOLERANCE ) )
 
-        # if( self.warmstart[0] == 1 ):
-        #     cnpsol.npopti_( cnpsol.STR_WARM_START, self.warmstart, len(cnpsol.STR_WARM_START) )
-        # npsol.npoptr_( npsol.STR_FEASIBILITY_TOLERANCE, self.constraint_violation,
-        #                len(cnpsol.STR_FEASIBILITY_TOLERANCE) )
-        # npsol.npoptr_( npsol.STR_OPTIMALITY_TOLERANCE, self.ftol,
-        #                len(npsol.STR_OPTIMALITY_TOLERANCE) )
-        # npsol.npopti_( npsol.STR_MINOR_ITERATIONS_LIMIT, self.maxeval,
-        #                len(npsol.STR_MINOR_ITERATIONS_LIMIT) )
+        ## Set fctn precision, and feasibility and optimality tolerances
+        if( self.solveOpts["fctnPrecision"] > self.default_fctn_prec ):
+            npsol.npoptr_( STR_FUNCTION_PRECISION, fctnPrecision,
+                           len( STR_FUNCTION_PRECISION ) )
+        if( self.solveOpts["feasibilityTol"] > self.default_tol ):
+            npsol.npoptr_( STR_FEASIBILITY_TOLERANCE, feasiblityTol,
+                           len( STR_FEASIBILITY_TOLERANCE ) )
+        if( self.solveOpts["optimalityTol"] > np.power( self.default_fctn_prec, 0.8 ) ):
+            npsol.npoptr_( STR_OPTIMALITY_TOLERANCE, optimalityTol,
+                           len( STR_OPTIMALITY_TOLERANCE ) )
+
+        ## Set verify level if required
+        if( self.solveOpts["verifyGrad"] ):
+            npsol.npopti_( STR_VERIFY_LEVEL, verifyLevel, len( STR_VERIFY_LEVEL ) )
+
+        if( self.warm_start ):
+            npsol.npoptn_( STR_WARM_START, len( STR_WARM_START ) )
 
         npsol.npsol_( self.n, self.nclin,
                       self.ncnln, self.ldA,
@@ -378,52 +442,12 @@ cdef class optwNpsol( optwSolver ):
                       self.objf_val, self.objg_val, self.R, self.x,
                       self.iw, self.leniw, self.w, self.lenw )
 
-        self.prob.final = np.copy( arrwrap.wrapPtr( self.x, self.prob.N, np.NPY_DOUBLE ) )
+        self.prob.final = np.copy( arrwrap.wrap1dPtr( self.x, self.prob.N, np.NPY_DOUBLE ) )
         self.prob.value = float( self.objf_val[0] )
-        self.prob.istate = np.copy( arrwrap.wrapPtr( self.istate, self.nctotl, np.NPY_LONG ) )
-        self.prob.clamda = np.copy( arrwrap.wrapPtr( self.clamda, self.nctotl, np.NPY_DOUBLE ) )
-        self.prob.R = np.copy( arrwrap.wrapPtr( self.R, self.prob.N * self.prob.N, np.NPY_DOUBLE ) )
+        self.prob.istate = np.copy( arrwrap.wrap1dPtr( self.istate, self.nctotl, np.NPY_LONG ) )
+        self.prob.clamda = np.copy( arrwrap.wrap1dPtr( self.clamda, self.nctotl, np.NPY_DOUBLE ) )
+        self.prob.R = np.copy( arrwrap.wrap2dPtr( self.R, self.prob.N, self.prob.N, np.NPY_DOUBLE ) )
         self.prob.Niters = int( self.iter_out[0] )
         self.prob.retval = int( self.inform_out[0] )
 
         return( self.prob.final, self.prob.value, self.prob.retval )
-
-
-
-## Crappy code repository
-
-## 1. Create bl, bu, A, and x vectors by memcpy'ing contents from optwProblem.
-
-        # if( not prob.lb.flags["F_CONTIGUOUS"] or
-        #     not prob.lb.dtype == np.float64 or
-        #     not prob.ub.flags["F_CONTIGUOUS"] or
-        #     not prob.ub.dtype == np.float64 ):
-        #     raise MemoryError( "At least one box bound array is not fortran-contiguous or not float64." )
-        # memcpy( &bl[0], &prob.lb[0], prob.N * sizeof( doublereal ) )
-        # memcpy( &bu[0], &prob.ub[0], prob.N * sizeof( doublereal ) )
-
-        # if( prob.Nconslin > 0 ):
-        #     if( not prob.conslinlb.flags["F_CONTIGUOUS"] or
-        #         not prob.conslinlb.dtype == np.float64 or
-        #         not prob.conslinub.flags["F_CONTIGUOUS"] or
-        #         not prob.conslinub.dtype == np.float64 or
-        #         not prob.conslinA.flags["F_CONTIGUOUS"] or
-        #         not prob.conslinA.dtype == np.float64 ):
-        #         raise MemoryError( "At least one linear constraint array is not fortran-contiguous." )
-        #     memcpy( &self.bl[prob.N], &prob.conslinlb[0], prob.Nconslin * sizeof( doublereal ) )
-        #     memcpy( &self.bu[prob.N], &prob.conslinub[0], prob.Nconslin * sizeof( doublereal ) )
-        #     memcpy( &self.A[0], &prob.conslinA[0], prob.Nconslin * prob.N * sizeof( doublereal ) )
-
-        # if( prob.Ncons > 0 ):
-        #     if( not prob.conslb.flags["F_CONTIGUOUS"] or
-        #         not prob.conslb.dtype == np.float64 or
-        #         not prob.consub.flags["F_CONTIGUOUS"] or
-        #         not prob.consub.dtype == np.float64 ):
-        #         raise MemoryError( "At least one constraint array is not fortran-contiguous." )
-        #     memcpy( &self.bl[prob.N+prob.Nconslin], &prob.conslb[0], prob.Ncons * sizeof( doublereal ) )
-        #     memcpy( &self.bu[prob.N+prob.Nconslin], &prob.consub[0], prob.Ncons * sizeof( doublereal ) )
-
-        # if( not prob.init.flags["F_CONTIGUOUS"] or
-        #     not prob.init.dtype == np.float64 ):
-        #     raise MemoryError( "Initial condition array is not fortran-contiguous." )
-        # memcpy( &self.x[0], &prob.init[0], prob.N * sizeof( doublereal ) )

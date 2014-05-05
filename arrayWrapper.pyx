@@ -1,18 +1,79 @@
+import numpy as np
 cimport numpy as np
 
 ## Numpy must be initialized. When using numpy from C or Cython you must
 ## _always_ do that, or you will have segfaults
 np.import_array()
 
-cdef np.ndarray wrapPtr( void* array, int size, int typenum ):
-    cdef np.ndarray ndarray
-    cdef np.npy_intp shape[1]
+cdef np.ndarray wrapPtr( void* array, np.ndarray dims, int typenum ):
+    if( not dims.flags["C_CONTIGUOUS"] or
+        not dims.flags["ALIGNED"] or
+        not dims.dtype == np.intp ):
+        print( "'dims' was not appropriate" )
+        print( dims.flags )
+        print( dims.dtype )
+        dims = np.require( dims.flat, dtype=np.intp, requirements=['C', 'A'] )
 
-    shape[0] = <np.npy_intp> size
-    ## Create a 1D array, of length 'size'
-    ndarray = np.PyArray_SimpleNewFromData( 1, shape, typenum, array )
+    return convFortran( np.PyArray_SimpleNewFromData( dims.size,
+                                                      <np.npy_intp *> np.PyArray_GETPTR1( dims, 0 ),
+                                                      typenum, array ) )
 
-    return ndarray
 
-cdef void* getPtr( np.ndarray[double, ndim=2, mode="fortran"] input ):
-    return &input[0,0]
+cdef np.ndarray wrap1dPtr( void* array, int length, int typenum ):
+    cdef np.npy_intp dims[1]
+    dims[0] = <np.npy_intp> length
+
+    return convFortran( np.PyArray_SimpleNewFromData( 1, dims, typenum, array ) )
+
+
+cdef np.ndarray wrap2dPtr( void* array, int rows, int cols, int typenum ):
+    cdef np.npy_intp dims[2]
+    dims[0] = <np.npy_intp> rows
+    dims[1] = <np.npy_intp> cols
+
+    return convFortran( np.PyArray_SimpleNewFromData( 2, dims, typenum, array ) )
+
+
+cdef void* getPtr( np.ndarray input ):
+    if( not input.flags["F_CONTIGUOUS"] or
+        not input.flags["ALIGNED"] ):
+        raise ValueError( "Input array must be 'F_CONTIGUOUS' and 'ALIGNED'" )
+
+    if( input.ndim == 1 ):
+        return np.PyArray_GETPTR1( input, 0 )
+    elif( input.ndim == 2 ):
+        return np.PyArray_GETPTR2( input, 0, 0 )
+    else: ## HG: One day I will implement the case for n-dim arrays
+        raise ValueError( "Input array must be at most 2-dimensional" )
+
+
+cdef np.ndarray convFortran( np.ndarray input ):
+    return np.require( input, dtype=np.float64, requirements=['F', 'A'] )
+
+
+cdef np.ndarray convIntFortran( np.ndarray input ):
+    return np.require( input, dtype=np.int_, requirements=['F', 'A'] )
+
+
+cpdef int isInt( object obj ):
+    try:
+        int( obj )
+        return True
+    except ValueError:
+        return False
+
+
+cpdef int isFloat( object obj ):
+    try:
+        float( obj )
+        return True
+    except ValueError:
+        return False
+
+
+cpdef int isString( object obj ):
+    try:
+        str( obj )
+        return True
+    except ValueError:
+        return False
