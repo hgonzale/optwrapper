@@ -1,5 +1,5 @@
-from optwrapper import *
-from optwNpsol import *
+import nlp
+import npsol
 import numpy as np
 import math
 
@@ -17,7 +17,7 @@ def consg(x):
     return np.array( [ [ 2*x[0], 8*x[1] ],
                        [ 2*(x[0]-2), 2*x[1] ] ] )
 
-prob = optwProblem( N=2, Ncons=2 )
+prob = nlp.Problem( N=2, Ncons=2 )
 prob.initPoint( [10.0, 12.0] )
 prob.consBox( [0, -10], [5, 2] )
 
@@ -27,21 +27,24 @@ prob.consFctn( consf, [ -np.inf, -np.inf ], [ 4, 5 ] )
 prob.consGrad( consg )
 
 if( not prob.checkGrad() ):
-    raise StandardError( "Gradient does not match function." )
+    print( "Gradient does not match function." )
+    raise SystemExit
 
-solver = optwNpsol( prob )
+solver = npsol.Solver( prob )
 # solver.printOpts[ "summaryFile" ] = "debugs.txt"
 solver.printOpts[ "printFile" ] = "debugp.txt"
 solver.printOpts[ "printLevel" ] = 10
 
 if( not solver.checkPrintOpts() ):
-    raise StandardError( "Print options are invalid." )
+    print( "Print options are invalid." )
+    raise SystemExit
 
 solver.solve()
-print( solver.getStatus() )
-print( "Value: " + str( prob.value ) )
+print( prob.soln.getStatus() )
+print( "Value: " + str( prob.soln.value ) )
 
 prob.initPoint( [-10.0, -12.0] )
+solver.warmStart()
 solver.solve()
-print( solver.getStatus() )
-print( "Value: " + str( prob.value ) )
+print( prob.soln.getStatus() )
+print( "Value: " + str( prob.soln.value ) )

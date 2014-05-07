@@ -1,4 +1,4 @@
-from f2c cimport *
+from f2ch cimport *
 
 ctypedef int (*funcon_fp)( integer*, integer*, integer*,
                            integer*, integer*, doublereal*,

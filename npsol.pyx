@@ -4,11 +4,11 @@ cimport cpython.mem as mem
 cimport numpy as np
 import numpy as np
 
-from f2c cimport *
-cimport npsol
-cimport arraywrapper as arrwrap
+from f2ch cimport *      ## tydefs from f2c.h
+cimport npsolh as npsol  ## import every function exposed in npsol.h
+cimport utils
 cimport base
-from optwrapper import *
+import nlp
 
 ## NPSOL's option strings
 cdef char* STR_NOLIST = "Nolist"
@@ -38,8 +38,8 @@ cdef tuple statusInfo = ( "Optimality conditions satisfied", ## 0
                           "Invalid input parameter" ) ## 9
 
 
-## These functions should be static methods in optwNpsol, but it appears that
-## Cython doesn't support static cdef methods yet.
+## The functions funobj and funcon should be static methods in npsol.Solver,
+## but it appears that Cython doesn't support static cdef methods yet.
 ## Instead, this is a reasonable hack.
 cdef object extprob
 
@@ -47,14 +47,14 @@ cdef object extprob
 cdef int funobj( integer* mode, integer* n,
                  doublereal* x, doublereal* f, doublereal* g,
                  integer* nstate ):
-    xarr = arrwrap.wrap1dPtr( x, extprob.N, np.NPY_DOUBLE )
+    xarr = utils.wrap1dPtr( x, extprob.N, np.NPY_DOUBLE )
 
     if( mode[0] != 1 ):
         f[0] = extprob.objf( xarr )
 
     if( mode[0] > 0 ):
-        tmpg = arrwrap.convFortran( extprob.objg( xarr ) )
-        memcpy( g, arrwrap.getPtr( tmpg ),
+        tmpg = utils.convFortran( extprob.objg( xarr ) )
+        memcpy( g, utils.getPtr( tmpg ),
                 extprob.N * sizeof( doublereal ) )
 
 
@@ -63,30 +63,42 @@ cdef int funcon( integer* mode, integer* ncnln,
                  integer* n, integer* ldJ, integer* needc,
                  doublereal* x, doublereal* c, doublereal* cJac,
                  integer* nstate ):
-    xarr = arrwrap.wrap1dPtr( x, extprob.N, np.NPY_DOUBLE )
+    xarr = utils.wrap1dPtr( x, extprob.N, np.NPY_DOUBLE )
 
     if( mode[0] != 1 ):
-        tmpf = arrwrap.convFortran( extprob.consf( xarr ) )
-        memcpy( c, arrwrap.getPtr( tmpf ),
+        tmpf = utils.convFortran( extprob.consf( xarr ) )
+        memcpy( c, utils.getPtr( tmpf ),
                 extprob.Ncons * sizeof( doublereal ) )
 
     if( mode[0] > 0 ):
-        tmpg = arrwrap.convFortran( extprob.consg( xarr ) )
-        memcpy( cJac, arrwrap.getPtr( tmpg ),
+        tmpg = utils.convFortran( extprob.consg( xarr ) )
+        memcpy( cJac, utils.getPtr( tmpg ),
                 extprob.Ncons * extprob.N * sizeof( doublereal ) )
 
 
-cdef class NpsolSoln( base.BaseSoln ):
-    cdef float value
-    cdef np.ndarray final
-    cdef np.ndarray istate
-    cdef np.ndarray clamda
-    cdef np.ndarray R
-    cdef int Niters
-    cdef int retval
+cdef class Soln( base.Soln ):
+    cdef public np.ndarray istate
+    cdef public np.ndarray clamda
+    cdef public np.ndarray R
+    cdef public int Niters
+    cdef public int retval
+
+    def __init__( self ):
+        self.retval = 100
+
+    def getStatus( self ):
+        if( self.retval == 100 ):
+            return "Return information is not defined yet"
+
+        if( self.retval < 0 ):
+            return "Execution terminated by user defined function (should not occur)"
+        elif( self.retval >= 10 ):
+            return "Invalid value"
+        else:
+            return statusInfo[ self.retval ]
 
 
-cdef class Npsol( base.BaseSolver ):
+cdef class Solver( base.Solver ):
     cdef integer ldA[1]
     cdef integer ldJ[1]
     cdef integer ldR[1]
@@ -105,7 +117,6 @@ cdef class Npsol( base.BaseSolver ):
     cdef doublereal *A
     cdef doublereal *R
 
-    cdef object prob
     cdef int nctotl
     cdef int default_iter_limit
     cdef float default_tol
@@ -141,18 +152,18 @@ cdef class Npsol( base.BaseSolver ):
         ## At least we need to be sure that doublereal is 8 bytes in this architecture
         assert( sizeof( doublereal ) == 8 )
 
-        if( prob != None ):
+        if( prob ):
             self.setupProblem( prob )
 
 
     def setupProblem( self, prob ):
         global extprob
 
-        if( not isinstance( prob, optwProblem ) ):
-            raise StandardError( "Argument 'prob' must be of type 'optwProblem'" )
+        if( not isinstance( prob, nlp.Problem ) ):
+            raise TypeError( "Argument 'prob' must be of type 'nlp.Problem'" )
 
-        self.prob = prob ## Save a copy of the pointer
-        extprob = prob ## Save static prob for funcon and funobj
+        self.prob = prob ## Save a copy of prob's pointer
+        extprob = prob ## Save a global copy prob's pointer for funcon and funobj
 
         ## New problems cannot be warm started
         self.warm_start = False
@@ -185,28 +196,28 @@ cdef class Npsol( base.BaseSolver ):
 
         ## Require all arrays we are going to copy to be:
         ## two-dimensional, float64, fortran contiguous, and type aligned
-        tmplb = arrwrap.convFortran( prob.lb )
-        memcpy( &self.bl[0], arrwrap.getPtr( tmplb ),
+        tmplb = utils.convFortran( prob.lb )
+        memcpy( &self.bl[0], utils.getPtr( tmplb ),
                 prob.N * sizeof( doublereal ) )
-        tmpub = arrwrap.convFortran( prob.ub )
-        memcpy( &self.bu[0], arrwrap.getPtr( tmpub ),
+        tmpub = utils.convFortran( prob.ub )
+        memcpy( &self.bu[0], utils.getPtr( tmpub ),
                 prob.N * sizeof( doublereal ) )
         if( prob.Nconslin > 0 ):
-            tmpconslinlb = arrwrap.convFortran( prob.conslinlb )
-            memcpy( &self.bl[prob.N], arrwrap.getPtr( tmpconslinlb ),
+            tmpconslinlb = utils.convFortran( prob.conslinlb )
+            memcpy( &self.bl[prob.N], utils.getPtr( tmpconslinlb ),
                     prob.Nconslin * sizeof( doublereal ) )
-            tmpconslinub = arrwrap.convFortran( prob.conslinub )
-            memcpy( &self.bu[prob.N], arrwrap.getPtr( tmpconslinub ),
+            tmpconslinub = utils.convFortran( prob.conslinub )
+            memcpy( &self.bu[prob.N], utils.getPtr( tmpconslinub ),
                     prob.Nconslin * sizeof( doublereal ) )
-            tmpconslinA = arrwrap.convFortran( prob.conslinA )
-            memcpy( self.A, arrwrap.getPtr( tmpconslinA ),
+            tmpconslinA = utils.convFortran( prob.conslinA )
+            memcpy( self.A, utils.getPtr( tmpconslinA ),
                     self.ldA[0] * prob.N * sizeof( doublereal ) )
         if( prob.Ncons > 0 ):
-            tmpconslb = arrwrap.convFortran( prob.conslb )
-            memcpy( &self.bl[prob.N+prob.Nconslin], arrwrap.getPtr( tmpconslb ),
+            tmpconslb = utils.convFortran( prob.conslb )
+            memcpy( &self.bl[prob.N+prob.Nconslin], utils.getPtr( tmpconslb ),
                     prob.Ncons * sizeof( doublereal ) )
-            tmpconsub = arrwrap.convFortran( prob.consub )
-            memcpy( &self.bu[prob.N+prob.Nconslin], arrwrap.getPtr( tmpconsub ),
+            tmpconsub = utils.convFortran( prob.consub )
+            memcpy( &self.bu[prob.N+prob.Nconslin], utils.getPtr( tmpconsub ),
                     prob.Ncons * sizeof( doublereal ) )
 
 
@@ -270,19 +281,17 @@ cdef class Npsol( base.BaseSolver ):
 
 
     def warmStart( self ):
-        if( not hasattr( self.prob, "istate" ) or
-            not hasattr( self.prob, "clamda" ) or
-            not hasattr( self.prob, "R" ) ):
+        if( not isinstance( self.prob.soln, Soln ) ):
             return False
 
-        tmpistate = arrwrap.convIntFortran( self.prob.istate )
-        memcpy( self.istate, arrwrap.getPtr( tmpistate ), self.nctotl * sizeof( integer ) )
+        tmpistate = utils.convIntFortran( self.prob.soln.istate )
+        memcpy( self.istate, utils.getPtr( tmpistate ), self.nctotl * sizeof( integer ) )
 
-        tmpclamda = arrwrap.convFortran( self.prob.clamda )
-        memcpy( self.clamda, arrwrap.getPtr( tmpclamda ), self.nctotl * sizeof( doublereal ) )
+        tmpclamda = utils.convFortran( self.prob.soln.clamda )
+        memcpy( self.clamda, utils.getPtr( tmpclamda ), self.nctotl * sizeof( doublereal ) )
 
-        tmpR = arrwrap.convFortran( self.prob.R )
-        memcpy( self.R, arrwrap.getPtr( tmpR ), prob.N * prob.N * sizeof( doublereal ) )
+        tmpR = utils.convFortran( self.prob.soln.R )
+        memcpy( self.R, utils.getPtr( tmpR ), self.prob.N * self.prob.N * sizeof( doublereal ) )
 
         self.warm_start = True
         return True
@@ -290,18 +299,6 @@ cdef class Npsol( base.BaseSolver ):
 
     def __dealloc__( self ):
         self.deallocate()
-
-
-    def getStatus( self ):
-        if( not hasattr( self.prob, "npsol" ) ):
-            return "Return information is not defined yet"
-
-        if( self.prob.npsol.retval < 0 ):
-            return "Execution terminated by user defined function (should not occur)"
-        elif( self.prob.npsol.retval >= 10 ):
-            return "Invalid value"
-        else:
-            return statusInfo[ self.prob.npsol.retval ]
 
 
     def checkPrintOpts( self ):
@@ -313,12 +310,12 @@ cdef class Npsol( base.BaseSolver ):
         printLevel       verbosity level for major iterations (0-None, 1, 5, 10, 20, or 30-Full)
         minorPrintLevel  verbosity level for minor iterations (0-None, 1, 5, 10, 20, or 30-Full)
         """
-        if( super().checkPrintOpts() == False ):
+        if( not super().checkPrintOpts() ):
             return False
 
         ## printLevel and minorPrintLevel
-        if( not arrwrap.isInt( self.printOpts[ "printLevel" ] ) or
-            not arrwrap.isInt( self.printOpts[ "minorPrintLevel" ] ) ):
+        if( not utils.isInt( self.printOpts[ "printLevel" ] ) or
+            not utils.isInt( self.printOpts[ "minorPrintLevel" ] ) ):
             print( "printOpts['printLevel'] and printOpts['minorPrintLevel'] must be integers" )
             return False
         if( self.printOpts[ "printFile" ] == "" and
@@ -339,11 +336,11 @@ cdef class Npsol( base.BaseSolver ):
         minorIterLimit  Maximum number of minor iterations (default: max{50,3*(N+Nconslin)+10*Ncons})
         lineSearchTol   Line search tolerance parameter (default: 0.9)
         """
-        if( super().checkSolveOpts() == False ):
+        if( not super().checkSolveOpts() ):
             return False
 
         ## infValue
-        if( not arrwrap.isFloat( self.solveOpts[ "infValue" ] ) ):
+        if( not utils.isFloat( self.solveOpts[ "infValue" ] ) ):
             print( "solveOpts['infValue'] must be float" )
             return False
         if( self.solveOpts[ "infValue" ] < 0 ):
@@ -354,7 +351,7 @@ cdef class Npsol( base.BaseSolver ):
             return False
 
         ## lineSearchTol
-        if( not arrwrap.isFloat( self.solveOpts[ "lineSearchTol" ] ) ):
+        if( not utils.isFloat( self.solveOpts[ "lineSearchTol" ] ) ):
             print( "solveOpts['lineSearchTol'] must be float" )
             return False
         if( self.solveOpts[ "lineSearchTol" ] < 0 or
@@ -363,7 +360,7 @@ cdef class Npsol( base.BaseSolver ):
             return False
 
         ## iterLimit
-        if( not arrwrap.isInt( self.solveOpts[ "iterLimit" ] ) ):
+        if( not utils.isInt( self.solveOpts[ "iterLimit" ] ) ):
             print( "solveOpts['iterLimit'] must be integer" )
             return False
         if( self.solveOpts[ "iterLimit" ] < self.default_iter_limit ):
@@ -371,7 +368,7 @@ cdef class Npsol( base.BaseSolver ):
                    + str( self.default_iter_limit ) + " are ignored" )
 
         ## minorIterLimit
-        if( not arrwrap.isInt( self.solveOpts[ "minorIterLimit" ] ) ):
+        if( not utils.isInt( self.solveOpts[ "minorIterLimit" ] ) ):
             print( "solveOpts['minorIterLimit'] must be integer" )
             return False
         if( self.solveOpts[ "minorIterLimit" ] < self.default_iter_limit ):
@@ -379,7 +376,7 @@ cdef class Npsol( base.BaseSolver ):
                    + str( self.default_iter_limit ) + " are ignored" )
 
         ## fctnPrecision
-        if( not arrwrap.isFloat( self.solveOpts[ "fctnPrecision" ] ) ):
+        if( not utils.isFloat( self.solveOpts[ "fctnPrecision" ] ) ):
             print( "solveOpts['fctnPrecision'] must be float" )
             return False
         if( self.solveOpts[ "fctnPrecision" ] < self.default_fctn_prec ):
@@ -387,7 +384,7 @@ cdef class Npsol( base.BaseSolver ):
                    + str( self.default_fctn_prec ) + " are ignored" )
 
         ## feasibilityTol
-        if( not arrwrap.isFloat( self.solveOpts[ "feasibilityTol" ] ) ):
+        if( not utils.isFloat( self.solveOpts[ "feasibilityTol" ] ) ):
             print( "solveOpts['feasibilityTol'] must be float" )
             return False
         if( self.solveOpts[ "feasibilityTol" ] < self.default_tol ):
@@ -395,7 +392,7 @@ cdef class Npsol( base.BaseSolver ):
                    + str( self.default_tol ) + " are ignored" )
 
         ## optimalityTol
-        if( not arrwrap.isFloat( self.solveOpts[ "optimalityTol" ] ) ):
+        if( not utils.isFloat( self.solveOpts[ "optimalityTol" ] ) ):
             print( "solveOpts['optimalityTol'] must be float" )
             return False
         if( self.solveOpts[ "optimalityTol" ] < np.power( self.default_fctn_prec, 0.8 ) ):
@@ -432,8 +429,8 @@ cdef class Npsol( base.BaseSolver ):
         cdef doublereal objf_val[1]
 
         ## Begin by setting up initial condition
-        tmpinit = arrwrap.convFortran( self.prob.init )
-        memcpy( self.x, arrwrap.getPtr( tmpinit ),
+        tmpinit = utils.convFortran( self.prob.init )
+        memcpy( self.x, utils.getPtr( tmpinit ),
                 self.prob.N * sizeof( doublereal ) )
 
         ## Set all options
@@ -446,14 +443,14 @@ cdef class Npsol( base.BaseSolver ):
             npsol.npopenappend_( printFileUnit, printFile, inform_out,
                                  len( self.printOpts[ "printFile" ] ) )
             if( inform_out[0] != 0 ):
-                raise StandardError( "Could not open file " + self.printOpts[ "printFile" ] )
+                raise IOError( "Could not open file " + self.printOpts[ "printFile" ] )
             npsol.npopti_( STR_PRINT_FILE, printFileUnit, len( STR_PRINT_FILE ) )
 
         if( self.printOpts[ "summaryFile" ] != "" ):
             npsol.npopenappend_( summaryFileUnit, summaryFile, inform_out,
                                  len( self.printOpts[ "summaryFile" ] ) )
             if( inform_out[0] != 0 ):
-                raise StandardError( "Could not open file " + self.printOpts[ "summaryFile" ] )
+                raise IOError( "Could not open file " + self.printOpts[ "summaryFile" ] )
             npsol.npopti_( STR_SUMMARY_FILE, summaryFileUnit, len( STR_SUMMARY_FILE ) )
 
         ## Set major and minor print levels
@@ -509,26 +506,19 @@ cdef class Npsol( base.BaseSolver ):
                       self.iw, self.leniw, self.w, self.lenw )
 
         ## Save result to prob
-        self.prob.npsol_soln = NpsolSoln()
-        self.prob.npsol_soln.value = float( objf_val[0] )
-        self.prob.npsol_soln.final = np.copy( arrwrap.wrap1dPtr( self.x, self.prob.N,
-                                                                 np.NPY_DOUBLE ) )
-        self.prob.npsol_soln.istate = np.copy( arrwrap.wrap1dPtr( self.istate, self.nctotl,
-                                                                  np.NPY_LONG ) )
-        self.prob.npsol_soln.clamda = np.copy( arrwrap.wrap1dPtr( self.clamda, self.nctotl,
-                                                                  np.NPY_DOUBLE ) )
-        self.prob.npsol_soln.R = np.copy( arrwrap.wrap2dPtr( self.R, self.prob.N, self.prob.N,
-                                                             np.NPY_DOUBLE ) )
-        self.prob.npsol_soln.Niters = int( iter_out[0] )
-        self.prob.npsol_soln.retval = int( inform_out[0] )
+        self.prob.soln = Soln()
+        self.prob.soln.value = float( objf_val[0] )
+        self.prob.soln.final = np.copy( utils.wrap1dPtr( self.x, self.prob.N,
+                                                         np.NPY_DOUBLE ) )
+        self.prob.soln.istate = np.copy( utils.wrap1dPtr( self.istate, self.nctotl,
+                                                          np.NPY_LONG ) )
+        self.prob.soln.clamda = np.copy( utils.wrap1dPtr( self.clamda, self.nctotl,
+                                                          np.NPY_DOUBLE ) )
+        self.prob.soln.R = np.copy( utils.wrap2dPtr( self.R, self.prob.N, self.prob.N,
+                                                     np.NPY_DOUBLE ) )
+        self.prob.soln.Niters = int( iter_out[0] )
+        self.prob.soln.retval = int( inform_out[0] )
 
-        if( self.prob.npsol_soln.retval == 0 or
-            self.prob.npsol_soln.retval == 1 or
-            self.prob.npsol_soln.retval == 4 or
-            self.prob.npsol_soln.retval == 6 ):
-            self.prob.final = self.prob.npsol_soln.final
-            self.prob.value = self.prob.npsol_soln.value
-
-        return( self.prob.npsol_soln.final,
-                self.prob.npsol_soln.value,
-                self.prob.npsol_soln.retval )
+        return( self.prob.soln.final,
+                self.prob.soln.value,
+                self.prob.soln.retval )

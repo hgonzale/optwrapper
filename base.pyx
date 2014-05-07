@@ -1,20 +1,12 @@
-cdef class optwSolver:
-    def __init__( self ):
-        self.stopOpts = { "stopval":None,
-                          "maxeval":1e4,
-                          "maxtime":1e4,
-                          "xtol":1e-6,
-                          "ftol":1e-6 }
-        self.printOpts = { "printFile":None }
-        self.solveOpts = { "warmStart":False,
-                           "constraintViolation":1e-8 }
+cimport utils
 
-    def checkStopOpts( self ):
-        """
-        Check if dictionary self.stopOpts is valid.
-        """
-        print( self.stopOpts )
-        return True
+cdef class Soln:
+    pass
+
+cdef class Solver:
+    def __init__( self ):
+        self.printOpts = { "printFile":None }
+        self.solveOpts = { }
 
 
     def checkPrintOpts( self ):
@@ -24,12 +16,9 @@ cdef class optwSolver:
         Optional entries:
         printFile        filename for debug information (default: None)
         """
-        if( self.printOpts[ "printFile" ] == None ):
-            try:
-                str( self.printOpts[ "printFile" ] ) + "x"
-            except:
-                print( "printOpts['printFile'] must be a string." )
-                return False
+        if( not utils.isString( self.printOpts[ "printFile" ] ) ):
+            print( "printOpts['printFile'] must be a string." )
+            return False
 
         return True
 

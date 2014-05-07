@@ -1,4 +1,4 @@
-modules = arrayWrapper optwSolver optwNpsol
+modules = utils base npsol
 
 all: dummy.o
 	python setup.py build_ext --inplace

@@ -16,14 +16,15 @@ import numpy as np
 #                                                 "m"] ) ] )
 
 setup( cmdclass = {'build_ext': build_ext},
-       ext_modules = [ Extension( "arrayWrapper", ["arrayWrapper.pyx" ],
+       ext_modules = [ Extension( "utils", ["utils.pyx" ],
                                   include_dirs = [ np.get_include() ] ) ] )
 
 setup( cmdclass = {'build_ext': build_ext},
-       ext_modules = [ Extension( "optwSolver", ["optwSolver.pyx" ] ) ] )
+       ext_modules = [ Extension( "base", ["base.pyx" ],
+                                  include_dirs = [ np.get_include() ] ) ] )
 
 setup( cmdclass = {'build_ext': build_ext},
-       ext_modules = [ Extension( "optwNpsol", ["optwNpsol.pyx" ],
+       ext_modules = [ Extension( "npsol", ["npsol.pyx" ],
                                   include_dirs = [ np.get_include() ],
                                   extra_objects = ["dummy.o"],
                                   libraries = [ "npsol_c",

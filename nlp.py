@@ -1,11 +1,7 @@
 import types
 import numpy as np
-# import nlopt
-# import ipopt
-# from optw_snopt import SnoptSolver
-# from optw_npsol import NpsolSolver
 
-class optwProblem:
+class Problem:
     """
     General nonlinear programming optimization problem.
     Requires a nonlinear objective function and its gradient.
@@ -55,6 +51,7 @@ class optwProblem:
         self.consg = None
         self.conslb = None
         self.consub = None
+        self.soln = None
 
 
     def initPoint( self, init ):
@@ -74,15 +71,15 @@ class optwProblem:
 
 
     def finalPoint( self ):
-        if( hasattr( self, "final" ) ):
-            return self.final
+        if( self.soln ):
+            return self.soln.final
         else:
             return None
 
 
     def finalValue( self ):
-        if( hasattr( self, "value" ) ):
-            return self.value
+        if( self.soln ):
+            return self.soln.value
         else:
             return None
 
