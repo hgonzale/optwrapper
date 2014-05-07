@@ -23,21 +23,25 @@ prob.consBox( [0, -10], [5, 2] )
 
 prob.objFctn( objf )
 prob.objGrad( objg )
-prob.consFctn( consf, [ -1e6, -1e6 ], [ 4, 5 ] )
+prob.consFctn( consf, [ -np.inf, -np.inf ], [ 4, 5 ] )
 prob.consGrad( consg )
 
 if( not prob.checkGrad() ):
     raise StandardError( "Gradient does not match function." )
 
 solver = optwNpsol( prob )
-solver.printOpts[ "summaryFile" ] = "debugs.txt"
+# solver.printOpts[ "summaryFile" ] = "debugs.txt"
 solver.printOpts[ "printFile" ] = "debugp.txt"
-solver.printOpts[ "printLevel" ] = 30
-solver.printOpts[ "minorPrintLevel" ] = 30
+solver.printOpts[ "printLevel" ] = 10
 
 if( not solver.checkPrintOpts() ):
     raise StandardError( "Print options are invalid." )
 
+solver.solve()
+print( solver.getStatus() )
+print( "Value: " + str( prob.value ) )
+
+prob.initCond( [-10.0, -12.0] )
 solver.solve()
 print( solver.getStatus() )
 print( "Value: " + str( prob.value ) )

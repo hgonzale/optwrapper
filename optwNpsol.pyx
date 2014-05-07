@@ -78,20 +78,14 @@ cdef int funcon( integer* mode, integer* ncnln,
 
 
 cdef class optwNpsol( optwSolver ):
-    cdef integer n[1]
-    cdef integer nclin[1]
-    cdef integer ncnln[1]
     cdef integer ldA[1]
     cdef integer ldJ[1]
     cdef integer ldR[1]
     cdef integer leniw[1]
     cdef integer lenw[1]
-    cdef integer iter_out[1]
-    cdef integer inform_out[1]
     cdef doublereal *x
     cdef doublereal *bl
     cdef doublereal *bu
-    cdef doublereal objf_val[1]
     cdef doublereal *objg_val
     cdef doublereal *consf_val
     cdef doublereal *consg_val
@@ -101,87 +95,25 @@ cdef class optwNpsol( optwSolver ):
     cdef doublereal *w
     cdef doublereal *A
     cdef doublereal *R
-    cdef object prob
-    cdef integer nctotl
-    cdef integer default_iter_limit
-    cdef doublereal default_tol
-    cdef doublereal default_fctn_prec
-    cdef int warm_start
 
-    def __init__( self, prob ):
+    cdef object prob
+    cdef int nctotl
+    cdef int default_iter_limit
+    cdef float default_tol
+    cdef float default_fctn_prec
+    cdef int warm_start
+    cdef int mem_alloc
+    cdef int mem_size[3] ## { N, Nconslin, Ncons }
+
+
+    def __init__( self, prob=None ):
         super().__init__()
 
-        if( not isinstance( prob, optwProblem ) ):
-            raise StandardError( "Argument 'prob' must be of type 'optwProblem'" )
-        self.prob = prob ## Save a copy of the pointer
-        self.setupProblem( self.prob )
-
-
-    def setupProblem( self, prob ):
-        global extprob
-        extprob = prob ## Save static prob for funcon and funobj
-
-        self.nctotl = prob.N + prob.Nconslin + prob.Ncons
-        self.default_iter_limit = max( 50, 3*( prob.N + prob.Nconslin ) + 10*prob.Ncons ) ## pg. 25
+        self.mem_alloc = False
+        self.mem_size[0] = self.mem_size[1] = self.mem_size[2] = 0
         self.default_tol = sqrt( np.spacing(1) ) ## pg. 24
         self.default_fctn_prec = np.power( np.spacing(1), 0.9 ) ## pg. 24
-        self.warm_start = False
-
-        self.n[0] = prob.N
-        self.nclin[0] = prob.Nconslin
-        self.ncnln[0] = prob.Ncons
-        if( prob.Nconslin == 0 ):
-            self.ldA[0] = 1 ## pg. 5, ldA >= 1 even if nclin = 0
-        else:
-            self.ldA[0] = prob.Nconslin
-
-        if( prob.Ncons == 0 ):
-            self.ldJ[0] = 1 ## pg. 5, ldJ >= 1 even if ncnln = 0
-        else:
-            self.ldJ[0] = prob.Ncons
-
-        self.ldR[0] = prob.N
-
-        ## pg. 7
-        self.leniw[0] = 3 * prob.N + prob.Nconslin + 2 * prob.Ncons
-        self.lenw[0] = ( 2 * prob.N * prob.N + prob.N * prob.Nconslin
-                         + 2 * prob.N * prob.Ncons + 20 * prob.N + 11 * prob.Nconslin
-                         + 21 * prob.Ncons )
-
-        self.iter_out[0] = 0
-        self.inform_out[0] = 100
-
-        self.x = <doublereal *> mem.PyMem_Malloc( prob.N * sizeof( doublereal ) )
-        self.bl = <doublereal *> calloc( self.nctotl, sizeof( doublereal ) )
-        self.bu = <doublereal *> calloc( self.nctotl, sizeof( doublereal ) )
-
-        self.objf_val[0] = 0.0
-        self.objg_val = <doublereal *> calloc( prob.N, sizeof( doublereal ) )
-        self.consf_val = <doublereal *> calloc( prob.Ncons, sizeof( doublereal ) )
-        self.consg_val = <doublereal *> calloc( self.ldJ[0] * prob.N, sizeof( doublereal ) )
-
-        self.clamda = <doublereal *> calloc( self.nctotl, sizeof( doublereal ) )
-        self.istate = <integer *> calloc( self.nctotl, sizeof( integer ) )
-
-        self.iw = <integer *> calloc( self.leniw[0], sizeof( integer ) )
-        self.w = <doublereal *> calloc( self.lenw[0], sizeof( doublereal ) )
-
-        self.A = <doublereal *> calloc( self.ldA[0] * prob.N, sizeof( doublereal ) )
-        self.R = <doublereal *> calloc( prob.N * prob.N, sizeof( doublereal ) )
-
-        if( self.x == NULL or
-            self.bl == NULL or
-            self.bu == NULL or
-            self.objg_val == NULL or
-            self.consf_val == NULL or
-            self.consg_val == NULL or
-            self.clamda == NULL or
-            self.istate == NULL or
-            self.iw == NULL or
-            self.w == NULL or
-            self.A == NULL or
-            self.R == NULL ):
-            raise MemoryError( "At least one memory allocation failed" )
+        self.prob = None
 
         ## Set options
         self.printOpts[ "summaryFile" ] = ""
@@ -200,11 +132,50 @@ cdef class optwNpsol( optwSolver ):
         ## At least we need to be sure that doublereal is 8 bytes in this architecture
         assert( sizeof( doublereal ) == 8 )
 
+        if( prob != None ):
+            self.setupProblem( prob )
+
+
+    def setupProblem( self, prob ):
+        global extprob
+
+        if( not isinstance( prob, optwProblem ) ):
+            raise StandardError( "Argument 'prob' must be of type 'optwProblem'" )
+
+        self.prob = prob ## Save a copy of the pointer
+        extprob = prob ## Save static prob for funcon and funobj
+
+        ## New problems cannot be warm started
+        self.warm_start = False
+
+        ## Set size-dependent constants
+        self.nctotl = prob.N + prob.Nconslin + prob.Ncons
+        if( prob.Nconslin == 0 ): ## pg. 5, ldA >= 1 even if nclin = 0
+            self.ldA[0] = 1
+        else:
+            self.ldA[0] = prob.Nconslin
+        if( prob.Ncons == 0 ): ## pg. 5, ldJ >= 1 even if ncnln = 0
+            self.ldJ[0] = 1
+        else:
+            self.ldJ[0] = prob.Ncons
+        self.ldR[0] = prob.N
+        self.leniw[0] = 3 * prob.N + prob.Nconslin + 2 * prob.Ncons ## pg. 7
+        self.lenw[0] = ( 2 * prob.N * prob.N + prob.N * prob.Nconslin
+                         + 2 * prob.N * prob.Ncons + 20 * prob.N + 11 * prob.Nconslin
+                         + 21 * prob.Ncons ) ## pg. 7
+        self.default_iter_limit = max( 50, 3*( prob.N + prob.Nconslin ) + 10*prob.Ncons ) ## pg. 25
+
+        ## Allocate if necessary
+        if( not self.mem_alloc ):
+            self.allocate()
+        elif( self.mem_size[0] != prob.N or
+              self.mem_size[1] != prob.Nconslin or
+              self.mem_size[2] != prob.Ncons ):
+            self.deallocate()
+            self.allocate()
+
         ## Require all arrays we are going to copy to be:
         ## two-dimensional, float64, fortran contiguous, and type aligned
-        tmpinit = arrwrap.convFortran( prob.init )
-        memcpy( self.x, arrwrap.getPtr( tmpinit ),
-                prob.N * sizeof( doublereal ) )
         tmplb = arrwrap.convFortran( prob.lb )
         memcpy( &self.bl[0], arrwrap.getPtr( tmplb ),
                 prob.N * sizeof( doublereal ) )
@@ -230,43 +201,98 @@ cdef class optwNpsol( optwSolver ):
                     prob.Ncons * sizeof( doublereal ) )
 
 
-    def warmStart( self, istate, clamda, R ):
-        tmpistate = arrwrap.convIntFortran( istate )
+    cdef allocate( self ):
+        if( self.mem_alloc ):
+            return False
+
+        self.x = <doublereal *> mem.PyMem_Malloc( self.prob.N * sizeof( doublereal ) )
+        self.bl = <doublereal *> mem.PyMem_Malloc( self.nctotl * sizeof( doublereal ) )
+        self.bu = <doublereal *> mem.PyMem_Malloc( self.nctotl * sizeof( doublereal ) )
+        self.objg_val = <doublereal *> mem.PyMem_Malloc( self.prob.N * sizeof( doublereal ) )
+        self.consf_val = <doublereal *> mem.PyMem_Malloc( self.prob.Ncons * sizeof( doublereal ) )
+        self.consg_val = <doublereal *> mem.PyMem_Malloc( self.ldJ[0] * self.prob.N * sizeof( doublereal ) )
+        self.clamda = <doublereal *> mem.PyMem_Malloc( self.nctotl * sizeof( doublereal ) )
+        self.istate = <integer *> mem.PyMem_Malloc( self.nctotl * sizeof( integer ) )
+        self.iw = <integer *> mem.PyMem_Malloc( self.leniw[0] * sizeof( integer ) )
+        self.w = <doublereal *> mem.PyMem_Malloc( self.lenw[0] * sizeof( doublereal ) )
+        self.A = <doublereal *> mem.PyMem_Malloc( self.ldA[0] * self.prob.N * sizeof( doublereal ) )
+        self.R = <doublereal *> mem.PyMem_Malloc( self.prob.N * self.prob.N * sizeof( doublereal ) )
+
+        if( self.x == NULL or
+            self.bl == NULL or
+            self.bu == NULL or
+            self.objg_val == NULL or
+            self.consf_val == NULL or
+            self.consg_val == NULL or
+            self.clamda == NULL or
+            self.istate == NULL or
+            self.iw == NULL or
+            self.w == NULL or
+            self.A == NULL or
+            self.R == NULL ):
+            raise MemoryError( "At least one memory allocation failed" )
+
+        self.mem_alloc = True
+        self.mem_size[0] = self.prob.N
+        self.mem_size[1] = self.prob.Nconslin
+        self.mem_size[2] = self.prob.Ncons
+        return True
+
+
+    cdef deallocate( self ):
+        if( not self.mem_alloc ):
+            return False
+
+        mem.PyMem_Free( self.x )
+        mem.PyMem_Free( self.bl )
+        mem.PyMem_Free( self.bu )
+        mem.PyMem_Free( self.objg_val )
+        mem.PyMem_Free( self.consf_val )
+        mem.PyMem_Free( self.consg_val )
+        mem.PyMem_Free( self.clamda )
+        mem.PyMem_Free( self.istate )
+        mem.PyMem_Free( self.iw )
+        mem.PyMem_Free( self.w )
+        mem.PyMem_Free( self.A )
+        mem.PyMem_Free( self.R )
+
+        self.mem_alloc = False
+        return True
+
+
+    def warmStart( self ):
+        if( not hasattr( self.prob, "istate" ) or
+            not hasattr( self.prob, "clamda" ) or
+            not hasattr( self.prob, "R" ) ):
+            return False
+
+        tmpistate = arrwrap.convIntFortran( self.prob.istate )
         memcpy( self.istate, arrwrap.getPtr( tmpistate ), self.nctotl * sizeof( integer ) )
 
-        tmpclamda = arrwrap.convFortran( clamda )
+        tmpclamda = arrwrap.convFortran( self.prob.clamda )
         memcpy( self.clamda, arrwrap.getPtr( tmpclamda ), self.nctotl * sizeof( doublereal ) )
 
-        tmpR = arrwrap.convFortran( R )
+        tmpR = arrwrap.convFortran( self.prob.R )
         memcpy( self.R, arrwrap.getPtr( tmpR ), prob.N * prob.N * sizeof( doublereal ) )
 
         self.warm_start = True
+        return True
 
 
     def __dealloc__( self ):
-        mem.PyMem_Free( self.x )
-        free( self.bl )
-        free( self.bu )
-        free( self.objg_val )
-        free( self.consf_val )
-        free( self.consg_val )
-        free( self.clamda )
-        free( self.istate )
-        free( self.iw )
-        free( self.w )
-        free( self.A )
-        free( self.R )
+        self.deallocate()
 
 
     def getStatus( self ):
-        if( self.inform_out[0] == 100 ):
+        if( not self.prob.solved ):
             return "Return information is not defined yet"
-        elif( self.inform_out[0] < 0 ):
+
+        if( self.prob.retval < 0 ):
             return "Execution terminated by user defined function (should not occur)"
-        elif( self.inform_out[0] >= 10 ):
+        elif( self.prob.retval >= 10 ):
             return "Invalid value"
         else:
-            return statusInfo[ self.inform_out[0] ]
+            return statusInfo[ self.prob.retval ]
 
 
     def checkPrintOpts( self ):
@@ -371,7 +397,6 @@ cdef class optwNpsol( optwSolver ):
 
 
     def solve( self ):
-        cdef integer inform[1]
         cdef bytes printFileTmp = self.printOpts[ "printFile" ].encode() ## temp container
         cdef char* printFile = printFileTmp
         cdef bytes summaryFileTmp = self.printOpts[ "summaryFile" ].encode() ## temp container
@@ -388,23 +413,37 @@ cdef class optwNpsol( optwSolver ):
         cdef doublereal* feasiblityTol = [ self.solveOpts["feasibilityTol"] ]
         cdef doublereal* optimalityTol = [ self.solveOpts["optimalityTol"] ]
         cdef integer verifyLevel[1]
+        cdef float tmpPrec
 
+        cdef integer *n = [ self.prob.N ]
+        cdef integer *nclin = [ self.prob.Nconslin ]
+        cdef integer *ncnln = [ self.prob.Ncons ]
+        cdef integer iter_out[1]
+        cdef integer inform_out[1]
+        cdef doublereal objf_val[1]
+
+        ## Begin by setting up initial condition
+        tmpinit = arrwrap.convFortran( self.prob.init )
+        memcpy( self.x, arrwrap.getPtr( tmpinit ),
+                self.prob.N * sizeof( doublereal ) )
+
+        ## Set all options
         ## Supress echo options
         npsol.npoptn_( STR_NOLIST, len( STR_NOLIST ) )
 
         ## Open file if necessary
         if( self.printOpts[ "printFile" ] != "" and
             self.printOpts[ "printLevel" ] > 0 ):
-            npsol.npopenappend_( printFileUnit, printFile, inform,
+            npsol.npopenappend_( printFileUnit, printFile, inform_out,
                                  len( self.printOpts[ "printFile" ] ) )
-            if( inform[0] != 0 ):
+            if( inform_out[0] != 0 ):
                 raise StandardError( "Could not open file " + self.printOpts[ "printFile" ] )
             npsol.npopti_( STR_PRINT_FILE, printFileUnit, len( STR_PRINT_FILE ) )
 
         if( self.printOpts[ "summaryFile" ] != "" ):
-            npsol.npopenappend_( summaryFileUnit, summaryFile, inform,
+            npsol.npopenappend_( summaryFileUnit, summaryFile, inform_out,
                                  len( self.printOpts[ "summaryFile" ] ) )
-            if( inform[0] != 0 ):
+            if( inform_out[0] != 0 ):
                 raise StandardError( "Could not open file " + self.printOpts[ "summaryFile" ] )
             npsol.npopti_( STR_SUMMARY_FILE, summaryFileUnit, len( STR_SUMMARY_FILE ) )
 
@@ -427,20 +466,21 @@ cdef class optwNpsol( optwSolver ):
         npsol.npoptr_( STR_LINE_SEARCH_TOLERANCE, lineSearchTol, len( STR_LINE_SEARCH_TOLERANCE ) )
 
         ## Set fctn precision, and feasibility and optimality tolerances
+        tmpPrec = self.default_fctn_prec
         if( self.solveOpts["fctnPrecision"] > self.default_fctn_prec ):
+            tmpPrec = self.solveOpts["fctnPrecision"]
             npsol.npoptr_( STR_FUNCTION_PRECISION, fctnPrecision,
                            len( STR_FUNCTION_PRECISION ) )
         if( self.solveOpts["feasibilityTol"] > self.default_tol ):
             npsol.npoptr_( STR_FEASIBILITY_TOLERANCE, feasiblityTol,
                            len( STR_FEASIBILITY_TOLERANCE ) )
-        if( self.solveOpts["optimalityTol"] > np.power( self.default_fctn_prec, 0.8 ) ):
+        if( self.solveOpts["optimalityTol"] > np.power( tmpPrec, 0.8 ) ):
             npsol.npoptr_( STR_OPTIMALITY_TOLERANCE, optimalityTol,
                            len( STR_OPTIMALITY_TOLERANCE ) )
 
         ## Set verify level if required, pg. 29
         if( self.solveOpts["verifyGrad"] ):
             verifyLevel[0] = 3 ## Check both obj and cons
-            print( "Verifying!" )
         else:
             verifyLevel[0] = -1 ## Disabled
         npsol.npopti_( STR_VERIFY_LEVEL, verifyLevel, len( STR_VERIFY_LEVEL ) )
@@ -448,22 +488,24 @@ cdef class optwNpsol( optwSolver ):
         if( self.warm_start ):
             npsol.npoptn_( STR_WARM_START, len( STR_WARM_START ) )
 
-        npsol.npsol_( self.n, self.nclin,
-                      self.ncnln, self.ldA,
+        ## Call NPSOL
+        npsol.npsol_( n, nclin,
+                      ncnln, self.ldA,
                       self.ldJ, self.ldR,
                       self.A, self.bl, self.bu,
                       <npsol.funcon_fp> funcon, <npsol.funobj_fp> funobj,
-                      self.inform_out, self.iter_out, self.istate,
+                      inform_out, iter_out, self.istate,
                       self.consf_val, self.consg_val, self.clamda,
-                      self.objf_val, self.objg_val, self.R, self.x,
+                      objf_val, self.objg_val, self.R, self.x,
                       self.iw, self.leniw, self.w, self.lenw )
 
+        ## Save result to prob
         self.prob.final = np.copy( arrwrap.wrap1dPtr( self.x, self.prob.N, np.NPY_DOUBLE ) )
-        self.prob.value = float( self.objf_val[0] )
+        self.prob.value = float( objf_val[0] )
         self.prob.istate = np.copy( arrwrap.wrap1dPtr( self.istate, self.nctotl, np.NPY_LONG ) )
         self.prob.clamda = np.copy( arrwrap.wrap1dPtr( self.clamda, self.nctotl, np.NPY_DOUBLE ) )
         self.prob.R = np.copy( arrwrap.wrap2dPtr( self.R, self.prob.N, self.prob.N, np.NPY_DOUBLE ) )
-        self.prob.Niters = int( self.iter_out[0] )
-        self.prob.retval = int( self.inform_out[0] )
+        self.prob.Niters = int( iter_out[0] )
+        self.prob.retval = int( inform_out[0] )
 
         return( self.prob.final, self.prob.value, self.prob.retval )

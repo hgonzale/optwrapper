@@ -34,25 +34,25 @@ cdef np.ndarray wrap2dPtr( void* array, int rows, int cols, int typenum ):
     return convFortran( np.PyArray_SimpleNewFromData( 2, dims, typenum, array ) )
 
 
-cdef void* getPtr( np.ndarray input ):
-    if( not input.flags["F_CONTIGUOUS"] or
-        not input.flags["ALIGNED"] ):
-        raise ValueError( "Input array must be 'F_CONTIGUOUS' and 'ALIGNED'" )
+cdef void* getPtr( np.ndarray array ):
+    if( not array.flags["F_CONTIGUOUS"] or
+        not array.flags["ALIGNED"] ):
+        raise ValueError( "Array array must be 'F_CONTIGUOUS' and 'ALIGNED'" )
 
-    if( input.ndim == 1 ):
-        return np.PyArray_GETPTR1( input, 0 )
-    elif( input.ndim == 2 ):
-        return np.PyArray_GETPTR2( input, 0, 0 )
+    if( array.ndim == 1 ):
+        return np.PyArray_GETPTR1( array, 0 )
+    elif( array.ndim == 2 ):
+        return np.PyArray_GETPTR2( array, 0, 0 )
     else: ## HG: One day I will implement the case for n-dim arrays
-        raise ValueError( "Input array must be at most 2-dimensional" )
+        raise ValueError( "Array array must be at most 2-dimensional" )
 
 
-cdef np.ndarray convFortran( np.ndarray input ):
-    return np.require( input, dtype=np.float64, requirements=['F', 'A'] )
+cdef np.ndarray convFortran( np.ndarray array ):
+    return np.require( array, dtype=np.float64, requirements=['F', 'A'] )
 
 
-cdef np.ndarray convIntFortran( np.ndarray input ):
-    return np.require( input, dtype=np.int_, requirements=['F', 'A'] )
+cdef np.ndarray convIntFortran( np.ndarray array ):
+    return np.require( array, dtype=np.int_, requirements=['F', 'A'] )
 
 
 cpdef int isInt( object obj ):

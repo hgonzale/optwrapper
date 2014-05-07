@@ -55,6 +55,7 @@ class optwProblem:
         self.consg = None
         self.conslb = None
         self.consub = None
+        self.solved = False
 
 
     def initCond( self, init ):
@@ -170,7 +171,7 @@ class optwProblem:
             raise ValueError( "Argument must be a function" )
 
         if( lb == None ):
-            lb = -inf * np.ones( self.Ncons )
+            lb = -np.inf * np.ones( self.Ncons )
 
         if( ub == None ):
             ub = np.zeros( self.Ncons )
