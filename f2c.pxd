@@ -3,7 +3,7 @@
 ## A few typedef declarations from f2c.h
 ##
 
-cdef extern from *:
+cdef extern from "f2c.h":
     ctypedef long int integer
     ctypedef unsigned long int uinteger
     ctypedef char* address

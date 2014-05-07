@@ -55,12 +55,11 @@ class optwProblem:
         self.consg = None
         self.conslb = None
         self.consub = None
-        self.solved = False
 
 
-    def initCond( self, init ):
+    def initPoint( self, init ):
         """
-        Sets initial condition for optimization variable.
+        Sets initial value for optimization variable.
 
         Arguments:
         init  initial condition, must be a one-dimensional array of size N
@@ -72,6 +71,20 @@ class optwProblem:
 
         if( self.init.shape != ( self.N, ) ):
             raise ValueError( "Argument must have size (" + str(self.N) + ",)." )
+
+
+    def finalPoint( self ):
+        if( hasattr( self, "final" ) ):
+            return self.final
+        else:
+            return None
+
+
+    def finalValue( self ):
+        if( hasattr( self, "value" ) ):
+            return self.value
+        else:
+            return None
 
 
     def consBox( self, lb, ub ):

@@ -18,7 +18,7 @@ def consg(x):
                        [ 2*(x[0]-2), 2*x[1] ] ] )
 
 prob = optwProblem( N=2, Ncons=2 )
-prob.initCond( [10.0, 12.0] )
+prob.initPoint( [10.0, 12.0] )
 prob.consBox( [0, -10], [5, 2] )
 
 prob.objFctn( objf )
@@ -41,7 +41,7 @@ solver.solve()
 print( solver.getStatus() )
 print( "Value: " + str( prob.value ) )
 
-prob.initCond( [-10.0, -12.0] )
+prob.initPoint( [-10.0, -12.0] )
 solver.solve()
 print( solver.getStatus() )
 print( "Value: " + str( prob.value ) )

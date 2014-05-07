@@ -1,8 +1,4 @@
-##
-## optwNpsol.pxd
-##
-
-from optwF2c cimport *
+from f2c cimport *
 
 ctypedef int (*funcon_fp)( integer*, integer*, integer*,
                            integer*, integer*, doublereal*,

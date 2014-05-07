@@ -1,14 +1,13 @@
-from libc.stdlib cimport calloc,free
 from libc.string cimport memcpy
-import numpy as np
-cimport numpy as np
-cimport cpython.mem as mem
 from libc.math cimport sqrt
+cimport cpython.mem as mem
+cimport numpy as np
+import numpy as np
 
-from optwF2c cimport *
-cimport optwNpsol as npsol
-cimport arrayWrapper as arrwrap
-from optwSolver cimport *
+from f2c cimport *
+cimport npsol
+cimport arraywrapper as arrwrap
+cimport base
 from optwrapper import *
 
 ## NPSOL's option strings
@@ -27,16 +26,16 @@ cdef char* STR_FUNCTION_PRECISION = "Function precision"
 cdef char* STR_VERIFY_LEVEL = "Verify level"
 cdef char* STR_WARM_START = "Warm start"
 
-cdef tuple statusInfo = ( "Optimality conditions satisfied",
-                          "Optimality conditions satisfied, but sequence has not converged",
-                          "Linear constraints could not be satisfied",
-                          "Nonlinear constraints could not be satisfied",
-                          "Iteration limit reached",
+cdef tuple statusInfo = ( "Optimality conditions satisfied", ## 0
+                          "Optimality conditions satisfied, but sequence has not converged", ## 1
+                          "Linear constraints could not be satisfied", ## 2
+                          "Nonlinear constraints could not be satisfied", ## 3
+                          "Iteration limit reached", ## 4
                           "N/A",
-                          "Optimality conditions not satisfied, no improvement can be made",
-                          "Derivatives appear to be incorrect",
+                          "Optimality conditions not satisfied, no improvement can be made", ## 6
+                          "Derivatives appear to be incorrect", ## 7
                           "N/A",
-                          "Invalid input parameter" )
+                          "Invalid input parameter" ) ## 9
 
 
 ## These functions should be static methods in optwNpsol, but it appears that
@@ -77,7 +76,17 @@ cdef int funcon( integer* mode, integer* ncnln,
                 extprob.Ncons * extprob.N * sizeof( doublereal ) )
 
 
-cdef class optwNpsol( optwSolver ):
+cdef class NpsolSoln( base.BaseSoln ):
+    cdef float value
+    cdef np.ndarray final
+    cdef np.ndarray istate
+    cdef np.ndarray clamda
+    cdef np.ndarray R
+    cdef int Niters
+    cdef int retval
+
+
+cdef class Npsol( base.BaseSolver ):
     cdef integer ldA[1]
     cdef integer ldJ[1]
     cdef integer ldR[1]
@@ -284,15 +293,15 @@ cdef class optwNpsol( optwSolver ):
 
 
     def getStatus( self ):
-        if( not self.prob.solved ):
+        if( not hasattr( self.prob, "npsol" ) ):
             return "Return information is not defined yet"
 
-        if( self.prob.retval < 0 ):
+        if( self.prob.npsol.retval < 0 ):
             return "Execution terminated by user defined function (should not occur)"
-        elif( self.prob.retval >= 10 ):
+        elif( self.prob.npsol.retval >= 10 ):
             return "Invalid value"
         else:
-            return statusInfo[ self.prob.retval ]
+            return statusInfo[ self.prob.npsol.retval ]
 
 
     def checkPrintOpts( self ):
@@ -500,12 +509,26 @@ cdef class optwNpsol( optwSolver ):
                       self.iw, self.leniw, self.w, self.lenw )
 
         ## Save result to prob
-        self.prob.final = np.copy( arrwrap.wrap1dPtr( self.x, self.prob.N, np.NPY_DOUBLE ) )
-        self.prob.value = float( objf_val[0] )
-        self.prob.istate = np.copy( arrwrap.wrap1dPtr( self.istate, self.nctotl, np.NPY_LONG ) )
-        self.prob.clamda = np.copy( arrwrap.wrap1dPtr( self.clamda, self.nctotl, np.NPY_DOUBLE ) )
-        self.prob.R = np.copy( arrwrap.wrap2dPtr( self.R, self.prob.N, self.prob.N, np.NPY_DOUBLE ) )
-        self.prob.Niters = int( iter_out[0] )
-        self.prob.retval = int( inform_out[0] )
+        self.prob.npsol_soln = NpsolSoln()
+        self.prob.npsol_soln.value = float( objf_val[0] )
+        self.prob.npsol_soln.final = np.copy( arrwrap.wrap1dPtr( self.x, self.prob.N,
+                                                                 np.NPY_DOUBLE ) )
+        self.prob.npsol_soln.istate = np.copy( arrwrap.wrap1dPtr( self.istate, self.nctotl,
+                                                                  np.NPY_LONG ) )
+        self.prob.npsol_soln.clamda = np.copy( arrwrap.wrap1dPtr( self.clamda, self.nctotl,
+                                                                  np.NPY_DOUBLE ) )
+        self.prob.npsol_soln.R = np.copy( arrwrap.wrap2dPtr( self.R, self.prob.N, self.prob.N,
+                                                             np.NPY_DOUBLE ) )
+        self.prob.npsol_soln.Niters = int( iter_out[0] )
+        self.prob.npsol_soln.retval = int( inform_out[0] )
 
-        return( self.prob.final, self.prob.value, self.prob.retval )
+        if( self.prob.npsol_soln.retval == 0 or
+            self.prob.npsol_soln.retval == 1 or
+            self.prob.npsol_soln.retval == 4 or
+            self.prob.npsol_soln.retval == 6 ):
+            self.prob.final = self.prob.npsol_soln.final
+            self.prob.value = self.prob.npsol_soln.value
+
+        return( self.prob.npsol_soln.final,
+                self.prob.npsol_soln.value,
+                self.prob.npsol_soln.retval )
