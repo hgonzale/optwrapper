@@ -1,6 +1,9 @@
+F2C = f2c
+F2COPTS = -a -A
+
 modules = utils base npsol
 
-all: dummy.o filehandler.o
+all: dummy.o filehandler.c filehandler.o
 	python setup.py build_ext --inplace
 
 clean:
@@ -11,5 +14,8 @@ clean:
 
 test:
 	@$(foreach module,$(modules),python -c "from $(module) import *; print('$(module) works fine.')";)
+
+%.c: %.f
+	$(F2C) $(F2COPTS) $<
 
 .PHONY: all clean test
