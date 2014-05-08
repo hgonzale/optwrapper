@@ -47,7 +47,7 @@ cdef object extprob
 cdef int funobj( integer* mode, integer* n,
                  doublereal* x, doublereal* f, doublereal* g,
                  integer* nstate ):
-    xarr = utils.wrap1dPtr( x, extprob.N, np.NPY_DOUBLE )
+    xarr = utils.wrap1dPtr( x, n[0], np.NPY_DOUBLE )
 
     if( mode[0] != 1 ):
         f[0] = extprob.objf( xarr )
@@ -55,7 +55,7 @@ cdef int funobj( integer* mode, integer* n,
     if( mode[0] > 0 ):
         tmpg = utils.convFortran( extprob.objg( xarr ) )
         memcpy( g, utils.getPtr( tmpg ),
-                extprob.N * sizeof( doublereal ) )
+                n[0] * sizeof( doublereal ) )
 
 
 ## pg. 18, Section 7.2
@@ -63,17 +63,17 @@ cdef int funcon( integer* mode, integer* ncnln,
                  integer* n, integer* ldJ, integer* needc,
                  doublereal* x, doublereal* c, doublereal* cJac,
                  integer* nstate ):
-    xarr = utils.wrap1dPtr( x, extprob.N, np.NPY_DOUBLE )
+    xarr = utils.wrap1dPtr( x, n[0], np.NPY_DOUBLE )
 
     if( mode[0] != 1 ):
         tmpf = utils.convFortran( extprob.consf( xarr ) )
         memcpy( c, utils.getPtr( tmpf ),
-                extprob.Ncons * sizeof( doublereal ) )
+                ncnln[0] * sizeof( doublereal ) )
 
     if( mode[0] > 0 ):
         tmpg = utils.convFortran( extprob.consg( xarr ) )
         memcpy( cJac, utils.getPtr( tmpg ),
-                extprob.Ncons * extprob.N * sizeof( doublereal ) )
+                ncnln[0] * n[0] * sizeof( doublereal ) )
 
 
 cdef class Soln( base.Soln ):
@@ -380,7 +380,7 @@ cdef class Solver( base.Solver ):
             print( "solveOpts['fctnPrecision'] must be float" )
             return False
         if( self.solveOpts[ "fctnPrecision" ] < self.default_fctn_prec ):
-            print( "Values for solveOpts['feasiblityTol'] below "
+            print( "Values for solveOpts['fctnPrecision'] below "
                    + str( self.default_fctn_prec ) + " are ignored" )
 
         ## feasibilityTol
@@ -396,7 +396,7 @@ cdef class Solver( base.Solver ):
             print( "solveOpts['optimalityTol'] must be float" )
             return False
         if( self.solveOpts[ "optimalityTol" ] < np.power( self.default_fctn_prec, 0.8 ) ):
-            print( "Values for solveOpts['feasiblityTol'] below "
+            print( "Values for solveOpts['optimalityTol'] below "
                    + str( np.power( self.default_fctn_prec, 0.8 ) ) + " are ignored" )
 
         return True
@@ -504,6 +504,14 @@ cdef class Solver( base.Solver ):
                       self.consf_val, self.consg_val, self.clamda,
                       objf_val, self.objg_val, self.R, self.x,
                       self.iw, self.leniw, self.w, self.lenw )
+
+        ## Politely close files
+        if( self.printOpts[ "printFile" ] != "" and
+            self.printOpts[ "printLevel" ] > 0 ):
+            npsol.npclose_( printFileUnit )
+
+        if( self.printOpts[ "summaryFile" ] != "" ):
+            npsol.npclose_( summaryFileUnit )
 
         ## Save result to prob
         self.prob.soln = Soln()

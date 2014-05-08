@@ -70,20 +70,6 @@ class Problem:
             raise ValueError( "Argument must have size (" + str(self.N) + ",)." )
 
 
-    def finalPoint( self ):
-        if( self.soln ):
-            return self.soln.final
-        else:
-            return None
-
-
-    def finalValue( self ):
-        if( self.soln ):
-            return self.soln.value
-        else:
-            return None
-
-
     def consBox( self, lb, ub ):
         """
         Defines box constraints.

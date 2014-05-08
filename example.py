@@ -33,10 +33,11 @@ if( not prob.checkGrad() ):
 solver = npsol.Solver( prob )
 # solver.printOpts[ "summaryFile" ] = "debugs.txt"
 solver.printOpts[ "printFile" ] = "debugp.txt"
-solver.printOpts[ "printLevel" ] = 10
+solver.printOpts[ "printLevel" ] = 5
 
-if( not solver.checkPrintOpts() ):
-    print( "Print options are invalid." )
+if( not solver.checkPrintOpts() or
+    not solver.checkSolveOpts() ):
+    print( "Options are invalid." )
     raise SystemExit
 
 solver.solve()
