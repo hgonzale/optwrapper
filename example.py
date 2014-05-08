@@ -45,7 +45,7 @@ print( prob.soln.getStatus() )
 print( "Value: " + str( prob.soln.value ) )
 
 prob.initPoint( [-10.0, -12.0] )
-solver.warmStart()
+# solver.warmStart()
 solver.solve()
 print( prob.soln.getStatus() )
 print( "Value: " + str( prob.soln.value ) )

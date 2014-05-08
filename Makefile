@@ -1,6 +1,6 @@
 modules = utils base npsol
 
-all: dummy.o
+all: dummy.o filehandler.o
 	python setup.py build_ext --inplace
 
 clean:

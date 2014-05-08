@@ -5,6 +5,7 @@ cimport numpy as np
 import numpy as np
 
 from f2ch cimport *      ## tydefs from f2c.h
+cimport filehandler as fh
 cimport npsolh as npsol  ## import every function exposed in npsol.h
 cimport utils
 cimport base
@@ -440,15 +441,15 @@ cdef class Solver( base.Solver ):
         ## Open file if necessary
         if( self.printOpts[ "printFile" ] != "" and
             self.printOpts[ "printLevel" ] > 0 ):
-            npsol.npopenappend_( printFileUnit, printFile, inform_out,
-                                 len( self.printOpts[ "printFile" ] ) )
+            fh.openfile_( printFileUnit, printFile, inform_out,
+                          len( self.printOpts[ "printFile" ] ) )
             if( inform_out[0] != 0 ):
                 raise IOError( "Could not open file " + self.printOpts[ "printFile" ] )
             npsol.npopti_( STR_PRINT_FILE, printFileUnit, len( STR_PRINT_FILE ) )
 
         if( self.printOpts[ "summaryFile" ] != "" ):
-            npsol.npopenappend_( summaryFileUnit, summaryFile, inform_out,
-                                 len( self.printOpts[ "summaryFile" ] ) )
+            fh.openfile_( summaryFileUnit, summaryFile, inform_out,
+                          len( self.printOpts[ "summaryFile" ] ) )
             if( inform_out[0] != 0 ):
                 raise IOError( "Could not open file " + self.printOpts[ "summaryFile" ] )
             npsol.npopti_( STR_SUMMARY_FILE, summaryFileUnit, len( STR_SUMMARY_FILE ) )
@@ -508,10 +509,10 @@ cdef class Solver( base.Solver ):
         ## Politely close files
         if( self.printOpts[ "printFile" ] != "" and
             self.printOpts[ "printLevel" ] > 0 ):
-            npsol.npclose_( printFileUnit )
+            fh.closefile_( printFileUnit )
 
         if( self.printOpts[ "summaryFile" ] != "" ):
-            npsol.npclose_( summaryFileUnit )
+            fh.closefile_( summaryFileUnit )
 
         ## Save result to prob
         self.prob.soln = Soln()

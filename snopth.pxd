@@ -70,13 +70,14 @@ cdef extern from "snopt.h":
                 char *cw, integer *lencw, integer *iw, integer *leniw, doublereal *rw, integer *lenrw,
                 ftnlen cu_len, ftnlen cw_len )
 
-    int snopenappend_( integer *iunit, char *name, integer *inform, ftnlen name_len )
+    ## snfilewrapper.h
+    # int snopenappend_( integer *iunit, char *name, integer *inform, ftnlen name_len )
 
-    int snfilewrapper_( char *name__, integer *ispec, integer *inform__,
-                        char *cw, integer *lencw, integer *iw,
-                        integer *leniw, doublereal *rw, integer *lenrw,
-                        ftnlen name_len, ftnlen cw_len);
+    # int snfilewrapper_( char *name__, integer *ispec, integer *inform__,
+    #                     char *cw, integer *lencw, integer *iw,
+    #                     integer *leniw, doublereal *rw, integer *lenrw,
+    #                     ftnlen name_len, ftnlen cw_len )
 
-    int snclose_( integer *iunit);
+    # int snclose_( integer *iunit )
 
-    int snopen_( integer *iunit);
+    # int snopen_( integer *iunit )

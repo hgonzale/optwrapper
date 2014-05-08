@@ -17,8 +17,6 @@ cdef extern from "npsol.h":
                 doublereal *r__, doublereal *x,
                 integer *iw, integer *leniw, doublereal *w, integer *lenw )
 
-    int npfilewrapper_( char *name__, integer *inform__, ftnlen name_len )
-
     int npfile_( integer *ioptns, integer *inform__ )
 
     int npoptn_( char *string, ftnlen string_len )
@@ -28,6 +26,8 @@ cdef extern from "npsol.h":
     int npoptr_(char *string, doublereal *rvalue, ftnlen string_len)
 
     ## npfilewrapper.h
-    int npopenappend_( integer *iunit, char *name, integer *inform, ftnlen name_len )
+    # int npfilewrapper_( char *name__, integer *inform__, ftnlen name_len )
 
-    int npclose_( integer *iunit )
+    # int npopenappend_( integer *iunit, char *name, integer *inform, ftnlen name_len )
+
+    # int npclose_( integer *iunit )
