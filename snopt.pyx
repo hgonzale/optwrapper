@@ -368,8 +368,8 @@ cdef class Solver( base.Solver ):
         cdef char* printFile = printFileTmp
         cdef bytes summaryFileTmp = self.printOpts[ "summaryFile" ].encode() ## temp container
         cdef char* summaryFile = summaryFileTmp
-        cdef integer* summaryFileUnit = [ 89 ] ## Hardcoded since nobody cares
-        cdef integer* printFileUnit = [ 90 ] ## Hardcoded since nobody cares
+        cdef integer* summaryFileUnit = [ 8 ] ## Hardcoded since nobody cares
+        cdef integer* printFileUnit = [ 9 ] ## Hardcoded since nobody cares
 
         cdef integer inform_out[1]
         cdef integer *ltmpcw = [ 500 ]
@@ -427,21 +427,25 @@ cdef class Solver( base.Solver ):
 
         inform_out[0] = 0 ## Reset inform_out before running snset* functions
         ## Set new workspace lengths
+        print( "snseti character" )
         snopt.snseti_( STR_TOTAL_CHARACTER_WORKSPACE, self.lencw,
                        printFileUnit, summaryFileUnit, inform_out,
                        self.cw, ltmpcw, self.iw, ltmpiw, self.rw, ltmprw,
-                       len( STR_TOTAL_CHARACTER_WORKSPACE ), ltmpcw[0]*8 )
+                       len( STR_TOTAL_CHARACTER_WORKSPACE ), self.lencw[0]*8 )
+        print( "snseti integer" )
         snopt.snseti_( STR_TOTAL_INTEGER_WORKSPACE, self.leniw,
                        printFileUnit, summaryFileUnit, inform_out,
                        self.cw, ltmpcw, self.iw, ltmpiw, self.rw, ltmprw,
-                       len( STR_TOTAL_INTEGER_WORKSPACE ), ltmpcw[0]*8 )
+                       len( STR_TOTAL_INTEGER_WORKSPACE ), self.lencw[0]*8 )
+        print( "snseti real" )
         snopt.snseti_( STR_TOTAL_REAL_WORKSPACE, self.lenrw,
                        printFileUnit, summaryFileUnit, inform_out,
                        self.cw, ltmpcw, self.iw, ltmpiw, self.rw, ltmprw,
-                       len( STR_TOTAL_REAL_WORKSPACE ), ltmpcw[0]*8 )
+                       len( STR_TOTAL_REAL_WORKSPACE ), self.lencw[0]*8 )
         if( inform_out[0] != 0 ):
             raise Exception( "Could not set workspace lengths" )
 
+        print( "snopta" )
         snopt.snopta_( self.Start, self.nF,
                        n, nxname, nFname,
                        ObjAdd, ObjRow, probname,
