@@ -3,6 +3,7 @@ cimport numpy as np
 cdef class Soln:
     cdef public float value
     cdef public np.ndarray final
+    cdef public int retval
 
 
 cdef class Solver:

@@ -1,5 +1,5 @@
 import nlp
-import npsol
+import snopt
 import numpy as np
 import math
 
@@ -30,8 +30,8 @@ if( not prob.checkGrad() ):
     print( "Gradient does not match function." )
     raise SystemExit
 
-solver = npsol.Solver( prob )
-# solver.printOpts[ "summaryFile" ] = "debugs.txt"
+solver = snopt.Solver( prob )
+solver.printOpts[ "summaryFile" ] = "debugs.txt"
 solver.printOpts[ "printFile" ] = "debugp.txt"
 solver.printOpts[ "printLevel" ] = 5
 

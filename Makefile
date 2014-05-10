@@ -1,7 +1,7 @@
 F2C = f2c
 F2COPTS = -a -A
 
-modules = utils base npsol
+modules = utils base npsol snopt
 
 all: dummy.o filehandler.c filehandler.o
 	python setup.py build_ext --inplace

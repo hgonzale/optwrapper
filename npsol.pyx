@@ -82,9 +82,9 @@ cdef class Soln( base.Soln ):
     cdef public np.ndarray clamda
     cdef public np.ndarray R
     cdef public int Niters
-    cdef public int retval
 
     def __init__( self ):
+        super().__init__()
         self.retval = 100
 
     def getStatus( self ):
@@ -307,7 +307,7 @@ cdef class Solver( base.Solver ):
         Check if dictionary self.printOpts is valid.
 
         Optional entries:
-        printFile        filename for debug information (default: None)
+        printFile        filename for debug information (default: "")
         printLevel       verbosity level for major iterations (0-None, 1, 5, 10, 20, or 30-Full)
         minorPrintLevel  verbosity level for minor iterations (0-None, 1, 5, 10, 20, or 30-Full)
         """
@@ -321,8 +321,8 @@ cdef class Solver( base.Solver ):
             return False
         if( self.printOpts[ "printFile" ] == "" and
             self.printOpts[ "printLevel" ] > 0 ):
-                print( "Must set printOpts['printFile'] whenever printOpts['printLevel'] > 0" )
-                return False
+            print( "Debug information is ignored whenever printOpts['printFile'] is empty " +
+                   "and printOpts['printLevel'] > 0" )
 
         return True
 
@@ -438,21 +438,24 @@ cdef class Solver( base.Solver ):
         ## Supress echo options
         npsol.npoptn_( STR_NOLIST, len( STR_NOLIST ) )
 
-        ## Open file if necessary
-        if( self.printOpts[ "printFile" ] != "" and
-            self.printOpts[ "printLevel" ] > 0 ):
+        ## Handle debug files
+        if( self.printOpts[ "printFile" ] != "" ):
             fh.openfile_( printFileUnit, printFile, inform_out,
                           len( self.printOpts[ "printFile" ] ) )
             if( inform_out[0] != 0 ):
                 raise IOError( "Could not open file " + self.printOpts[ "printFile" ] )
-            npsol.npopti_( STR_PRINT_FILE, printFileUnit, len( STR_PRINT_FILE ) )
+        else:
+            printFileUnit[0] = 0
+        npsol.npopti_( STR_PRINT_FILE, printFileUnit, len( STR_PRINT_FILE ) )
 
         if( self.printOpts[ "summaryFile" ] != "" ):
             fh.openfile_( summaryFileUnit, summaryFile, inform_out,
                           len( self.printOpts[ "summaryFile" ] ) )
             if( inform_out[0] != 0 ):
                 raise IOError( "Could not open file " + self.printOpts[ "summaryFile" ] )
-            npsol.npopti_( STR_SUMMARY_FILE, summaryFileUnit, len( STR_SUMMARY_FILE ) )
+        else:
+            summaryFileUnit[0] = 0
+        npsol.npopti_( STR_SUMMARY_FILE, summaryFileUnit, len( STR_SUMMARY_FILE ) )
 
         ## Set major and minor print levels
         npsol.npopti_( STR_PRINT_LEVEL, printLevel, len( STR_PRINT_LEVEL ) )
@@ -507,8 +510,7 @@ cdef class Solver( base.Solver ):
                       self.iw, self.leniw, self.w, self.lenw )
 
         ## Politely close files
-        if( self.printOpts[ "printFile" ] != "" and
-            self.printOpts[ "printLevel" ] > 0 ):
+        if( self.printOpts[ "printFile" ] != "" ):
             fh.closefile_( printFileUnit )
 
         if( self.printOpts[ "summaryFile" ] != "" ):

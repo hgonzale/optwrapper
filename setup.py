@@ -35,3 +35,16 @@ setup( cmdclass = {'build_ext': build_ext},
                                                 "blas",
                                                 "f2c",
                                                 "m" ] ) ] )
+
+setup( cmdclass = {'build_ext': build_ext},
+       ext_modules = [ Extension( "snopt", [ "snopt.pyx" ],
+                                  include_dirs = [ np.get_include() ],
+                                  extra_objects = [ "dummy.o",
+                                                    "filehandler.o" ],
+                                  libraries = [ "snopt_c",
+                                                "snprint_c",
+                                                "snopt",
+                                                "snprint",
+                                                "blas",
+                                                "f2c",
+                                                "m" ] ) ] )
