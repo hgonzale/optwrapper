@@ -47,11 +47,11 @@ cdef void* getPtr( np.ndarray array ):
         raise ValueError( "Array array must be at most 2-dimensional" )
 
 
-cdef np.ndarray convFortran( np.ndarray array ):
+cpdef np.ndarray convFortran( np.ndarray array ):
     return np.require( array, dtype=np.float64, requirements=['F', 'A'] )
 
 
-cdef np.ndarray convIntFortran( np.ndarray array ):
+cpdef np.ndarray convIntFortran( np.ndarray array ):
     return np.require( array, dtype=np.int_, requirements=['F', 'A'] )
 
 

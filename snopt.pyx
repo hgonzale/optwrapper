@@ -211,14 +211,11 @@ cdef class Solver( base.Solver ):
         self.Flow[0] = -np.inf
         self.Fupp[0] = np.inf
 
-        objgsparse = coo_matrix( extprob.objg( self.prob.init ) )
-        tmpiGfun = utils.convIntFortran( objgsparse.row )
-        memcpy( &self.iGfun[0], utils.getPtr( tmpiGfun ),
-                prob.N * sizeof( integer ) )
-
-        tmpjGvar = utils.convIntFortran( objgsparse.col )
-        memcpy( &self.jGvar[0], utils.getPtr( tmpjGvar ),
-                prob.N * sizeof( integer ) )
+        ## We fill iGfun and jGvar as we write them in usrfun
+        ## First row belongs to objg
+        for idx in range( self.prob.N ):
+            self.iGfun[idx] = 1 ## These are Fortran indices, must start from 1!
+            self.jGvar[idx] = 1 + idx
 
         if( prob.Nconslin > 0 ):
             tmpconslinlb = utils.convFortran( prob.conslinlb )
@@ -230,7 +227,6 @@ cdef class Solver( base.Solver ):
                     prob.Nconslin * sizeof( doublereal ) )
 
             Asparse = coo_matrix( prob.conslinA )
-
             tmpiAfun = utils.convIntFortran( Asparse.row )
             memcpy( self.iAfun, utils.getPtr( tmpiAfun ),
                     self.lenA[0] * sizeof( integer ) )
@@ -252,22 +248,15 @@ cdef class Solver( base.Solver ):
             memcpy( &self.Fupp[1], utils.getPtr( tmpconsub ),
                     prob.Ncons * sizeof( doublereal ) )
 
-            consgsparse = coo_matrix( extprob.consg( self.prob.init ) )
-            tmpiGfun = utils.convIntFortran( consgsparse.row )
-            memcpy( &self.iGfun[prob.N], utils.getPtr( tmpiGfun ),
-                    prob.Ncons * prob.N * sizeof( integer ) )
-
-            tmpjGvar = utils.convIntFortran( consgsparse.col )
-            memcpy( &self.jGvar[prob.N], utils.getPtr( tmpjGvar ),
-                    prob.Ncons * prob.N * sizeof( integer ) )
+            ## Rest is filled in Fortran-order
+            for jdx in range( self.prob.Ncons ):
+                for idx in range( self.prob.N ):
+                    self.iGfun[self.prob.N + idx + self.prob.N * jdx] = 2 + idx + self.prob.Nconslin
+                    self.jGvar[self.prob.N + idx + self.prob.N * jdx] = 1 + jdx
 
         memset( self.xstate, 0, self.prob.N * sizeof( integer ) )
         memset( self.Fstate, 0, self.nF[0] * sizeof( integer ) )
         memset( self.Fmul, 0, self.nF[0] * sizeof( doublereal ) )
-
-        for k in range( self.nF[0] ):
-            print( "Flow[" + str(k) + "] = " + str( self.Flow[k] ) )
-            print( "Fupp[" + str(k) + "] = " + str( self.Fupp[k] ) )
 
 
     cdef allocate( self ):
@@ -333,9 +322,6 @@ cdef class Solver( base.Solver ):
         mem.PyMem_Free( self.jAvar )
         mem.PyMem_Free( self.iGfun )
         mem.PyMem_Free( self.jGvar )
-        # mem.PyMem_Free( self.rw )
-        # mem.PyMem_Free( self.iw )
-        # mem.PyMem_Free( self.cw )
 
         self.mem_alloc = False
         return True
@@ -371,8 +357,8 @@ cdef class Solver( base.Solver ):
         cdef doublereal *ObjAdd = [ 0.0 ]
         cdef integer *ObjRow = [ 1 ]
         cdef char *probname = "optwrapp" ## Must have 8 characters
-        cdef char *xnames = "dummy   "
-        cdef char *Fnames = "dummy   "
+        cdef char *xnames = "dummy"
+        cdef char *Fnames = "dummy"
         cdef integer nS[1]
         cdef integer nInf[1]
         cdef doublereal sInf[1]
@@ -384,8 +370,8 @@ cdef class Solver( base.Solver ):
         cdef char* printFile = printFileTmp
         cdef bytes summaryFileTmp = self.printOpts[ "summaryFile" ].encode() ## temp container
         cdef char* summaryFile = summaryFileTmp
-        cdef integer* summaryFileUnit = [ 6 ] ## Hardcoded since nobody cares
-        cdef integer* printFileUnit = [ 9 ] ## Hardcoded since nobody cares
+        cdef integer* summaryFileUnit = [ 89 ] ## Hardcoded since nobody cares
+        cdef integer* printFileUnit = [ 90 ] ## Hardcoded since nobody cares
 
         cdef integer inform_out[1]
         cdef integer *ltmpcw = [ 500 ]
