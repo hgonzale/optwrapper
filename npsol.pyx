@@ -137,7 +137,7 @@ cdef class Solver( base.Solver ):
         self.prob = None
 
         ## Set options
-        self.printOpts[ "summaryFile" ] = ""
+        self.printOpts[ "summaryFile" ] = "stdout"
         self.printOpts[ "printLevel" ] = 0
         self.printOpts[ "minorPrintLevel" ] = 0
         self.solveOpts[ "infValue" ] = 1e20
@@ -189,9 +189,9 @@ cdef class Solver( base.Solver ):
         ## Allocate if necessary
         if( not self.mem_alloc ):
             self.allocate()
-        elif( self.mem_size[0] != prob.N or
-              self.mem_size[1] != prob.Nconslin or
-              self.mem_size[2] != prob.Ncons ):
+        elif( self.mem_size[0] < prob.N or
+              self.mem_size[1] < prob.Nconslin or
+              self.mem_size[2] < prob.Ncons ):
             self.deallocate()
             self.allocate()
 
@@ -439,22 +439,25 @@ cdef class Solver( base.Solver ):
         npsol.npoptn_( STR_NOLIST, len( STR_NOLIST ) )
 
         ## Handle debug files
-        if( self.printOpts[ "printFile" ] != "" ):
+        if( self.printOpts[ "printFile" ] == "" ):
+            printFileUnit[0] = 0
+        else:
             fh.openfile_( printFileUnit, printFile, inform_out,
                           len( self.printOpts[ "printFile" ] ) )
             if( inform_out[0] != 0 ):
                 raise IOError( "Could not open file " + self.printOpts[ "printFile" ] )
-        else:
-            printFileUnit[0] = 0
-        npsol.npopti_( STR_PRINT_FILE, printFileUnit, len( STR_PRINT_FILE ) )
 
-        if( self.printOpts[ "summaryFile" ] != "" ):
+        if( self.printOpts[ "summaryFile" ] == "stdout" ):
+            summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
+        elif( self.printOpts[ "summaryFile" ] == "" ):
+            summaryFileUnit[0] = 0 ## Disable, pg. 6
+        else:
             fh.openfile_( summaryFileUnit, summaryFile, inform_out,
                           len( self.printOpts[ "summaryFile" ] ) )
             if( inform_out[0] != 0 ):
                 raise IOError( "Could not open file " + self.printOpts[ "summaryFile" ] )
-        else:
-            summaryFileUnit[0] = 0
+
+        npsol.npopti_( STR_PRINT_FILE, printFileUnit, len( STR_PRINT_FILE ) )
         npsol.npopti_( STR_SUMMARY_FILE, summaryFileUnit, len( STR_SUMMARY_FILE ) )
 
         ## Set major and minor print levels

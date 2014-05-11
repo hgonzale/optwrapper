@@ -3,7 +3,6 @@ from libc.math cimport sqrt
 cimport cpython.mem as mem
 cimport numpy as np
 import numpy as np
-from scipy.sparse import coo_matrix
 
 from f2ch cimport *
 cimport filehandler as fh
@@ -136,6 +135,8 @@ cdef class Solver( base.Solver ):
     cdef int warm_start
     cdef int mem_alloc
     cdef int mem_size[3] ## N, Nconslin, Ncons
+    cdef int mem_alloc_ws
+    cdef int mem_size_ws[3] ## lencw, leniw, lenrw
 
 
     def __init__( self, prob=None ):
@@ -143,12 +144,14 @@ cdef class Solver( base.Solver ):
 
         self.mem_alloc = False
         self.mem_size[0] = self.mem_size[1] = self.mem_size[2] = 0
+        self.mem_alloc_ws = False
+        self.mem_size_ws[0] = self.mem_size_ws[1] = self.mem_size_ws[2] = 0
         # self.default_tol = sqrt( np.spacing(1) ) ## pg. 24
         # self.default_fctn_prec = np.power( np.spacing(1), 0.9 ) ## pg. 24
         self.prob = None
 
         ## Set options
-        self.printOpts[ "summaryFile" ] = ""
+        self.printOpts[ "summaryFile" ] = "stdout"
         self.printOpts[ "printLevel" ] = 0
         self.printOpts[ "minorPrintLevel" ] = 0
         # self.solveOpts[ "infValue" ] = 1e20
@@ -185,16 +188,15 @@ cdef class Solver( base.Solver ):
         ## Set size-dependent constants
         self.nF[0] = 1 + prob.Nconslin + prob.Ncons
         self.lenA[0] = prob.Nconslin * prob.N
-        self.neA[0] = self.lenA[0]
         self.lenG[0] = ( 1 + prob.Ncons ) * prob.N
         self.neG[0] = self.lenG[0]
 
         ## Allocate if necessary
         if( not self.mem_alloc ):
             self.allocate()
-        elif( self.mem_size[0] != prob.N or
-              self.mem_size[1] != prob.Nconslin or
-              self.mem_size[2] != prob.Ncons ):
+        elif( self.mem_size[0] < prob.N or
+              self.mem_size[1] < prob.Nconslin or
+              self.mem_size[2] < prob.Ncons ):
             self.deallocate()
             self.allocate()
 
@@ -227,7 +229,9 @@ cdef class Solver( base.Solver ):
                     prob.Nconslin * sizeof( doublereal ) )
 
             Asparse = coo_matrix( prob.conslinA )
-            tmpiAfun = utils.convIntFortran( Asparse.row )
+            self.neA[0] = len( Asparse.data )
+            ## Linear cons come below objective, in rows 2 to prob.Nconslin + 1
+            tmpiAfun = utils.convIntFortran( Asparse.row + 2 )
             memcpy( self.iAfun, utils.getPtr( tmpiAfun ),
                     self.lenA[0] * sizeof( integer ) )
 
@@ -327,27 +331,42 @@ cdef class Solver( base.Solver ):
         return True
 
 
+    cdef allocate_ws( self ):
+        if( self.mem_alloc_ws ):
+            return False
+
+        ## Allocate workspace memory
+        self.cw = <char *> mem.PyMem_Malloc( self.lencw[0] * 8 * sizeof( char ) )
+        self.iw = <integer *> mem.PyMem_Malloc( self.leniw[0] * sizeof( integer ) )
+        self.rw = <doublereal *> mem.PyMem_Malloc( self.lenrw[0] * sizeof( doublereal ) )
+
+        if( self.iw is NULL or
+            self.rw is NULL or
+            self.cw is NULL ):
+            raise MemoryError( "At least one memory allocation failed" )
+
+        self.mem_alloc_ws = True
+        self.mem_size_ws[0] = self.lencw[0]
+        self.mem_size_ws[1] = self.leniw[0]
+        self.mem_size_ws[2] = self.lenrw[0]
+        return True
+
+
+    cdef deallocate_ws( self ):
+        if( not self.mem_alloc_ws ):
+            return False
+
+        mem.PyMem_Free( self.cw )
+        mem.PyMem_Free( self.iw )
+        mem.PyMem_Free( self.rw )
+
+        self.mem_alloc_ws = False
+        return True
+
+
     def __dealloc__( self ):
+        self.deallocate_ws()
         self.deallocate()
-
-
-    def get_status(self):
-        if( self.INFO[0] == 1 ):
-            return 'optimality conditions satisfied'
-        elif( self.INFO[0] == 2 ):
-            return 'feasible point found'
-        elif( self.INFO[0] == 3 ):
-            return 'requested accuracy could not be achieved'
-        elif( self.INFO[0] < 20 ):
-            return 'the problem appears to be infeasible'
-        elif( self.INFO[0] < 30 ):
-            return 'the problem appears to be unbounded'
-        elif( self.INFO[0] < 40 ):
-            return 'resource limit error'
-        elif( self.INFO[0] < 50 ):
-            return 'terminated after numerical difficulties'
-        else:
-            return 'error in user supplied information'
 
 
     def solve( self ):
@@ -386,22 +405,24 @@ cdef class Solver( base.Solver ):
         memcpy( self.x, utils.getPtr( tmpinit ),
                 self.prob.N * sizeof( doublereal ) )
 
-                ## Handle debug files
-        if( self.printOpts[ "printFile" ] != "" ):
+        ## Handle debug files
+        if( self.printOpts[ "printFile" ] == "" ):
+            printFileUnit[0] = 0
+        else:
             fh.openfile_( printFileUnit, printFile, inform_out,
                           len( self.printOpts[ "printFile" ] ) )
             if( inform_out[0] != 0 ):
                 raise IOError( "Could not open file " + self.printOpts[ "printFile" ] )
-        else:
-            printFileUnit[0] = 0
 
-        # if( self.printOpts[ "summaryFile" ] != "" ):
-        #     fh.openfile_( summaryFileUnit, summaryFile, inform_out,
-        #                   len( self.printOpts[ "summaryFile" ] ) )
-        #     if( inform_out[0] != 0 ):
-        #         raise IOError( "Could not open file " + self.printOpts[ "summaryFile" ] )
-        # else:
-        #     summaryFileUnit[0] = 0
+        if( self.printOpts[ "summaryFile" ] == "stdout" ):
+            summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
+        elif( self.printOpts[ "summaryFile" ] == "" ):
+            summaryFileUnit[0] = 0 ## Disable, pg. 6
+        else:
+            fh.openfile_( summaryFileUnit, summaryFile, inform_out,
+                          len( self.printOpts[ "summaryFile" ] ) )
+            if( inform_out[0] != 0 ):
+                raise IOError( "Could not open file " + self.printOpts[ "summaryFile" ] )
 
         ## Initialize
         snopt.sninit_( printFileUnit, summaryFileUnit,
@@ -413,24 +434,16 @@ cdef class Solver( base.Solver ):
                        self.lencw, self.leniw, self.lenrw,
                        tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw,
                        ltmpcw[0]*8 )
-
-        # print( "info: " + str( inform_out[0] ) + " "
-        #        "cw: " + str( self.lencw[0] ) + " "
-        #        "iw: " + str( self.leniw[0] ) + " "
-        #        "rw: " + str( self.lenrw[0] ) )
-
         if( inform_out[0] != 104 ):
             raise Exception( "snopt.snMemA failed to estimate workspace memory requirements" )
 
-        ## Allocate workspace memory
-        self.cw = <char *> mem.PyMem_Malloc( self.lencw[0] * 8 * sizeof( char ) )
-        self.iw = <integer *> mem.PyMem_Malloc( self.leniw[0] * sizeof( integer ) )
-        self.rw = <doublereal *> mem.PyMem_Malloc( self.lenrw[0] * sizeof( doublereal ) )
-
-        if( self.iw is NULL or
-            self.rw is NULL or
-            self.cw is NULL ):
-            raise MemoryError( "At least one memory allocation failed" )
+        if( not self.mem_alloc_ws ):
+            self.allocate_ws()
+        elif( self.lencw[0] > self.mem_size_ws[0] or
+              self.leniw[0] > self.mem_size_ws[1] or
+              self.lenrw[0] > self.mem_size_ws[2] ):
+            self.deallocate_ws()
+            self.allocate_ws()
 
         memcpy( self.cw, tmpcw, ltmpcw[0] * sizeof( char ) )
         memcpy( self.iw, tmpiw, ltmpiw[0] * sizeof( integer ) )
@@ -453,6 +466,7 @@ cdef class Solver( base.Solver ):
         if( inform_out[0] != 0 ):
             raise Exception( "Could not set workspace lengths" )
 
+        ## Execute SNOPT
         snopt.snopta_( self.Start, self.nF,
                        n, nxname, nFname,
                        ObjAdd, ObjRow, probname,
@@ -471,15 +485,12 @@ cdef class Solver( base.Solver ):
                        len( probname ), len( xnames ), len( Fnames ),
                        self.lencw[0]*8, self.lencw[0]*8 )
 
-        mem.PyMem_Free( self.cw )
-        mem.PyMem_Free( self.iw )
-        mem.PyMem_Free( self.rw )
-
         ## Politely close files
         if( self.printOpts[ "printFile" ] != "" ):
             fh.closefile_( printFileUnit )
 
-        if( self.printOpts[ "summaryFile" ] != "" ):
+        if( self.printOpts[ "summaryFile" ] != "" and
+            self.printOpts[ "summaryFile" ] != "stdout" ):
             fh.closefile_( summaryFileUnit )
 
         ## Save result to prob
