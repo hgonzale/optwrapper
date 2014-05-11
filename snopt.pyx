@@ -1,4 +1,4 @@
-from libc.string cimport memcpy
+from libc.string cimport memcpy, memset
 from libc.math cimport sqrt
 cimport cpython.mem as mem
 cimport numpy as np
@@ -244,6 +244,14 @@ cdef class Solver( base.Solver ):
                     self.lenA[0] * sizeof( doublereal ) )
 
         if( prob.Ncons > 0 ):
+            tmpconslb = utils.convFortran( prob.conslb )
+            memcpy( &self.Flow[1], utils.getPtr( tmpconslb ),
+                    prob.Ncons * sizeof( doublereal ) )
+
+            tmpconsub = utils.convFortran( prob.consub )
+            memcpy( &self.Fupp[1], utils.getPtr( tmpconsub ),
+                    prob.Ncons * sizeof( doublereal ) )
+
             consgsparse = coo_matrix( extprob.consg( self.prob.init ) )
             tmpiGfun = utils.convIntFortran( consgsparse.row )
             memcpy( &self.iGfun[prob.N], utils.getPtr( tmpiGfun ),
@@ -252,6 +260,14 @@ cdef class Solver( base.Solver ):
             tmpjGvar = utils.convIntFortran( consgsparse.col )
             memcpy( &self.jGvar[prob.N], utils.getPtr( tmpjGvar ),
                     prob.Ncons * prob.N * sizeof( integer ) )
+
+        memset( self.xstate, 0, self.prob.N * sizeof( integer ) )
+        memset( self.Fstate, 0, self.nF[0] * sizeof( integer ) )
+        memset( self.Fmul, 0, self.nF[0] * sizeof( doublereal ) )
+
+        for k in range( self.nF[0] ):
+            print( "Flow[" + str(k) + "] = " + str( self.Flow[k] ) )
+            print( "Fupp[" + str(k) + "] = " + str( self.Fupp[k] ) )
 
 
     cdef allocate( self ):
@@ -354,9 +370,9 @@ cdef class Solver( base.Solver ):
         cdef integer *nFname = [ 1 ] ## Do not provide cons names
         cdef doublereal *ObjAdd = [ 0.0 ]
         cdef integer *ObjRow = [ 1 ]
-        cdef char *probname = ""
-        cdef char *xnames = ""
-        cdef char *Fnames = ""
+        cdef char *probname = "optwrapp" ## Must have 8 characters
+        cdef char *xnames = "dummy   "
+        cdef char *Fnames = "dummy   "
         cdef integer nS[1]
         cdef integer nInf[1]
         cdef doublereal sInf[1]
@@ -368,7 +384,7 @@ cdef class Solver( base.Solver ):
         cdef char* printFile = printFileTmp
         cdef bytes summaryFileTmp = self.printOpts[ "summaryFile" ].encode() ## temp container
         cdef char* summaryFile = summaryFileTmp
-        cdef integer* summaryFileUnit = [ 8 ] ## Hardcoded since nobody cares
+        cdef integer* summaryFileUnit = [ 6 ] ## Hardcoded since nobody cares
         cdef integer* printFileUnit = [ 9 ] ## Hardcoded since nobody cares
 
         cdef integer inform_out[1]
@@ -379,7 +395,12 @@ cdef class Solver( base.Solver ):
         cdef integer tmpiw[500]
         cdef doublereal tmprw[500]
 
-        ## Handle debug files
+        ## Begin by setting up initial condition
+        tmpinit = utils.convFortran( self.prob.init )
+        memcpy( self.x, utils.getPtr( tmpinit ),
+                self.prob.N * sizeof( doublereal ) )
+
+                ## Handle debug files
         if( self.printOpts[ "printFile" ] != "" ):
             fh.openfile_( printFileUnit, printFile, inform_out,
                           len( self.printOpts[ "printFile" ] ) )
@@ -388,13 +409,13 @@ cdef class Solver( base.Solver ):
         else:
             printFileUnit[0] = 0
 
-        if( self.printOpts[ "summaryFile" ] != "" ):
-            fh.openfile_( summaryFileUnit, summaryFile, inform_out,
-                          len( self.printOpts[ "summaryFile" ] ) )
-            if( inform_out[0] != 0 ):
-                raise IOError( "Could not open file " + self.printOpts[ "summaryFile" ] )
-        else:
-            summaryFileUnit[0] = 0
+        # if( self.printOpts[ "summaryFile" ] != "" ):
+        #     fh.openfile_( summaryFileUnit, summaryFile, inform_out,
+        #                   len( self.printOpts[ "summaryFile" ] ) )
+        #     if( inform_out[0] != 0 ):
+        #         raise IOError( "Could not open file " + self.printOpts[ "summaryFile" ] )
+        # else:
+        #     summaryFileUnit[0] = 0
 
         ## Initialize
         snopt.sninit_( printFileUnit, summaryFileUnit,
@@ -407,10 +428,10 @@ cdef class Solver( base.Solver ):
                        tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw,
                        ltmpcw[0]*8 )
 
-        print( "info: " + str( inform_out[0] ) + " "
-               "cw: " + str( self.lencw[0] ) + " "
-               "iw: " + str( self.leniw[0] ) + " "
-               "rw: " + str( self.lenrw[0] ) )
+        # print( "info: " + str( inform_out[0] ) + " "
+        #        "cw: " + str( self.lencw[0] ) + " "
+        #        "iw: " + str( self.leniw[0] ) + " "
+        #        "rw: " + str( self.lenrw[0] ) )
 
         if( inform_out[0] != 104 ):
             raise Exception( "snopt.snMemA failed to estimate workspace memory requirements" )
@@ -425,19 +446,20 @@ cdef class Solver( base.Solver ):
             self.cw is NULL ):
             raise MemoryError( "At least one memory allocation failed" )
 
+        memcpy( self.cw, tmpcw, ltmpcw[0] * sizeof( char ) )
+        memcpy( self.iw, tmpiw, ltmpiw[0] * sizeof( integer ) )
+        memcpy( self.rw, tmprw, ltmprw[0] * sizeof( doublereal ) )
+
         inform_out[0] = 0 ## Reset inform_out before running snset* functions
         ## Set new workspace lengths
-        print( "snseti character" )
         snopt.snseti_( STR_TOTAL_CHARACTER_WORKSPACE, self.lencw,
                        printFileUnit, summaryFileUnit, inform_out,
                        self.cw, ltmpcw, self.iw, ltmpiw, self.rw, ltmprw,
                        len( STR_TOTAL_CHARACTER_WORKSPACE ), self.lencw[0]*8 )
-        print( "snseti integer" )
         snopt.snseti_( STR_TOTAL_INTEGER_WORKSPACE, self.leniw,
                        printFileUnit, summaryFileUnit, inform_out,
                        self.cw, ltmpcw, self.iw, ltmpiw, self.rw, ltmprw,
                        len( STR_TOTAL_INTEGER_WORKSPACE ), self.lencw[0]*8 )
-        print( "snseti real" )
         snopt.snseti_( STR_TOTAL_REAL_WORKSPACE, self.lenrw,
                        printFileUnit, summaryFileUnit, inform_out,
                        self.cw, ltmpcw, self.iw, ltmpiw, self.rw, ltmprw,
@@ -445,7 +467,6 @@ cdef class Solver( base.Solver ):
         if( inform_out[0] != 0 ):
             raise Exception( "Could not set workspace lengths" )
 
-        print( "snopta" )
         snopt.snopta_( self.Start, self.nF,
                        n, nxname, nFname,
                        ObjAdd, ObjRow, probname,
@@ -463,6 +484,10 @@ cdef class Solver( base.Solver ):
                        self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
                        len( probname ), len( xnames ), len( Fnames ),
                        self.lencw[0]*8, self.lencw[0]*8 )
+
+        mem.PyMem_Free( self.cw )
+        mem.PyMem_Free( self.iw )
+        mem.PyMem_Free( self.rw )
 
         ## Politely close files
         if( self.printOpts[ "printFile" ] != "" ):

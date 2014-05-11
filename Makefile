@@ -1,5 +1,6 @@
 F2C = f2c
 F2COPTS = -a -A
+CFLAGS = -O2 -g -fPIC
 
 modules = utils base npsol snopt
 
