@@ -8,10 +8,7 @@ np.import_array()
 cdef np.ndarray wrapPtr( void* array, np.ndarray dims, int typenum ):
     if( not dims.flags["C_CONTIGUOUS"] or
         not dims.flags["ALIGNED"] or
-        not dims.dtype == np.intp ):
-        print( "'dims' was not appropriate" )
-        print( dims.flags )
-        print( dims.dtype )
+        dims.dtype != np.intp ):
         dims = np.require( dims.flat, dtype=np.intp, requirements=['C', 'A'] )
 
     return convFortran( np.PyArray_SimpleNewFromData( dims.size,

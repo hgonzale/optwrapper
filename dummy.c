@@ -1,4 +1,6 @@
-// This is a dummy MAIN__ function to make f2c happy, which requires
-// (at all costs) that the symbol MAIN__ exists.
+// Debian's version of f2c requires that the symbol MAIN__ is present.
+// This is a dummy MAIN__ function to satisfy that requirement.
 
-int MAIN__( ){ return(0); }
+int MAIN__(){
+  return(0);
+}
