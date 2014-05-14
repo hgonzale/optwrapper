@@ -1,4 +1,5 @@
 import nlp
+import npsol
 import snopt
 import numpy as np
 import math
@@ -31,9 +32,9 @@ if( not prob.checkGrad() ):
     raise SystemExit
 
 solver = snopt.Solver( prob )
-solver.printOpts[ "summaryFile" ] = "debugs.txt"
+# solver.printOpts[ "summaryFile" ] = ""
 solver.printOpts[ "printFile" ] = "debugp.txt"
-solver.printOpts[ "printLevel" ] = 11
+solver.printOpts[ "printLevel" ] = 1
 
 if( not solver.checkPrintOpts() or
     not solver.checkSolveOpts() ):
@@ -43,10 +44,11 @@ if( not solver.checkPrintOpts() or
 solver.solve()
 print( prob.soln.getStatus() )
 print( "Value: " + str( prob.soln.value ) )
+print( "Final point: " + str( prob.soln.final ) )
 print( "Retval: " + str( prob.soln.retval ) )
 
-# prob.initPoint( [-10.0, -12.0] )
-# # solver.warmStart()
-# solver.solve()
-# print( prob.soln.getStatus() )
-# print( "Value: " + str( prob.soln.value ) )
+prob.initPoint( [-10.0, -12.0] )
+solver.warmStart()
+solver.solve()
+print( prob.soln.getStatus() )
+print( "Value: " + str( prob.soln.value ) )

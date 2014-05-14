@@ -136,25 +136,26 @@ cdef class Solver( base.Solver ):
         self.default_fctn_prec = np.power( np.spacing(1), 0.9 ) ## pg. 24
         self.prob = None
 
-        ## Set options
-        self.printOpts[ "summaryFile" ] = "stdout"
-        self.printOpts[ "printLevel" ] = 0
-        self.printOpts[ "minorPrintLevel" ] = 0
-        self.solveOpts[ "infValue" ] = 1e20
-        self.solveOpts[ "iterLimit" ] = self.default_iter_limit
-        self.solveOpts[ "minorIterLimit" ] = self.default_iter_limit
-        self.solveOpts[ "lineSearchTol" ] = 0.9
-        self.solveOpts[ "fctnPrecision" ] = 0 ## Invalid value
-        self.solveOpts[ "feasibilityTol" ] = 0 ## Invalid value
-        self.solveOpts[ "optimalityTol" ] = 0 ## Invalid value
-        self.solveOpts[ "verifyGrad" ] = False
-
         ## We are assuming np.float64 equals doublereal from now on
         ## At least we need to be sure that doublereal is 8 bytes in this architecture
         assert( sizeof( doublereal ) == 8 )
 
         if( prob ):
             self.setupProblem( prob )
+
+        ## Set options
+        self.printOpts[ "summaryFile" ] = "stdout"
+        self.printOpts[ "printLevel" ] = 0
+        self.printOpts[ "minorPrintLevel" ] = 0
+        self.solveOpts[ "infValue" ] = 1e20
+        self.solveOpts[ "iterLimit" ] = self.default_iter_limit ## defined in setupProblem
+        self.solveOpts[ "minorIterLimit" ] = self.default_iter_limit ## defined in setupProblem
+        self.solveOpts[ "lineSearchTol" ] = 0.9
+        self.solveOpts[ "fctnPrecision" ] = 0 ## Invalid value
+        self.solveOpts[ "feasibilityTol" ] = 0 ## Invalid value
+        self.solveOpts[ "optimalityTol" ] = 0 ## Invalid value
+        self.solveOpts[ "verifyGrad" ] = False
+
 
 
     def setupProblem( self, prob ):
@@ -195,8 +196,7 @@ cdef class Solver( base.Solver ):
             self.deallocate()
             self.allocate()
 
-        ## Require all arrays we are going to copy to be:
-        ## two-dimensional, float64, fortran contiguous, and type aligned
+        ## Copy information from prob to NPSOL's working arrays
         tmplb = utils.convFortran( prob.lb )
         memcpy( &self.bl[0], utils.getPtr( tmplb ),
                 prob.N * sizeof( doublereal ) )
@@ -281,6 +281,10 @@ cdef class Solver( base.Solver ):
         return True
 
 
+    def __dealloc__( self ):
+        self.deallocate()
+
+
     def warmStart( self ):
         if( not isinstance( self.prob.soln, Soln ) ):
             return False
@@ -296,10 +300,6 @@ cdef class Solver( base.Solver ):
 
         self.warm_start = True
         return True
-
-
-    def __dealloc__( self ):
-        self.deallocate()
 
 
     def checkPrintOpts( self ):
@@ -500,6 +500,7 @@ cdef class Solver( base.Solver ):
 
         if( self.warm_start ):
             npsol.npoptn_( STR_WARM_START, len( STR_WARM_START ) )
+            self.warm_start = False ## Reset variable
 
         ## Call NPSOL
         npsol.npsol_( n, nclin,

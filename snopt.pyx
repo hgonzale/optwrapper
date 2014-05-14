@@ -3,6 +3,7 @@ from libc.math cimport sqrt
 cimport cpython.mem as mem
 cimport numpy as np
 import numpy as np
+from scipy.sparse import coo_matrix
 
 from f2ch cimport *
 cimport filehandler as fh
@@ -12,23 +13,34 @@ cimport base
 import nlp
 
 ## SNOPT's option strings
-cdef char* STR_NOLIST = "Nolist"
-cdef char* STR_PRINT_FILE = "Print file"
-cdef char* STR_SUMMARY_FILE = "Summary file"
-cdef char* STR_PRINT_LEVEL = "Print level"
-cdef char* STR_MINOR_PRINT_LEVEL = "Minor print level"
-cdef char* STR_INFINITE_BOUND_SIZE = "Infinite bound size"
-cdef char* STR_ITERATION_LIMIT = "Iteration limit"
-cdef char* STR_MINOR_ITERATION_LIMIT = "Minor iteration limit"
-cdef char* STR_LINE_SEARCH_TOLERANCE = "Line search tolerance"
-cdef char* STR_FEASIBILITY_TOLERANCE = "Feasibility tolerance"
-cdef char* STR_OPTIMALITY_TOLERANCE = "Optimality tolerance"
+cdef char* STR_NONDERIVATIVE_LINESEARCH = "Nonderivative linesearch"
+cdef char* STR_DIFFERENCE_INTERVAL = "Difference interval"
 cdef char* STR_FUNCTION_PRECISION = "Function precision"
-cdef char* STR_VERIFY_LEVEL = "Verify level"
-cdef char* STR_WARM_START = "Warm start"
+cdef char* STR_MAJOR_FEASIBILITY_TOLERANCE = "Major feasibility tolerance"
+cdef char* STR_MINOR_FEASIBILITY_TOLERANCE = "Minor feasibility tolerance"
+cdef char* STR_HESSIAN_FULL_MEMORY = "Hessian full memory"
+cdef char* STR_HESSIAN_UPDATES = "Hessian updates"
+cdef char* STR_INFINITE_BOUND = "Infinite bound"
+cdef char* STR_ITERATIONS_LIMIT = "Iterations limit"
+cdef char* STR_MAJOR_ITERATIONS_LIMIT = "Major iterations limit"
+cdef char* STR_MINOR_ITERATIONS_LIMIT = "Minor iterations limit"
+cdef char* STR_LINESEARCH_TOLERANCE = "Linesearch tolerance"
+cdef char* STR_MAJOR_OPTIMALITY_TOLERANCE = "Major optimality tolerance"
+cdef char* STR_MAJOR_PRINT_LEVEL = "Major print level"
+cdef char* STR_MINOR_PRINT_LEVEL = "Minor print level"
+cdef char* STR_PIVOT_TOLERANCE = "Pivot tolerance"
+cdef char* STR_QPSOLVER_CHOLESKY = "QPSolver Cholesky"
+cdef char* STR_QPSOLVER_CG = "QPSolver CG"
+cdef char* STR_QPSOLVER_QN = "QPSolver QN"
+cdef char* STR_SCALE_OPTION = "Scale option"
+cdef char* STR_SCALE_PRINT = "Scale print"
+cdef char* STR_SOLUTION_NO = "Solution No"
+cdef char* STR_SUPPRESS_PARAMETERS = "Suppress parameters"
 cdef char* STR_TOTAL_CHARACTER_WORKSPACE = "Total character workspace"
 cdef char* STR_TOTAL_INTEGER_WORKSPACE = "Total integer workspace"
 cdef char* STR_TOTAL_REAL_WORKSPACE = "Total real workspace"
+cdef char* STR_VERIFY_LEVEL = "Verify level"
+cdef char* STR_VIOLATION_LIMIT = "Violation limit"
 
 cdef tuple statusInfo = ( "Finished successfully", ## 0
                           "The problem appears to be infeasible", ## 10
@@ -138,6 +150,14 @@ cdef class Solver( base.Solver ):
     cdef int mem_alloc_ws
     cdef int mem_size_ws[3] ## lencw, leniw, lenrw
 
+    cdef float default_tol
+    cdef float default_fctn_prec
+    cdef float default_feas_tol
+    cdef int default_iter_limit
+    cdef int default_maj_iter_limit
+    cdef int default_min_iter_limit
+    cdef float default_violation_limit
+
 
     def __init__( self, prob=None ):
         super().__init__()
@@ -146,22 +166,12 @@ cdef class Solver( base.Solver ):
         self.mem_size[0] = self.mem_size[1] = self.mem_size[2] = 0
         self.mem_alloc_ws = False
         self.mem_size_ws[0] = self.mem_size_ws[1] = self.mem_size_ws[2] = 0
-        # self.default_tol = sqrt( np.spacing(1) ) ## pg. 24
-        # self.default_fctn_prec = np.power( np.spacing(1), 0.9 ) ## pg. 24
+        self.default_tol = sqrt( np.spacing(1) ) ## "Difference interval", pg. 71
+        self.default_fctn_prec = np.power( np.spacing(1), 2.0/3.0 ) ## pg. 72, there is a typo there
+        self.default_feas_tol = 1.0e-6 ## pg. 76
+        self.default_min_iter_limit = 500 ## pg. 78
+        self.default_violation_limit = 10 ## pg. 85
         self.prob = None
-
-        ## Set options
-        self.printOpts[ "summaryFile" ] = "stdout"
-        self.printOpts[ "printLevel" ] = 0
-        self.printOpts[ "minorPrintLevel" ] = 0
-        # self.solveOpts[ "infValue" ] = 1e20
-        # self.solveOpts[ "iterLimit" ] = self.default_iter_limit
-        # self.solveOpts[ "minorIterLimit" ] = self.default_iter_limit
-        # self.solveOpts[ "lineSearchTol" ] = 0.9
-        # self.solveOpts[ "fctnPrecision" ] = 0 ## Invalid value
-        # self.solveOpts[ "feasibilityTol" ] = 0 ## Invalid value
-        # self.solveOpts[ "optimalityTol" ] = 0 ## Invalid value
-        # self.solveOpts[ "verifyGrad" ] = False
 
         ## We are assuming np.float64 equals doublereal from now on
         ## At least we need to be sure that doublereal is 8 bytes in this architecture
@@ -170,6 +180,29 @@ cdef class Solver( base.Solver ):
         if( prob ):
             self.setupProblem( prob )
 
+        ## Set options
+        self.printOpts[ "summaryFile" ] = "stdout"
+        self.printOpts[ "printLevel" ] = 0
+        self.printOpts[ "minorPrintLevel" ] = 0
+        self.solveOpts[ "derivLinesearch" ] = True
+        self.solveOpts[ "diffInterval" ] = self.default_tol
+        self.solveOpts[ "fctnPrecision" ] = self.default_fctn_prec
+        self.solveOpts[ "majorFeasibilityTol" ] = self.default_feas_tol
+        self.solveOpts[ "minorFeasibilityTol" ] = self.default_feas_tol
+        self.solveOpts[ "forceFullHessian" ] = False
+        self.solveOpts[ "bfgsResetFreq" ] = 10 ## pg. 74
+        self.solveOpts[ "infValue" ] = 1.0e20 ## pg. 74
+        self.solveOpts[ "iterLimit" ] = self.default_iter_limit ## defined in setupProblem
+        self.solveOpts[ "majorIterLimit" ] = self.default_maj_iter_limit ## defined in setupProblem
+        self.solveOpts[ "minorIterLimit" ] = self.default_min_iter_limit
+        self.solveOpts[ "lineSearchTol" ] = 0.9
+        self.solveOpts[ "majorOptimalityTol" ] = self.default_feas_tol
+        self.solveOpts[ "pivotTol" ] = self.default_fctn_prec
+        self.solveOpts[ "qpSolver" ] = "Cholesky"
+        self.solveOpts[ "disableScaling" ] = False
+        self.solveOpts[ "printScaling" ] = False
+        self.solveOpts[ "verifyGrad" ] = False
+        self.solveOpts[ "violationLimit" ] = self.default_violation_limit
 
 
     def setupProblem( self, prob ):
@@ -179,17 +212,20 @@ cdef class Solver( base.Solver ):
             raise TypeError( "Argument 'prob' must be of type 'nlp.Problem'" )
 
         self.prob = prob ## Save a copy of prob's pointer
-        extprob = prob ## Save a global copy prob's pointer for funcon and funobj
+        extprob = prob ## Save a global copy of prob's pointer usrfun
 
         ## New problems cannot be warm started
-        self.warm_start = False
-        self.Start[0] = 0
+        self.Start[0] = 0 ## Cold start
 
         ## Set size-dependent constants
         self.nF[0] = 1 + prob.Nconslin + prob.Ncons
         self.lenA[0] = prob.Nconslin * prob.N
+        self.neA[0] = self.lenA[0] ## Default to a dense matrix
         self.lenG[0] = ( 1 + prob.Ncons ) * prob.N
-        self.neG[0] = self.lenG[0]
+        self.neG[0] = self.lenG[0] ## Current implementation works with dense matrices
+        ## I'm guessing the definition of m in pgs. 74,76
+        self.default_iter_limit = max( 1000, 20*( prob.Ncons + prob.Nconslin ) )
+        self.default_maj_iter_limit = max( 1000, prob.Ncons + prob.Nconslin )
 
         ## Allocate if necessary
         if( not self.mem_alloc ):
@@ -235,7 +271,7 @@ cdef class Solver( base.Solver ):
             memcpy( self.iAfun, utils.getPtr( tmpiAfun ),
                     self.lenA[0] * sizeof( integer ) )
 
-            tmpjAvar = utils.convIntFortran( Asparse.col )
+            tmpjAvar = utils.convIntFortran( Asparse.col + 1 )
             memcpy( self.jAvar, utils.getPtr( tmpjAvar ),
                     self.lenA[0] * sizeof( integer ) )
 
@@ -369,7 +405,35 @@ cdef class Solver( base.Solver ):
         self.deallocate()
 
 
+    def warmStart( self ):
+        if( not isinstance( self.prob.soln, Soln ) ):
+            return False
+
+        tmpxstate = utils.convIntFortran( self.prob.soln.xstate )
+        memcpy( self.xstate, utils.getPtr( tmpxstate ), self.prob.N * sizeof( doublereal ) )
+
+        tmpFstate = utils.convFortran( self.prob.soln.Fstate )
+        memcpy( self.Fstate, utils.getPtr( tmpFstate ), self.nF[0] * sizeof( doublereal ) )
+
+        self.Start[0] = 2
+        return True
+
+
     def solve( self ):
+        cdef integer nS[1]
+        cdef integer nInf[1]
+        cdef doublereal sInf[1]
+        cdef integer mincw[1]
+        cdef integer miniw[1]
+        cdef integer minrw[1]
+        cdef integer inform_out[1]
+        cdef integer *ltmpcw = [ 500 ]
+        cdef integer *ltmpiw = [ 500 ]
+        cdef integer *ltmprw = [ 500 ]
+        cdef char tmpcw[500*8]
+        cdef integer tmpiw[500]
+        cdef doublereal tmprw[500]
+
         cdef integer *n = [ self.prob.N ]
         cdef integer *nxname = [ 1 ] ## Do not provide vars names
         cdef integer *nFname = [ 1 ] ## Do not provide cons names
@@ -378,27 +442,29 @@ cdef class Solver( base.Solver ):
         cdef char *probname = "optwrapp" ## Must have 8 characters
         cdef char *xnames = "dummy"
         cdef char *Fnames = "dummy"
-        cdef integer nS[1]
-        cdef integer nInf[1]
-        cdef doublereal sInf[1]
-        cdef integer mincw[1]
-        cdef integer miniw[1]
-        cdef integer minrw[1]
-
         cdef bytes printFileTmp = self.printOpts[ "printFile" ].encode() ## temp container
         cdef char* printFile = printFileTmp
         cdef bytes summaryFileTmp = self.printOpts[ "summaryFile" ].encode() ## temp container
         cdef char* summaryFile = summaryFileTmp
         cdef integer* summaryFileUnit = [ 89 ] ## Hardcoded since nobody cares
         cdef integer* printFileUnit = [ 90 ] ## Hardcoded since nobody cares
-
-        cdef integer inform_out[1]
-        cdef integer *ltmpcw = [ 500 ]
-        cdef integer *ltmpiw = [ 500 ]
-        cdef integer *ltmprw = [ 500 ]
-        cdef char tmpcw[500*8]
-        cdef integer tmpiw[500]
-        cdef doublereal tmprw[500]
+        cdef integer* printLevel = [ self.printOpts[ "printLevel" ] ]
+        cdef integer* minorPrintLevel = [ self.printOpts[ "minorPrintLevel" ] ]
+        cdef doublereal* diffInterval = [ self.solveOpts[ "diffInterval" ] ]
+        cdef doublereal* fctnPrecision = [ self.solveOpts[ "fctnPrecision" ] ]
+        cdef doublereal* majorFeasibilityTol = [ self.solveOpts[ "majorFeasibilityTol" ] ]
+        cdef doublereal* minorFeasibilityTol = [ self.solveOpts[ "minorFeasibilityTol" ] ]
+        cdef integer* bfgsResetFreq = [ self.solveOpts[ "bfgsResetFreq" ] ]
+        cdef doublereal* infValue = [ self.solveOpts[ "infValue" ] ]
+        cdef integer* iterLimit = [ self.solveOpts[ "iterLimit" ] ]
+        cdef integer* majorIterLimit = [ self.solveOpts[ "majorIterLimit" ] ]
+        cdef integer* minorIterLimit = [ self.solveOpts[ "minorIterLimit" ] ]
+        cdef doublereal* lineSearchTol = [ self.solveOpts[ "lineSearchTol" ] ]
+        cdef doublereal* majorOptimalityTol = [ self.solveOpts[ "majorOptimalityTol" ] ]
+        cdef doublereal* pivotTol = [ self.solveOpts[ "pivotTol" ] ]
+        cdef doublereal* violationLimit = [ self.solveOpts[ "violationLimit" ] ]
+        cdef integer* zero = [ 0 ]
+        cdef integer verifyLevel[1]
 
         ## Begin by setting up initial condition
         tmpinit = utils.convFortran( self.prob.init )
@@ -445,6 +511,7 @@ cdef class Solver( base.Solver ):
             self.deallocate_ws()
             self.allocate_ws()
 
+        ## Copy content of temp workspace arrays to malloc'ed workspace arrays
         memcpy( self.cw, tmpcw, ltmpcw[0] * sizeof( char ) )
         memcpy( self.iw, tmpiw, ltmpiw[0] * sizeof( integer ) )
         memcpy( self.rw, tmprw, ltmprw[0] * sizeof( doublereal ) )
@@ -466,6 +533,175 @@ cdef class Solver( base.Solver ):
         if( inform_out[0] != 0 ):
             raise Exception( "Could not set workspace lengths" )
 
+        ## Suppress parameters
+        snopt.snset_( STR_SUPPRESS_PARAMETERS,
+                      printFileUnit, summaryFileUnit, inform_out,
+                      self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                      len( STR_SUPPRESS_PARAMETERS ), self.lencw[0]*8 )
+
+
+        ## Set major print level
+        snopt.snseti_( STR_MAJOR_PRINT_LEVEL, printLevel,
+                       printFileUnit, summaryFileUnit, inform_out,
+                       self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                       len( STR_MAJOR_PRINT_LEVEL ), self.lencw[0]*8 )
+
+        ## Set minor print level
+        snopt.snseti_( STR_MINOR_PRINT_LEVEL, minorPrintLevel,
+                       printFileUnit, summaryFileUnit, inform_out,
+                       self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                       len( STR_MINOR_PRINT_LEVEL ), self.lencw[0]*8 )
+
+        ## Disable derivative linesearch is necessary
+        if( not self.solveOpts[ "derivLinesearch" ] ):
+            snopt.snset_( STR_NONDERIVATIVE_LINESEARCH,
+                          printFileUnit, summaryFileUnit, inform_out,
+                          self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                          len( STR_NONDERIVATIVE_LINESEARCH ), self.lencw[0]*8 )
+
+        ## Set difference interval if necessary
+        if( self.solveOpts[ "diffInterval" ] > self.default_tol ):
+            snopt.snsetr_( STR_DIFFERENCE_INTERVAL, diffInterval,
+                           printFileUnit, summaryFileUnit, inform_out,
+                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                           len( STR_DIFFERENCE_INTERVAL ), self.lencw[0]*8 )
+
+        ## Set functino precision if necessary
+        if( self.solveOpts[ "fctnPrecision" ] > self.default_fctn_prec ):
+            snopt.snsetr_( STR_FUNCTION_PRECISION, fctnPrecision,
+                           printFileUnit, summaryFileUnit, inform_out,
+                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                           len( STR_FUNCTION_PRECISION ), self.lencw[0]*8 )
+
+        ## Set major feasibility tolerance if necessary
+        if( self.solveOpts[ "majorFeasibilityTol" ] > self.default_feas_tol ):
+            snopt.snsetr_( STR_MAJOR_FEASIBILITY_TOLERANCE, majorFeasibilityTol,
+                           printFileUnit, summaryFileUnit, inform_out,
+                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                           len( STR_MAJOR_FEASIBILITY_TOLERANCE ), self.lencw[0]*8 )
+
+        ## Set minor feasibility tolerance if necessary
+        if( self.solveOpts[ "minorFeasibilityTol" ] > self.default_feas_tol ):
+            snopt.snsetr_( STR_MINOR_FEASIBILITY_TOLERANCE, minorFeasibilityTol,
+                           printFileUnit, summaryFileUnit, inform_out,
+                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                           len( STR_MINOR_FEASIBILITY_TOLERANCE ), self.lencw[0]*8 )
+
+        ## Force full hessian
+        if( self.solveOpts[ "forceFullHessian" ] ):
+            snopt.snset_( STR_HESSIAN_FULL_MEMORY,
+                          printFileUnit, summaryFileUnit, inform_out,
+                          self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                          len( STR_HESSIAN_FULL_MEMORY ), self.lencw[0]*8 )
+
+        ## Set BFGS reset frequency
+        snopt.snseti_( STR_HESSIAN_UPDATES, bfgsResetFreq,
+                       printFileUnit, summaryFileUnit, inform_out,
+                       self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                       len( STR_HESSIAN_UPDATES ), self.lencw[0]*8 )
+
+        ## Set infinity value
+        snopt.snsetr_( STR_INFINITE_BOUND, infValue,
+                       printFileUnit, summaryFileUnit, inform_out,
+                       self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                       len( STR_INFINITE_BOUND ), self.lencw[0]*8 )
+
+        ## Set iterations limit if necessary
+        if( self.solveOpts[ "iterLimit" ] > self.default_iter_limit ):
+            snopt.snseti_( STR_ITERATIONS_LIMIT, iterLimit,
+                           printFileUnit, summaryFileUnit, inform_out,
+                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                           len( STR_ITERATIONS_LIMIT ), self.lencw[0]*8 )
+
+        ## Set major iterations limit if necessary
+        if( self.solveOpts[ "majorIterLimit" ] > self.default_maj_iter_limit ):
+            snopt.snseti_( STR_MAJOR_ITERATIONS_LIMIT, majorIterLimit,
+                           printFileUnit, summaryFileUnit, inform_out,
+                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                           len( STR_MAJOR_ITERATIONS_LIMIT ), self.lencw[0]*8 )
+
+        ## Set minor iterations limit if necessary
+        if( self.solveOpts[ "minorIterLimit" ] > self.default_min_iter_limit ):
+            snopt.snseti_( STR_MINOR_ITERATIONS_LIMIT, minorIterLimit,
+                           printFileUnit, summaryFileUnit, inform_out,
+                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                           len( STR_MINOR_ITERATIONS_LIMIT ), self.lencw[0]*8 )
+
+        ## Set line search tolerance
+        snopt.snsetr_( STR_LINESEARCH_TOLERANCE, lineSearchTol,
+                       printFileUnit, summaryFileUnit, inform_out,
+                       self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                       len( STR_LINESEARCH_TOLERANCE ), self.lencw[0]*8 )
+
+        ## Set major optimality tolerance if necessary
+        if( self.solveOpts[ "majorOptimalityTol" ] > self.default_feas_tol ):
+            snopt.snsetr_( STR_MAJOR_OPTIMALITY_TOLERANCE, majorOptimalityTol,
+                           printFileUnit, summaryFileUnit, inform_out,
+                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                           len( STR_MAJOR_OPTIMALITY_TOLERANCE ), self.lencw[0]*8 )
+
+        ## Set pivot tolerance
+        if( self.solveOpts[ "pivotTol" ] > self.default_fctn_prec ):
+            snopt.snsetr_( STR_PIVOT_TOLERANCE, pivotTol,
+                           printFileUnit, summaryFileUnit, inform_out,
+                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                           len( STR_PIVOT_TOLERANCE ), self.lencw[0]*8 )
+
+        ## Set QP solver
+        if( self.solveOpts[ "qpSolver" ].lower() == "cholesky" ):
+            snopt.snset_( STR_QPSOLVER_CHOLESKY,
+                          printFileUnit, summaryFileUnit, inform_out,
+                          self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                          len( STR_QPSOLVER_CHOLESKY ), self.lencw[0]*8 )
+        elif( self.solveOpts[ "qpSolver" ].lower() == "cg" ):
+            snopt.snset_( STR_QPSOLVER_CG,
+                          printFileUnit, summaryFileUnit, inform_out,
+                          self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                          len( STR_QPSOLVER_CG ), self.lencw[0]*8 )
+        elif( self.solveOpts[ "qpSolver" ].lower() == "qn" ):
+            snopt.snset_( STR_QPSOLVER_QN,
+                          printFileUnit, summaryFileUnit, inform_out,
+                          self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                          len( STR_QPSOLVER_QN ), self.lencw[0]*8 )
+
+        ## Scaling option and print
+        if( self.solveOpts[ "disableScaling" ] ):
+            snopt.snseti_( STR_SCALE_OPTION, zero,
+                          printFileUnit, summaryFileUnit, inform_out,
+                          self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                          len( STR_SCALE_OPTION ), self.lencw[0]*8 )
+        if( self.solveOpts[ "printScaling" ] ):
+            snopt.snset_( STR_SCALE_PRINT,
+                          printFileUnit, summaryFileUnit, inform_out,
+                          self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                          len( STR_SCALE_PRINT ), self.lencw[0]*8 )
+
+        ## Do not print solution to print file
+        snopt.snset_( STR_SOLUTION_NO,
+                      printFileUnit, summaryFileUnit, inform_out,
+                      self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                      len( STR_SOLUTION_NO ), self.lencw[0]*8 )
+
+        ## Set verify level
+        if( self.solveOpts[ "verifyGrad" ] ):
+            verifyLevel[0] = 3 ## Check gradients with two algorithms
+        else:
+            verifyLevel[0] = -1 ## Disabled
+        snopt.snseti_( STR_VERIFY_LEVEL, verifyLevel,
+                       printFileUnit, summaryFileUnit, inform_out,
+                       self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                       len( STR_VERIFY_LEVEL ), self.lencw[0]*8 )
+
+        ## Set constraint violation limit
+        if( self.solveOpts[ "violationLimit" ] > self.default_violation_limit ):
+            snopt.snsetr_( STR_VIOLATION_LIMIT, violationLimit,
+                           printFileUnit, summaryFileUnit, inform_out,
+                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                           len( STR_VIOLATION_LIMIT ), self.lencw[0]*8 )
+
+        if( inform_out[0] != 0 ):
+            raise Exception( "At least one option setting failed" )
+
         ## Execute SNOPT
         snopt.snopta_( self.Start, self.nF,
                        n, nxname, nFname,
@@ -484,6 +720,9 @@ cdef class Solver( base.Solver ):
                        self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
                        len( probname ), len( xnames ), len( Fnames ),
                        self.lencw[0]*8, self.lencw[0]*8 )
+
+        ## Reset warm start
+        self.Start[0] = 0
 
         ## Politely close files
         if( self.printOpts[ "printFile" ] != "" ):
