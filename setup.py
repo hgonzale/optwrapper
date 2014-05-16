@@ -9,11 +9,14 @@ setup( cmdclass = {'build_ext': build_ext},
 
 setup( cmdclass = {'build_ext': build_ext},
        ext_modules = [ Extension( "base", [ "base.pyx" ],
-                                  include_dirs = [ np.get_include() ] ) ] )
+                                  include_dirs = [ np.get_include(),
+                                                   "." ] ) ] )
+                                  
 
 setup( cmdclass = {'build_ext': build_ext},
        ext_modules = [ Extension( "npsol", [ "npsol.pyx" ],
-                                  include_dirs = [ np.get_include() ],
+                                  include_dirs = [ np.get_include(),
+                                                   "." ],
                                   extra_objects = [ "dummy.o",
                                                     "filehandler.o" ],
                                   libraries = [ "npsol_c",
@@ -26,7 +29,8 @@ setup( cmdclass = {'build_ext': build_ext},
 
 setup( cmdclass = {'build_ext': build_ext},
        ext_modules = [ Extension( "snopt", [ "snopt.pyx" ],
-                                  include_dirs = [ np.get_include() ],
+                                  include_dirs = [ np.get_include(),
+                                                   "." ],
                                   extra_objects = [ "dummy.o",
                                                     "filehandler.o" ],
                                   libraries = [ "snopt_c",
