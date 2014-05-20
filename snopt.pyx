@@ -289,10 +289,10 @@ cdef class Solver( base.Solver ):
                     prob.Ncons * sizeof( doublereal ) )
 
             ## Rest is filled in Fortran-order
-            for jdx in range( self.prob.Ncons ):
-                for idx in range( self.prob.N ):
-                    self.iGfun[self.prob.N + idx + self.prob.N * jdx] = 2 + idx + self.prob.Nconslin
-                    self.jGvar[self.prob.N + idx + self.prob.N * jdx] = 1 + jdx
+            for jdx in range( self.prob.N ):
+                for idx in range( self.prob.Ncons ):
+                    self.iGfun[self.prob.N + idx + self.prob.Ncons * jdx] = 2 + idx + self.prob.Nconslin
+                    self.jGvar[self.prob.N + idx + self.prob.Ncons * jdx] = 1 + jdx
 
         memset( self.xstate, 0, self.prob.N * sizeof( integer ) )
         memset( self.Fstate, 0, self.nF[0] * sizeof( integer ) )
@@ -410,10 +410,10 @@ cdef class Solver( base.Solver ):
             return False
 
         tmpxstate = utils.convIntFortran( self.prob.soln.xstate )
-        memcpy( self.xstate, utils.getPtr( tmpxstate ), self.prob.N * sizeof( doublereal ) )
+        memcpy( self.xstate, utils.getPtr( tmpxstate ), self.prob.N * sizeof( integer ) )
 
-        tmpFstate = utils.convFortran( self.prob.soln.Fstate )
-        memcpy( self.Fstate, utils.getPtr( tmpFstate ), self.nF[0] * sizeof( doublereal ) )
+        tmpFstate = utils.convIntFortran( self.prob.soln.Fstate )
+        memcpy( self.Fstate, utils.getPtr( tmpFstate ), self.nF[0] * sizeof( integer ) )
 
         self.Start[0] = 2
         return True
@@ -738,11 +738,11 @@ cdef class Solver( base.Solver ):
         self.prob.soln.final = np.copy( utils.wrap1dPtr( self.x, self.prob.N,
                                                          np.NPY_DOUBLE ) )
         self.prob.soln.xstate = np.copy( utils.wrap1dPtr( self.xstate, self.prob.N,
-                                                          np.NPY_LONG ) )
+                                                          np.NPY_INT ) )
         self.prob.soln.xmul = np.copy( utils.wrap1dPtr( self.xmul, self.prob.N,
                                                         np.NPY_DOUBLE ) )
-        self.prob.soln.Fstate = np.copy( utils.wrap1dPtr( self.xstate, self.nF[0],
-                                                          np.NPY_LONG ) )
+        self.prob.soln.Fstate = np.copy( utils.wrap1dPtr( self.Fstate, self.nF[0],
+                                                          np.NPY_INT ) )
         self.prob.soln.Fmul = np.copy( utils.wrap1dPtr( self.Fmul, self.nF[0],
                                                         np.NPY_DOUBLE ) )
         self.prob.soln.nS = int( nS[0] )

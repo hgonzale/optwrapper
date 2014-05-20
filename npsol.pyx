@@ -136,8 +136,9 @@ cdef class Solver( base.Solver ):
         self.default_fctn_prec = np.power( np.spacing(1), 0.9 ) ## pg. 24
         self.prob = None
 
-        ## We are assuming np.float64 equals doublereal from now on
-        ## At least we need to be sure that doublereal is 8 bytes in this architecture
+        ## We are assuming np.int (size 4) equals integer from now on
+        assert( sizeof( integer ) == 4 )
+        ## We are assuming np.float64 (size 8) equals doublereal from now on
         assert( sizeof( doublereal ) == 8 )
 
         if( prob ):
@@ -526,7 +527,7 @@ cdef class Solver( base.Solver ):
         self.prob.soln.final = np.copy( utils.wrap1dPtr( self.x, self.prob.N,
                                                          np.NPY_DOUBLE ) )
         self.prob.soln.istate = np.copy( utils.wrap1dPtr( self.istate, self.nctotl,
-                                                          np.NPY_LONG ) )
+                                                          np.NPY_INT ) )
         self.prob.soln.clamda = np.copy( utils.wrap1dPtr( self.clamda, self.nctotl,
                                                           np.NPY_DOUBLE ) )
         self.prob.soln.R = np.copy( utils.wrap2dPtr( self.R, self.prob.N, self.prob.N,

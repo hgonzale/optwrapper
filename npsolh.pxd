@@ -23,7 +23,7 @@ cdef extern from "npsol.h":
 
     int npopti_( char *string, integer *ivalue, ftnlen string_len )
 
-    int npoptr_(char *string, doublereal *rvalue, ftnlen string_len)
+    int npoptr_( char *string, doublereal *rvalue, ftnlen string_len )
 
     ## npfilewrapper.h
     # int npfilewrapper_( char *name__, integer *inform__, ftnlen name_len )
