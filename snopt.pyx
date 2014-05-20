@@ -72,7 +72,7 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
     if( status[0] == 2 ): ## Final call, do nothing
         return 0
 
-    xarr = utils.wrap1dPtr( x, n[0], np.NPY_DOUBLE )
+    xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
 
     if( needF[0] > 0 ):
         f[0] = extprob.objf( xarr )
@@ -172,10 +172,6 @@ cdef class Solver( base.Solver ):
         self.default_min_iter_limit = 500 ## pg. 78
         self.default_violation_limit = 10 ## pg. 85
         self.prob = None
-
-        ## We are assuming np.float64 equals doublereal from now on
-        ## At least we need to be sure that doublereal is 8 bytes in this architecture
-        assert( sizeof( doublereal ) == 8 )
 
         if( prob ):
             self.setupProblem( prob )
@@ -736,15 +732,15 @@ cdef class Solver( base.Solver ):
         self.prob.soln = Soln()
         self.prob.soln.value = float( self.F[0] )
         self.prob.soln.final = np.copy( utils.wrap1dPtr( self.x, self.prob.N,
-                                                         np.NPY_DOUBLE ) )
+                                                         utils.doublereal_type ) )
         self.prob.soln.xstate = np.copy( utils.wrap1dPtr( self.xstate, self.prob.N,
-                                                          np.NPY_INT ) )
+                                                          utils.integer_type ) )
         self.prob.soln.xmul = np.copy( utils.wrap1dPtr( self.xmul, self.prob.N,
-                                                        np.NPY_DOUBLE ) )
+                                                        utils.doublereal_type ) )
         self.prob.soln.Fstate = np.copy( utils.wrap1dPtr( self.Fstate, self.nF[0],
-                                                          np.NPY_INT ) )
+                                                          utils.integer_type ) )
         self.prob.soln.Fmul = np.copy( utils.wrap1dPtr( self.Fmul, self.nF[0],
-                                                        np.NPY_DOUBLE ) )
+                                                        utils.doublereal_type ) )
         self.prob.soln.nS = int( nS[0] )
         self.prob.soln.retval = int( inform_out[0] )
 

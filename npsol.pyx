@@ -64,7 +64,7 @@ cdef int funcon( integer* mode, integer* ncnln,
                  integer* n, integer* ldJ, integer* needc,
                  doublereal* x, doublereal* c, doublereal* cJac,
                  integer* nstate ):
-    xarr = utils.wrap1dPtr( x, n[0], np.NPY_DOUBLE )
+    xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
 
     if( mode[0] != 1 ):
         tmpf = utils.convFortran( extprob.consf( xarr ) )
@@ -135,11 +135,6 @@ cdef class Solver( base.Solver ):
         self.default_tol = sqrt( np.spacing(1) ) ## pg. 24
         self.default_fctn_prec = np.power( np.spacing(1), 0.9 ) ## pg. 24
         self.prob = None
-
-        ## We are assuming np.int (size 4) equals integer from now on
-        assert( sizeof( integer ) == 4 )
-        ## We are assuming np.float64 (size 8) equals doublereal from now on
-        assert( sizeof( doublereal ) == 8 )
 
         if( prob ):
             self.setupProblem( prob )
@@ -525,13 +520,13 @@ cdef class Solver( base.Solver ):
         self.prob.soln = Soln()
         self.prob.soln.value = float( objf_val[0] )
         self.prob.soln.final = np.copy( utils.wrap1dPtr( self.x, self.prob.N,
-                                                         np.NPY_DOUBLE ) )
+                                                         utils.doublereal_type ) )
         self.prob.soln.istate = np.copy( utils.wrap1dPtr( self.istate, self.nctotl,
-                                                          np.NPY_INT ) )
+                                                          utils.integer_type ) )
         self.prob.soln.clamda = np.copy( utils.wrap1dPtr( self.clamda, self.nctotl,
-                                                          np.NPY_DOUBLE ) )
+                                                          utils.doublereal_type ) )
         self.prob.soln.R = np.copy( utils.wrap2dPtr( self.R, self.prob.N, self.prob.N,
-                                                     np.NPY_DOUBLE ) )
+                                                     utils.doublereal_type ) )
         self.prob.soln.Niters = int( iter_out[0] )
         self.prob.soln.retval = int( inform_out[0] )
 
