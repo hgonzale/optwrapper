@@ -51,6 +51,9 @@ class Problem:
         self.consg = None
         self.conslb = None
         self.consub = None
+        self.conslinA = None
+        self.conslinlb = None
+        self.conslinub = None
         self.soln = None
 
 
@@ -198,43 +201,7 @@ class Problem:
         if( type(consg) != types.FunctionType ):
             raise ValueError( "Argument must be a function" )
 
-        # self.jacobian_style = "dense"
         self.consg = consg
-
-
-    # def set_sparse_constraint_gradient( self, i_indices, j_indices, gg ):
-    #     """
-    #     i_indices, j_indices, are arrays of length nj
-    #     where nj is the number of non-zero elements in
-    #     the jacobian
-    #     gg is a function that returns an array A which contains
-    #     the non-zero jacobian elements with corresponding indices
-    #     specified by i_indices and j_indices, that is,
-    #     A[p] is the partial derivative of the i_indices[p] constraint
-    #     with respect to the j_indices[p] variable
-
-    #     to define the jacobian as a dense matrix,
-    #     consider using set_constraint_gradient(gg)
-
-    #     i_indices = [ 0, 0, 1, 1 ]
-    #     j_indices = [ 0, 1, 0, 1 ]
-    #     def gg(x):
-    #         return np.array( [ 2*x[0], 8*x[1],
-    #                            2*(x[0]-2), 2*x[1] ] )
-    #     prob.set_sparse_constraint_gradient( i_indices, j_indices, gg )
-    #     """
-    #     if( not len(i_indices) == len(j_indices) ):
-    #         print( "Usage: " )
-    #         print( self.set_sparse_constraint_gradient.__doc__ )
-    #         raise ValueError( "mismatched length of i_indices and j_indices" )
-    #     if( not type(gg) == types.FunctionType ):
-    #         print( "Usage: " )
-    #         print( self.set_sparse_constraint_gradient.__doc__ )
-    #         raise ValueError( "input gg must be a function" )
-    #     self.iG = i_indices
-    #     self.jG = j_indices
-    #     self.jacobian_style = "sparse"
-    #     self.congrad = gg
 
 
     def checkGrad( self, h=1e-5, etol=1e-4, point=None, debug=False ):
@@ -288,11 +255,6 @@ class Problem:
 
         usrgrad[0,:] = self.objg( point )
         usrgrad[1:,:] = self.consg( point )
-        # if( self.jacobian_style == "sparse" ):
-        #     A = self.congrad( point )
-        #     for p in range( 0, len(self.iG) ):
-        #         usrgrad[ self.iG[p]+1, self.jG[p] ] = A[p]
-        # else:
         if( np.any( np.isnan( usrgrad ) ) or
             np.any( np.isinf( usrgrad ) ) ):
             raise ValueError( "Gradient returned NaN or inf." )
@@ -401,3 +363,92 @@ class Problem:
                 return False
 
         return True
+
+
+
+class SparseProblem( Problem ):
+    """
+    General nonlinear programming optimization problem.
+    Requires a nonlinear objective function and its gradient.
+    Accepts box, linear, and nonlinear constraints.
+    """
+
+    def __init__( self, N, Ncons=0, Nconslin=0 ):
+        super().__init__( N, Ncons, Nconslin )
+
+        self.objgpattern = None
+        self.consgpattern = None
+        self.conslinApattern = None
+
+
+    def consLinear( self, A, lb, ub, pattern=None ):
+        """
+        Defines linear constraints.
+
+        Arguments:
+        A   linear constraint matrix, two-dimensional array of size (Nconslin,N).
+        lb  lower bounds, one-dimensional array of size Nconslin.
+        ub  upper bounds, one-dimensional array of size Nconslin.
+        pattern  dense binary matrix
+
+        prob.consLinear( [[1,-1],[1,1]], [-1,-2], [1,2] )
+        """
+        super().consLinear( A, lb, ub )
+
+        if( pattern ):
+            self.conslinApattern = np.asfortranarray( pattern, dtype=np.int )
+        else:
+            self.conslinApattern = np.asfortranarray( prob.conslinA != 0, dtype=np.int )
+
+        if( self.conslinApattern.shape != ( self.Nconslin, self.N ) ):
+            raise ValueError( "Argument 'pattern' must have size (" + str(self.Nconslin)
+                              + "," + str(self.N) + ")." )
+
+
+    def objGrad( self, objg, pattern=None ):
+        """
+        Set objective gradient.
+
+        Arguments:
+        objg  gradient function, must return a one-dimensional array of size N.
+
+        def objg(x):
+            return np.array( [2,-1] )
+        prob.objGrad( objg )
+        """
+        super().objGrad( objg )
+
+        if( pattern ):
+            self.objgpattern = np.asfortranarray( pattern, dtype=np.int )
+
+            if( self.objgpattern.shape != ( self.N, ) ):
+                raise ValueError( "Argument 'pattern' must have size (" + str(self.N) + ",)." )
+
+
+    def consGrad( self, consg, pattern=None ):
+        """
+        Set nonlinear constraints gradient.
+
+        Arguments:
+        consg  constraint gradient, must return a two-dimensional array of
+               size (Ncons,N), where entry [i,j] is the derivative of i-th
+               constraint w.r.t. the j-th variables.
+
+        def consg(x):
+            return np.array( [ [ 2*x[0], 8*x[1] ],
+                               [ 2*(x[0]-2), 2*x[1] ] ] )
+        prob.consGrad( consg )
+        """
+        super().consGrad( consg )
+
+        if( pattern ):
+            self.consgpattern = np.asfortranarray( pattern, dtype=np.int )
+
+            if( self.consgpattern.shape != ( self.Ncons, self,N ) ):
+                raise ValueError( "Argument 'pattern' must have size (" + str(self.Ncons)
+                                + "," + str(self.N) + ")." )
+
+
+    def checkPatterns( self ):
+        ## TODO
+        pass
