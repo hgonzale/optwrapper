@@ -578,14 +578,14 @@ cdef class Solver( base.Solver ):
         if( self.solveOpts[ "forceFullHessian" ] ):
             snopt.snset_( STR_HESSIAN_FULL_MEMORY,
                           printFileUnit, summaryFileUnit, inform_out,
-                          self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                          len( STR_HESSIAN_FULL_MEMORY ), self.lencw[0]*8 )
+                          tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw,
+                          len( STR_HESSIAN_FULL_MEMORY ), ltmpcw[0]*8 )
 
         ## Set BFGS reset frequency
         snopt.snseti_( STR_HESSIAN_UPDATES, bfgsResetFreq,
                        printFileUnit, summaryFileUnit, inform_out,
-                       self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                       len( STR_HESSIAN_UPDATES ), self.lencw[0]*8 )
+                       tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw,
+                       len( STR_HESSIAN_UPDATES ), ltmpcw[0]*8 )
 
         ## Estimate workspace memory requirements
         snopt.snmema_( inform_out, self.nF, n, nxname, nFname, self.lenA, self.lenG,
