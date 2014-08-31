@@ -1,5 +1,5 @@
 from libc.string cimport memcpy, memset
-from libc.math cimport sqrt
+from libc.stdlib cimport malloc, free
 cimport cpython.mem as mem
 cimport numpy as np
 import numpy as np
@@ -166,7 +166,7 @@ cdef class Solver( base.Solver ):
         self.mem_size[0] = self.mem_size[1] = self.mem_size[2] = 0
         self.mem_alloc_ws = False
         self.mem_size_ws[0] = self.mem_size_ws[1] = self.mem_size_ws[2] = 0
-        self.default_tol = sqrt( np.spacing(1) ) ## "Difference interval", pg. 71
+        self.default_tol = np.sqrt( np.spacing(1) ) ## "Difference interval", pg. 71
         self.default_fctn_prec = np.power( np.spacing(1), 2.0/3.0 ) ## pg. 72, there is a typo there
         self.default_feas_tol = 1.0e-6 ## pg. 76
         self.default_min_iter_limit = 500 ## pg. 78
@@ -216,8 +216,8 @@ cdef class Solver( base.Solver ):
         ## Set size-dependent constants
         self.nF[0] = 1 + prob.Nconslin + prob.Ncons
         self.lenA[0] = prob.Nconslin * prob.N
-        self.neA[0] = self.lenA[0] ## Default to a dense matrix
         self.lenG[0] = ( 1 + prob.Ncons ) * prob.N
+        self.neA[0] = self.lenA[0] ## Default to a dense matrix
         self.neG[0] = self.lenG[0] ## Current implementation works with dense matrices
         ## I'm guessing the definition of m in pgs. 74,76
         self.default_iter_limit = max( 1000, 20*( prob.Ncons + prob.Nconslin ) )
@@ -287,7 +287,8 @@ cdef class Solver( base.Solver ):
             ## Rest is filled in Fortran-order
             for jdx in range( self.prob.N ):
                 for idx in range( self.prob.Ncons ):
-                    self.iGfun[self.prob.N + idx + self.prob.Ncons * jdx] = 2 + idx + self.prob.Nconslin
+                    self.iGfun[self.prob.N + idx + self.prob.Ncons * jdx] = ( 2 + idx +
+                                                                            self.prob.Nconslin )
                     self.jGvar[self.prob.N + idx + self.prob.Ncons * jdx] = 1 + jdx
 
         memset( self.xstate, 0, self.prob.N * sizeof( integer ) )
@@ -299,21 +300,21 @@ cdef class Solver( base.Solver ):
         if( self.mem_alloc ):
             return False
 
-        self.x = <doublereal *> mem.PyMem_Malloc( self.prob.N * sizeof( doublereal ) )
-        self.xlow = <doublereal *> mem.PyMem_Malloc( self.prob.N * sizeof( doublereal ) )
-        self.xupp = <doublereal *> mem.PyMem_Malloc( self.prob.N * sizeof( doublereal ) )
-        self.xmul = <doublereal *> mem.PyMem_Malloc( self.prob.N * sizeof( doublereal ) )
-        self.xstate = <integer *> mem.PyMem_Malloc( self.prob.N * sizeof( integer ) )
-        self.F = <doublereal *> mem.PyMem_Malloc( self.nF[0] * sizeof( doublereal ) )
-        self.Flow = <doublereal *> mem.PyMem_Malloc( self.nF[0] * sizeof( doublereal ) )
-        self.Fupp = <doublereal *> mem.PyMem_Malloc( self.nF[0] * sizeof( doublereal ) )
-        self.Fmul = <doublereal *> mem.PyMem_Malloc( self.nF[0] * sizeof( doublereal ) )
-        self.Fstate = <integer *> mem.PyMem_Malloc( self.nF[0] * sizeof( integer ) )
-        self.A = <doublereal *> mem.PyMem_Malloc( self.lenA[0] * sizeof( doublereal ) )
-        self.iAfun = <integer *> mem.PyMem_Malloc( self.lenA[0] * sizeof( integer ) )
-        self.jAvar = <integer *> mem.PyMem_Malloc( self.lenA[0] * sizeof( integer ) )
-        self.iGfun = <integer *> mem.PyMem_Malloc( self.lenG[0] * sizeof( integer ) )
-        self.jGvar = <integer *> mem.PyMem_Malloc( self.lenG[0] * sizeof( integer ) )
+        self.x = <doublereal *> malloc( self.prob.N * sizeof( doublereal ) )
+        self.xlow = <doublereal *> malloc( self.prob.N * sizeof( doublereal ) )
+        self.xupp = <doublereal *> malloc( self.prob.N * sizeof( doublereal ) )
+        self.xmul = <doublereal *> malloc( self.prob.N * sizeof( doublereal ) )
+        self.xstate = <integer *> malloc( self.prob.N * sizeof( integer ) )
+        self.F = <doublereal *> malloc( self.nF[0] * sizeof( doublereal ) )
+        self.Flow = <doublereal *> malloc( self.nF[0] * sizeof( doublereal ) )
+        self.Fupp = <doublereal *> malloc( self.nF[0] * sizeof( doublereal ) )
+        self.Fmul = <doublereal *> malloc( self.nF[0] * sizeof( doublereal ) )
+        self.Fstate = <integer *> malloc( self.nF[0] * sizeof( integer ) )
+        self.A = <doublereal *> malloc( self.lenA[0] * sizeof( doublereal ) )
+        self.iAfun = <integer *> malloc( self.lenA[0] * sizeof( integer ) )
+        self.jAvar = <integer *> malloc( self.lenA[0] * sizeof( integer ) )
+        self.iGfun = <integer *> malloc( self.lenG[0] * sizeof( integer ) )
+        self.jGvar = <integer *> malloc( self.lenG[0] * sizeof( integer ) )
 
         if( self.x is NULL or
             self.xlow is NULL or
@@ -339,25 +340,40 @@ cdef class Solver( base.Solver ):
         return True
 
 
+    cdef mustAllocate( self, N, Nconslin, Ncons, lenA=None, lenG=None ):
+        if( not self.mem_alloc ):
+            return True
+
+        if( 
+        
+        if( self.
+            self.allocate()
+        elif( self.mem_size[0] < prob.N or
+              self.mem_size[1] < prob.Nconslin or
+              self.mem_size[2] < prob.Ncons ):
+            self.deallocate()
+            self.allocate()
+
+
     cdef deallocate( self ):
         if( not self.mem_alloc ):
             return False
 
-        mem.PyMem_Free( self.x )
-        mem.PyMem_Free( self.xlow )
-        mem.PyMem_Free( self.xupp )
-        mem.PyMem_Free( self.xstate )
-        mem.PyMem_Free( self.xmul )
-        mem.PyMem_Free( self.F )
-        mem.PyMem_Free( self.Flow )
-        mem.PyMem_Free( self.Fupp )
-        mem.PyMem_Free( self.Fstate )
-        mem.PyMem_Free( self.Fmul )
-        mem.PyMem_Free( self.A )
-        mem.PyMem_Free( self.iAfun )
-        mem.PyMem_Free( self.jAvar )
-        mem.PyMem_Free( self.iGfun )
-        mem.PyMem_Free( self.jGvar )
+        free( self.x )
+        free( self.xlow )
+        free( self.xupp )
+        free( self.xstate )
+        free( self.xmul )
+        free( self.F )
+        free( self.Flow )
+        free( self.Fupp )
+        free( self.Fstate )
+        free( self.Fmul )
+        free( self.A )
+        free( self.iAfun )
+        free( self.jAvar )
+        free( self.iGfun )
+        free( self.jGvar )
 
         self.mem_alloc = False
         return True
@@ -368,9 +384,9 @@ cdef class Solver( base.Solver ):
             return False
 
         ## Allocate workspace memory
-        self.cw = <char *> mem.PyMem_Malloc( self.lencw[0] * 8 * sizeof( char ) )
-        self.iw = <integer *> mem.PyMem_Malloc( self.leniw[0] * sizeof( integer ) )
-        self.rw = <doublereal *> mem.PyMem_Malloc( self.lenrw[0] * sizeof( doublereal ) )
+        self.cw = <char *> malloc( self.lencw[0] * 8 * sizeof( char ) )
+        self.iw = <integer *> malloc( self.leniw[0] * sizeof( integer ) )
+        self.rw = <doublereal *> malloc( self.lenrw[0] * sizeof( doublereal ) )
 
         if( self.iw is NULL or
             self.rw is NULL or
@@ -388,9 +404,9 @@ cdef class Solver( base.Solver ):
         if( not self.mem_alloc_ws ):
             return False
 
-        mem.PyMem_Free( self.cw )
-        mem.PyMem_Free( self.iw )
-        mem.PyMem_Free( self.rw )
+        free( self.cw )
+        free( self.iw )
+        free( self.rw )
 
         self.mem_alloc_ws = False
         return True

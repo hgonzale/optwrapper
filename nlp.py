@@ -67,7 +67,7 @@ class Problem:
 
         prob.initCond( [ 1.0, 1.0 ] )
         """
-        self.init = np.asarray( init )
+        self.init = np.asfortranarray( init )
 
         if( self.init.shape != ( self.N, ) ):
             raise ValueError( "Argument must have size (" + str(self.N) + ",)." )
@@ -83,8 +83,8 @@ class Problem:
 
         prob.consBox( [-1,-2], [1,2] )
         """
-        self.lb = np.asarray( lb )
-        self.ub = np.asarray( ub )
+        self.lb = np.asfortranarray( lb )
+        self.ub = np.asfortranarray( ub )
 
         if( self.lb.shape != ( self.N, ) or
             self.ub.shape != ( self.N, ) ):
@@ -102,9 +102,9 @@ class Problem:
 
         prob.consLinear( [[1,-1],[1,1]], [-1,-2], [1,2] )
         """
-        self.conslinA = np.asarray( A )
-        self.conslinlb = np.asarray( lb )
-        self.conslinub = np.asarray( ub )
+        self.conslinA = np.asfortranarray( A )
+        self.conslinlb = np.asfortranarray( lb )
+        self.conslinub = np.asfortranarray( ub )
 
         if( self.conslinA.shape != ( self.Nconslin, self.N ) ):
             raise ValueError( "Argument 'A' must have size (" + str(self.Nconslin)
@@ -176,8 +176,8 @@ class Problem:
             ub = np.zeros( self.Ncons )
 
         self.consf = consf
-        self.conslb = np.asarray( lb )
-        self.consub = np.asarray( ub )
+        self.conslb = np.asfortranarray( lb )
+        self.consub = np.asfortranarray( ub )
 
         if( self.conslb.shape != ( self.Ncons, ) or
             self.consub.shape != ( self.Ncons, ) ):
@@ -228,7 +228,7 @@ class Problem:
         if( point == None ):
             point = self.init
         else:
-            point = np.asarray( point )
+            point = np.asfortranarray( point )
             if( point.shape != ( self.N, ) ):
                 raise ValueError( "Argument 'point' must have size (" + str(self.N) + ",)." )
 
