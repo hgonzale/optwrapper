@@ -8,7 +8,7 @@ class Problem:
     Accepts box, linear, and nonlinear constraints.
     """
 
-    def __init__( self, N, Ncons=0, Nconslin=0 ):
+    def __init__( self, N, Ncons=0, Nconslin=0, mixedCons=False ):
         """
         Arguments:
         N         number of optimization variables (required).
@@ -42,6 +42,9 @@ class Problem:
         if( self.Ncons < 0 ):
             raise ValueError( "Ncons must be positive" )
 
+        if( mixedCons and Nconslin != Ncons ):
+            raise ValueError( "If constrained are mixed type then Nconslin must be equal to Ncons" )
+
         self.init = np.zeros( self.N )
         self.lb = None
         self.ub = None
@@ -55,6 +58,7 @@ class Problem:
         self.conslinlb = None
         self.conslinub = None
         self.soln = None
+        self.mixedCons = mixedCons
 
 
     def initPoint( self, init ):
@@ -91,7 +95,7 @@ class Problem:
             raise ValueError( "Bound must have size (" + str(self.N) + ",)." )
 
 
-    def consLinear( self, A, lb, ub ):
+    def consLinear( self, A, lb=None, ub=None ):
         """
         Defines linear constraints.
 
@@ -103,16 +107,24 @@ class Problem:
         prob.consLinear( [[1,-1],[1,1]], [-1,-2], [1,2] )
         """
         self.conslinA = np.asfortranarray( A )
-        self.conslinlb = np.asfortranarray( lb )
-        self.conslinub = np.asfortranarray( ub )
 
         if( self.conslinA.shape != ( self.Nconslin, self.N ) ):
             raise ValueError( "Argument 'A' must have size (" + str(self.Nconslin)
                               + "," + str(self.N) + ")." )
 
-        if( self.conslinlb.shape != ( self.Nconslin, ) or
-            self.conslinub.shape != ( self.Nconslin, ) ):
-            raise ValueError( "Bounds must have size (" + str(self.Nconslin) + ",)." )
+        if( not self.mixedCons ):
+            if( not lb ):
+                lb = -np.inf * np.ones( self.Nconslin )
+
+            if( not ub ):
+                ub = np.zeros( self.Nconslin )
+
+            self.conslinlb = np.asfortranarray( lb )
+            self.conslinub = np.asfortranarray( ub )
+
+            if( self.conslinlb.shape != ( self.Nconslin, ) or
+                self.conslinub.shape != ( self.Nconslin, ) ):
+                raise ValueError( "Bounds must have size (" + str(self.Nconslin) + ",)." )
 
 
     def objFctn( self, objf ):
@@ -169,10 +181,10 @@ class Problem:
         if( type(consf) != types.FunctionType ):
             raise ValueError( "Argument must be a function" )
 
-        if( lb == None ):
+        if( not lb ):
             lb = -np.inf * np.ones( self.Ncons )
 
-        if( ub == None ):
+        if( not ub ):
             ub = np.zeros( self.Ncons )
 
         self.consf = consf
@@ -373,36 +385,11 @@ class SparseProblem( Problem ):
     Accepts box, linear, and nonlinear constraints.
     """
 
-    def __init__( self, N, Ncons=0, Nconslin=0 ):
-        super().__init__( N, Ncons, Nconslin )
+    def __init__( self, N, Ncons=0, Nconslin=0, mixedCons=False ):
+        super().__init__( N, Ncons, Nconslin, mixedCons )
 
         self.objgpattern = None
         self.consgpattern = None
-        self.conslinApattern = None
-
-
-    def consLinear( self, A, lb, ub, pattern=None ):
-        """
-        Defines linear constraints.
-
-        Arguments:
-        A   linear constraint matrix, two-dimensional array of size (Nconslin,N).
-        lb  lower bounds, one-dimensional array of size Nconslin.
-        ub  upper bounds, one-dimensional array of size Nconslin.
-        pattern  dense binary matrix
-
-        prob.consLinear( [[1,-1],[1,1]], [-1,-2], [1,2] )
-        """
-        super().consLinear( A, lb, ub )
-
-        if( pattern ):
-            self.conslinApattern = np.asfortranarray( pattern, dtype=np.int )
-        else:
-            self.conslinApattern = np.asfortranarray( prob.conslinA != 0, dtype=np.int )
-
-        if( self.conslinApattern.shape != ( self.Nconslin, self.N ) ):
-            raise ValueError( "Argument 'pattern' must have size (" + str(self.Nconslin)
-                              + "," + str(self.N) + ")." )
 
 
     def objGrad( self, objg, pattern=None ):

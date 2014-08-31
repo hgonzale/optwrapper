@@ -146,7 +146,7 @@ cdef class Solver( base.Solver ):
 
     cdef int warm_start
     cdef int mem_alloc
-    cdef int mem_size[3] ## N, Nconslin, Ncons
+    cdef int mem_size[4]
     cdef int mem_alloc_ws
     cdef int mem_size_ws[3] ## lencw, leniw, lenrw
 
@@ -163,9 +163,9 @@ cdef class Solver( base.Solver ):
         super().__init__()
 
         self.mem_alloc = False
-        self.mem_size[0] = self.mem_size[1] = self.mem_size[2] = 0
         self.mem_alloc_ws = False
-        self.mem_size_ws[0] = self.mem_size_ws[1] = self.mem_size_ws[2] = 0
+        memset( self.mem_size, 0, 4 ) ## Set mem_size to zero
+        memset( self.mem_size_ws, 0, 3 ) ## Set mem_size_ws to zero
         self.default_tol = np.sqrt( np.spacing(1) ) ## "Difference interval", pg. 71
         self.default_fctn_prec = np.power( np.spacing(1), 2.0/3.0 ) ## pg. 72, there is a typo there
         self.default_feas_tol = 1.0e-6 ## pg. 76
@@ -213,27 +213,42 @@ cdef class Solver( base.Solver ):
         ## New problems cannot be warm started
         self.Start[0] = 0 ## Cold start
 
-        ## Set size-dependent constants
-        self.nF[0] = 1 + prob.Nconslin + prob.Ncons
-        self.lenA[0] = prob.Nconslin * prob.N
-        self.lenG[0] = ( 1 + prob.Ncons ) * prob.N
-        self.neA[0] = self.lenA[0] ## Default to a dense matrix
-        self.neG[0] = self.lenG[0] ## Current implementation works with dense matrices
+        ## Set nF
+        if( self.prob.mixedCons ):
+            self.nF[0] = 1 + prob.Ncons
+        else:
+            self.nF[0] = 1 + prob.Nconslin + prob.Ncons
+
+        ## Set lenA
+        if( prob.Nconslin > 0 ):
+            self.lenA[0] = ( prob.conslinA != 0 ).sum()
+            self.neA[0] = self.lenA[0]
+        else: ## Minimum allowed values, pg. 16
+            self.lenA[0] = 1
+            self.neA[0] = 0
+
+        ## Set lenG
+        if( isinstance( prob, nlp.SparseProblem ) and prob.objgpattern ):
+            self.lenG[0] = ( prob.objgpattern != 0 ).sum()
+        else:
+            self.lenG[0] = prob.N
+
+        if( isinstance( prob, nlp.SparseProblem ) and prob.consgpattern ):
+            self.lenG[0] += ( prob.consgpattern != 0 ).sum()
+        else:
+            self.lenG[0] += prob.Ncons * prob.N
+
+        self.neG[0] = self.lenG[0]
+
         ## I'm guessing the definition of m in pgs. 74,76
         self.default_iter_limit = max( 1000, 20*( prob.Ncons + prob.Nconslin ) )
         self.default_maj_iter_limit = max( 1000, prob.Ncons + prob.Nconslin )
 
         ## Allocate if necessary
-        if( not self.mem_alloc ):
-            self.allocate()
-        elif( self.mem_size[0] < prob.N or
-              self.mem_size[1] < prob.Nconslin or
-              self.mem_size[2] < prob.Ncons ):
+        if( self.mustAllocate( self.prob.N, self.nF[0], self.lenA[0], self.lenG[0] ) ):
             self.deallocate()
             self.allocate()
 
-        ## Require all arrays we are going to copy to be:
-        ## two-dimensional, float64, fortran contiguous, and type aligned
         tmplb = utils.convFortran( prob.lb )
         memcpy( self.xlow, utils.getPtr( tmplb ),
                 prob.N * sizeof( doublereal ) )
@@ -247,21 +262,34 @@ cdef class Solver( base.Solver ):
 
         ## We fill iGfun and jGvar as we write them in usrfun
         ## First row belongs to objg
-        for idx in range( self.prob.N ):
-            self.iGfun[idx] = 1 ## These are Fortran indices, must start from 1!
-            self.jGvar[idx] = 1 + idx
+        ## These are Fortran indices, must start from 1!
+        if( isinstance( prob, nlp.SparseProblem ) and prob.objgpattern ):
+            objgpatsparse = coo_matrix( prob.objgpattern )
+            lenobjg = len( objgpatsparse.data )
+
+            tmpiGfun = utils.convIntFortran( objgpatsparse.row + 1 )
+            memcpy( &self.iGfun[0], utils.getPtr( tmpiGfun ),
+                    lenobjg * sizeof( integer ) )
+            tmpjGvar = utils.convIntFortran( objgpatsparse.col + 1 )
+            memcpy( &self.jGvar[0], utils.getPtr( tmpjGvar ),
+                    lenobjg * sizeof( integer ) )
+        else:
+            for idx in range( self.prob.N ):
+                self.iGfun[idx] = 1
+                self.jGvar[idx] = 1 + idx
 
         if( prob.Nconslin > 0 ):
-            tmpconslinlb = utils.convFortran( prob.conslinlb )
-            memcpy( &self.Flow[1], utils.getPtr( tmpconslinlb ),
-                    prob.Nconslin * sizeof( doublereal ) )
+            if( not prob.mixedCons ):
+                tmpconslinlb = utils.convFortran( prob.conslinlb )
+                memcpy( &self.Flow[1], utils.getPtr( tmpconslinlb ),
+                        prob.Nconslin * sizeof( doublereal ) )
 
-            tmpconslinub = utils.convFortran( prob.conslinub )
-            memcpy( &self.Fupp[1], utils.getPtr( tmpconslinub ),
-                    prob.Nconslin * sizeof( doublereal ) )
+                tmpconslinub = utils.convFortran( prob.conslinub )
+                memcpy( &self.Fupp[1], utils.getPtr( tmpconslinub ),
+                        prob.Nconslin * sizeof( doublereal ) )
 
             Asparse = coo_matrix( prob.conslinA )
-            self.neA[0] = len( Asparse.data )
+            assert( self.lenA[0] == len( Asparse.data ) )
             ## Linear cons come below objective, in rows 2 to prob.Nconslin + 1
             tmpiAfun = utils.convIntFortran( Asparse.row + 2 )
             memcpy( self.iAfun, utils.getPtr( tmpiAfun ),
@@ -276,20 +304,35 @@ cdef class Solver( base.Solver ):
                     self.lenA[0] * sizeof( doublereal ) )
 
         if( prob.Ncons > 0 ):
+            tmpidx = 1
+            if( not prob.mixedCons ):
+                tmpidx += prob.Nconslin
+
             tmpconslb = utils.convFortran( prob.conslb )
-            memcpy( &self.Flow[1], utils.getPtr( tmpconslb ),
+            memcpy( &self.Flow[tmpidx], utils.getPtr( tmpconslb ),
                     prob.Ncons * sizeof( doublereal ) )
 
             tmpconsub = utils.convFortran( prob.consub )
-            memcpy( &self.Fupp[1], utils.getPtr( tmpconsub ),
+            memcpy( &self.Fupp[tmpidx], utils.getPtr( tmpconsub ),
                     prob.Ncons * sizeof( doublereal ) )
 
             ## Rest is filled in Fortran-order
-            for jdx in range( self.prob.N ):
-                for idx in range( self.prob.Ncons ):
-                    self.iGfun[self.prob.N + idx + self.prob.Ncons * jdx] = ( 2 + idx +
-                                                                            self.prob.Nconslin )
-                    self.jGvar[self.prob.N + idx + self.prob.Ncons * jdx] = 1 + jdx
+            if( isinstance( prob, nlp.SparseProblem ) and prob.consgpattern ):
+                consgpatsparse = coo_matrix( prob.consgpattern )
+                lenconsg = len( consgpatsparse.data )
+                assert( self.lenG[0] == lenobjg + lenconsg )
+
+                tmpiGfun = utils.convIntFortran( consgpatsparse.row + 1 + tmpidx )
+                memcpy( &self.iGfun[lenobjg], utils.getPtr( tmpiGfun ),
+                        lenconsg * sizeof( integer ) )
+                tmpjGvar = utils.convIntFortran( consgpatsparse.col + 1 )
+                memcpy( &self.jGvar[lenobjg], utils.getPtr( tmpjGvar ),
+                        lenconsg * sizeof( integer ) )
+            else:
+                for jdx in range( prob.N ):
+                    for idx in range( prob.Ncons ):
+                        self.iGfun[prob.N + idx + prob.Ncons * jdx] = 2 + idx + prob.Nconslin
+                        self.jGvar[prob.N + idx + prob.Ncons * jdx] = 1 + jdx
 
         memset( self.xstate, 0, self.prob.N * sizeof( integer ) )
         memset( self.Fstate, 0, self.nF[0] * sizeof( integer ) )
@@ -334,25 +377,29 @@ cdef class Solver( base.Solver ):
             raise MemoryError( "At least one memory allocation failed" )
 
         self.mem_alloc = True
-        self.mem_size[0] = self.prob.N
-        self.mem_size[1] = self.prob.Nconslin
-        self.mem_size[2] = self.prob.Ncons
+        self.setMemSize( self.prob.N, self.nF[0], self.lenA[0], self.lenG[0] )
+
         return True
 
 
-    cdef mustAllocate( self, N, Nconslin, Ncons, lenA=None, lenG=None ):
+    cdef mustAllocate( self, N, nF, lenA, lenG ):
         if( not self.mem_alloc ):
             return True
 
-        if( 
-        
-        if( self.
-            self.allocate()
-        elif( self.mem_size[0] < prob.N or
-              self.mem_size[1] < prob.Nconslin or
-              self.mem_size[2] < prob.Ncons ):
-            self.deallocate()
-            self.allocate()
+        if( self.mem_size[0] < N or
+            self.mem_size[1] < nF or
+            self.mem_size[2] < lenA or
+            self.mem_size[3] < lenG ):
+            return True
+
+        return False
+
+
+    cdef setMemSize( self, N, nF, lenA, lenG ):
+        self.mem_size[0] = N
+        self.mem_size[1] = nF
+        self.mem_size[2] = lenA
+        self.mem_size[3] = lenG
 
 
     cdef deallocate( self ):
@@ -376,10 +423,11 @@ cdef class Solver( base.Solver ):
         free( self.jGvar )
 
         self.mem_alloc = False
+        self.setMemSize( 0, 0, 0, 0 )
         return True
 
 
-    cdef allocate_ws( self ):
+    cdef allocateWS( self ):
         if( self.mem_alloc_ws ):
             return False
 
@@ -394,13 +442,29 @@ cdef class Solver( base.Solver ):
             raise MemoryError( "At least one memory allocation failed" )
 
         self.mem_alloc_ws = True
-        self.mem_size_ws[0] = self.lencw[0]
-        self.mem_size_ws[1] = self.leniw[0]
-        self.mem_size_ws[2] = self.lenrw[0]
+        self.setMemSizeWS( self.lencw[0], self.leniw[0], self.lenrw[0] )
         return True
 
 
-    cdef deallocate_ws( self ):
+    cdef mustAllocateWS( self, lencw, leniw, lenrw ):
+        if( not self.mem_alloc_ws ):
+            return True
+
+        if( self.mem_size_ws[0] < lencw or
+            self.mem_size_ws[1] < leniw or
+            self.mem_size_ws[2] < lenrw ):
+            return True
+
+        return False
+
+
+    cdef setMemSizeWS( self, lencw, leniw, lenrw ):
+        self.mem_size_ws[0] = lencw
+        self.mem_size_ws[1] = leniw
+        self.mem_size_ws[2] = lenrw
+
+
+    cdef deallocateWS( self ):
         if( not self.mem_alloc_ws ):
             return False
 
@@ -409,6 +473,7 @@ cdef class Solver( base.Solver ):
         free( self.rw )
 
         self.mem_alloc_ws = False
+        self.setMemSizeWS( 0, 0, 0 )
         return True
 
 
@@ -507,6 +572,21 @@ cdef class Solver( base.Solver ):
                        tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw,
                        ltmpcw[0]*8 )
 
+        inform_out[0] = 0 ## Reset inform_out before running snset* functions
+        ## The following two settings change the outcome of snmema, pg. 29
+        ## Force full hessian
+        if( self.solveOpts[ "forceFullHessian" ] ):
+            snopt.snset_( STR_HESSIAN_FULL_MEMORY,
+                          printFileUnit, summaryFileUnit, inform_out,
+                          self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                          len( STR_HESSIAN_FULL_MEMORY ), self.lencw[0]*8 )
+
+        ## Set BFGS reset frequency
+        snopt.snseti_( STR_HESSIAN_UPDATES, bfgsResetFreq,
+                       printFileUnit, summaryFileUnit, inform_out,
+                       self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                       len( STR_HESSIAN_UPDATES ), self.lencw[0]*8 )
+
         ## Estimate workspace memory requirements
         snopt.snmema_( inform_out, self.nF, n, nxname, nFname, self.lenA, self.lenG,
                        self.lencw, self.leniw, self.lenrw,
@@ -515,13 +595,9 @@ cdef class Solver( base.Solver ):
         if( inform_out[0] != 104 ):
             raise Exception( "snopt.snMemA failed to estimate workspace memory requirements" )
 
-        if( not self.mem_alloc_ws ):
-            self.allocate_ws()
-        elif( self.lencw[0] > self.mem_size_ws[0] or
-              self.leniw[0] > self.mem_size_ws[1] or
-              self.lenrw[0] > self.mem_size_ws[2] ):
-            self.deallocate_ws()
-            self.allocate_ws()
+        if( self.mustAllocateWS( self.lencw[0], self.leniw[0], self.lenrw[0] ) ):
+            self.deallocateWS()
+            self.allocateWS()
 
         ## Copy content of temp workspace arrays to malloc'ed workspace arrays
         memcpy( self.cw, tmpcw, ltmpcw[0] * sizeof( char ) )
@@ -598,19 +674,6 @@ cdef class Solver( base.Solver ):
                            printFileUnit, summaryFileUnit, inform_out,
                            self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
                            len( STR_MINOR_FEASIBILITY_TOLERANCE ), self.lencw[0]*8 )
-
-        ## Force full hessian
-        if( self.solveOpts[ "forceFullHessian" ] ):
-            snopt.snset_( STR_HESSIAN_FULL_MEMORY,
-                          printFileUnit, summaryFileUnit, inform_out,
-                          self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                          len( STR_HESSIAN_FULL_MEMORY ), self.lencw[0]*8 )
-
-        ## Set BFGS reset frequency
-        snopt.snseti_( STR_HESSIAN_UPDATES, bfgsResetFreq,
-                       printFileUnit, summaryFileUnit, inform_out,
-                       self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                       len( STR_HESSIAN_UPDATES ), self.lencw[0]*8 )
 
         ## Set infinity value
         snopt.snsetr_( STR_INFINITE_BOUND, infValue,
