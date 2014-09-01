@@ -195,6 +195,7 @@ cdef class Solver( base.Solver ):
         self.default_min_iter_limit = 500 ## pg. 78
         self.default_violation_limit = 10 ## pg. 85
         self.prob = None
+        print( self.debug )
 
         if( prob ):
             self.setupProblem( prob )
@@ -381,6 +382,14 @@ cdef class Solver( base.Solver ):
         self.iGfun = <integer *> malloc( self.lenG[0] * sizeof( integer ) )
         self.jGvar = <integer *> malloc( self.lenG[0] * sizeof( integer ) )
 
+        if( self.debug ):
+            print( ">>> Memory allocated for data: " +
+                   str( self.prob.N * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
+                        self.nF[0] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
+                        self.lenA[0] * ( sizeof(doublereal) + 2*sizeof(integer) ) +
+                        self.lenG[0] * 2 * sizeof(integer) ) +
+                   "bytes." )
+
         if( self.x is NULL or
             self.xlow is NULL or
             self.xupp is NULL or
@@ -457,6 +466,13 @@ cdef class Solver( base.Solver ):
         self.cw = <char *> malloc( self.lencw[0] * 8 * sizeof( char ) )
         self.iw = <integer *> malloc( self.leniw[0] * sizeof( integer ) )
         self.rw = <doublereal *> malloc( self.lenrw[0] * sizeof( doublereal ) )
+
+        if( self.debug ):
+            print( ">>> Memory allocated for workspace: " +
+                   str( self.lencw[0] * 8 * sizeof(char) +
+                        self.leniw[0] * sizeof(integer) +
+                        self.lenrw[0] * sizeof(doublereal) ) +
+                   "bytes." )
 
         if( self.iw is NULL or
             self.rw is NULL or

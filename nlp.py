@@ -113,10 +113,10 @@ class Problem:
                               + "," + str(self.N) + ")." )
 
         if( not self.mixedCons ):
-            if( not lb ):
+            if( lb == None ):
                 lb = -np.inf * np.ones( self.Nconslin )
 
-            if( not ub ):
+            if( ub == None ):
                 ub = np.zeros( self.Nconslin )
 
             self.conslinlb = np.asfortranarray( lb )
@@ -181,10 +181,10 @@ class Problem:
         if( type(consf) != types.FunctionType ):
             raise ValueError( "Argument must be a function" )
 
-        if( not lb ):
+        if( lb == None ):
             lb = -np.inf * np.ones( self.Ncons )
 
-        if( not ub ):
+        if( ub == None ):
             ub = np.zeros( self.Ncons )
 
         self.consf = consf
@@ -405,7 +405,7 @@ class SparseProblem( Problem ):
         """
         Problem.objGrad( self, objg )
 
-        if( pattern ):
+        if( pattern != None ):
             self.objgpattern = np.asfortranarray( pattern, dtype=np.int )
 
             if( self.objgpattern.shape != ( self.N, ) ):
@@ -428,7 +428,7 @@ class SparseProblem( Problem ):
         """
         Problem.consGrad( self, consg )
 
-        if( pattern ):
+        if( pattern != None ):
             self.consgpattern = np.asfortranarray( pattern, dtype=np.int )
 
             if( self.consgpattern.shape != ( self.Ncons, self.N ) ):

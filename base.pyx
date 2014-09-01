@@ -7,6 +7,7 @@ cdef class Solver:
     def __init__( self ):
         self.printOpts = { "printFile":"" }
         self.solveOpts = { }
+        self.debug = False
 
 
     def checkPrintOpts( self ):
