@@ -11,3 +11,4 @@ cdef class Solver:
 
     cdef public dict printOpts
     cdef public dict solveOpts
+    cdef public int debug

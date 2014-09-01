@@ -1,6 +1,5 @@
 from libc.string cimport memcpy, memset
 from libc.stdlib cimport malloc, free
-cimport cpython.mem as mem
 cimport numpy as np
 import numpy as np
 from scipy.sparse import coo_matrix
@@ -181,7 +180,6 @@ cdef class Solver( base.Solver ):
     cdef int default_min_iter_limit
     cdef float default_violation_limit
 
-
     def __init__( self, prob=None ):
         super().__init__()
 
@@ -195,7 +193,6 @@ cdef class Solver( base.Solver ):
         self.default_min_iter_limit = 500 ## pg. 78
         self.default_violation_limit = 10 ## pg. 85
         self.prob = None
-        print( self.debug )
 
         if( prob ):
             self.setupProblem( prob )
@@ -382,14 +379,6 @@ cdef class Solver( base.Solver ):
         self.iGfun = <integer *> malloc( self.lenG[0] * sizeof( integer ) )
         self.jGvar = <integer *> malloc( self.lenG[0] * sizeof( integer ) )
 
-        if( self.debug ):
-            print( ">>> Memory allocated for data: " +
-                   str( self.prob.N * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
-                        self.nF[0] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
-                        self.lenA[0] * ( sizeof(doublereal) + 2*sizeof(integer) ) +
-                        self.lenG[0] * 2 * sizeof(integer) ) +
-                   "bytes." )
-
         if( self.x is NULL or
             self.xlow is NULL or
             self.xupp is NULL or
@@ -467,13 +456,6 @@ cdef class Solver( base.Solver ):
         self.iw = <integer *> malloc( self.leniw[0] * sizeof( integer ) )
         self.rw = <doublereal *> malloc( self.lenrw[0] * sizeof( doublereal ) )
 
-        if( self.debug ):
-            print( ">>> Memory allocated for workspace: " +
-                   str( self.lencw[0] * 8 * sizeof(char) +
-                        self.leniw[0] * sizeof(integer) +
-                        self.lenrw[0] * sizeof(doublereal) ) +
-                   "bytes." )
-
         if( self.iw is NULL or
             self.rw is NULL or
             self.cw is NULL ):
@@ -513,6 +495,21 @@ cdef class Solver( base.Solver ):
         self.mem_alloc_ws = False
         self.setMemSizeWS( 0, 0, 0 )
         return True
+
+
+    cdef debugMem( self ):
+        print( ">>> Memory allocated for data: " +
+               str( self.mem_size[0] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
+                    self.mem_size[1] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
+                    self.mem_size[2] * ( sizeof(doublereal) + 2*sizeof(integer) ) +
+                    self.mem_size[3] * 2 * sizeof(integer) ) +
+               " bytes." )
+
+        print( ">>> Memory allocated for workspace: " +
+               str( self.mem_size_ws[0] * 8 * sizeof(char) +
+                    self.mem_size_ws[1] * sizeof(integer) +
+                    self.mem_size_ws[2] * sizeof(doublereal) ) +
+               " bytes." )
 
 
     def __dealloc__( self ):
@@ -814,6 +811,9 @@ cdef class Solver( base.Solver ):
 
         if( inform_out[0] != 0 ):
             raise Exception( "At least one option setting failed" )
+
+        if( self.debug ):
+            self.debugMem()
 
         ## Execute SNOPT
         snopt.snopta_( self.Start, self.nF,
