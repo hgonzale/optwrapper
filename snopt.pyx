@@ -815,6 +815,14 @@ cdef class Solver( base.Solver ):
         if( self.debug ):
             self.debugMem()
 
+            if( isinstance( self.prob, nlp.SparseProblem ) ):
+                if( self.prob.Nconslin > 0 ):
+                    print( ">>> Sparsity of A: %.1f" %
+                           ( self.lenA[0] * 100 / ( self.prob.N * self.prob.Nconslin ) ) + "%" )
+                if( self.prob.Ncons > 0 ):
+                    print( ">>> Sparsity of gradient: %.1f" %
+                           ( self.lenG[0] * 100 / ( self.prob.N * (1 + self.prob.Ncons ) ) ) + "%" )
+
         ## Execute SNOPT
         snopt.snopta_( self.Start, self.nF,
                        n, nxname, nFname,
