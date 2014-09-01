@@ -386,7 +386,7 @@ class SparseProblem( Problem ):
     """
 
     def __init__( self, N, Ncons=0, Nconslin=0, mixedCons=False ):
-        super().__init__( N, Ncons, Nconslin, mixedCons )
+        Problem.__init__( self, N, Ncons, Nconslin, mixedCons )
 
         self.objgpattern = None
         self.consgpattern = None
@@ -403,7 +403,7 @@ class SparseProblem( Problem ):
             return np.array( [2,-1] )
         prob.objGrad( objg )
         """
-        super().objGrad( objg )
+        Problem.objGrad( self, objg )
 
         if( pattern ):
             self.objgpattern = np.asfortranarray( pattern, dtype=np.int )
@@ -426,12 +426,12 @@ class SparseProblem( Problem ):
                                [ 2*(x[0]-2), 2*x[1] ] ] )
         prob.consGrad( consg )
         """
-        super().consGrad( consg )
+        Problem.consGrad( self, consg )
 
         if( pattern ):
             self.consgpattern = np.asfortranarray( pattern, dtype=np.int )
 
-            if( self.consgpattern.shape != ( self.Ncons, self,N ) ):
+            if( self.consgpattern.shape != ( self.Ncons, self.N ) ):
                 raise ValueError( "Argument 'pattern' must have size (" + str(self.Ncons)
                                 + "," + str(self.N) + ")." )
 

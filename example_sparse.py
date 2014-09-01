@@ -18,14 +18,14 @@ def consg(x):
     return np.array( [ [ 0, 8*x[1] ],
                        [ 2*(x[0]-2), 2*x[1] ] ] )
 
-prob = nlp.Problem( N=2, Ncons=2 )
+prob = nlp.SparseProblem( N=2, Ncons=2 )
 prob.initPoint( [10.0, 12.0] )
 prob.consBox( [0, -10], [5, 2] )
 
 prob.objFctn( objf )
-prob.objGrad( objg )
+prob.objGrad( objg, [0,1] )
 prob.consFctn( consf, [ -np.inf, -np.inf ], [ 4, 5 ] )
-prob.consGrad( consg )
+prob.consGrad( consg, [[0,1],[1,1]] )
 
 if( not prob.checkGrad() ):
     print( "Gradient does not match function." )

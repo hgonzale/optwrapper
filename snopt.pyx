@@ -64,31 +64,54 @@ cdef tuple statusInfo = ( "Finished successfully", ## 0
 cdef object extprob
 
 cdef int usrfun( integer *status, integer *n, doublereal *x,
-                 integer *needF, integer *neF, doublereal *f,
-                 integer *needG, integer *neG, doublereal *G,
+                 integer *needF, integer *nF, doublereal *f,
+                 integer *needG, integer *lenG, doublereal *G,
                  char *cu, integer *lencu,
                  integer *iu, integer *leniu,
                  doublereal *ru, integer *lenru ):
-    if( status[0] == 2 ): ## Final call, do nothing
+    ## Dual variables are at rw[ iw[329] ] onward, pg.25
+    cdef int lenobjg
+    cdef int lenconsg
+
+    if( status[0] >= 2 ): ## Final call, do nothing
         return 0
 
     xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
 
+    if( extprob.mixedCons ):
+        tmpidx = 1
+    else:
+        tmpidx = 1 + extprob.Nconslin
+
     if( needF[0] > 0 ):
         f[0] = extprob.objf( xarr )
-        tmpconsf = utils.convFortran( extprob.consf( xarr ) )
-        memcpy( &f[extprob.Nconslin+1], utils.getPtr( tmpconsf ),
-                extprob.Ncons * sizeof( doublereal ) )
+        if( extprob.Ncons > 0 ):
+            tmpconsf = utils.convFortran( extprob.consf( xarr ) )
+            memcpy( &f[tmpidx], utils.getPtr( tmpconsf ),
+                    extprob.Ncons * sizeof( doublereal ) )
 
-    ## Saving every entry in gradients
-    ## This behavior should change in the near future
     if( needG[0] > 0 ):
-        tmpobjg = utils.convFortran( extprob.objg( xarr ) )
+        objg = extprob.objg( xarr )
+        if( isinstance( extprob, nlp.SparseProblem ) and extprob.objgpattern != None ):
+            tmpobjg = utils.convFortran( objg.ravel()[ np.flatnonzero( extprob.objgpattern ) ] )
+            lenobjg = extprob.objgpattern.sum()
+        else:
+            tmpobjg = utils.convFortran( objg )
+            lenobjg = extprob.N
+
         memcpy( G, utils.getPtr( tmpobjg ),
-                extprob.N * sizeof( doublereal ) )
-        tmpconsg = utils.convFortran( extprob.consg( xarr ) )
-        memcpy( &G[extprob.N], utils.getPtr( tmpconsg ),
-                extprob.N * extprob.Ncons * sizeof( doublereal ) )
+                lenobjg * sizeof( doublereal ) )
+
+        consg = extprob.consg( xarr )
+        if( isinstance( extprob, nlp.SparseProblem ) and extprob.consgpattern != None ):
+            tmpconsg = utils.convFortran( consg.ravel()[ np.flatnonzero( extprob.consgpattern ) ] )
+            lenconsg = extprob.consgpattern.sum()
+        else:
+            tmpconsg = utils.convFortran( consg )
+            lenconsg = extprob.N * extprob.Ncons
+
+        memcpy( &G[lenobjg], utils.getPtr( tmpconsg ),
+                lenconsg * sizeof( doublereal ) )
 
 
 cdef class Soln( base.Soln ):
@@ -148,7 +171,7 @@ cdef class Solver( base.Solver ):
     cdef int mem_alloc
     cdef int mem_size[4]
     cdef int mem_alloc_ws
-    cdef int mem_size_ws[3] ## lencw, leniw, lenrw
+    cdef int mem_size_ws[3]
 
     cdef float default_tol
     cdef float default_fctn_prec
@@ -202,6 +225,9 @@ cdef class Solver( base.Solver ):
 
 
     def setupProblem( self, prob ):
+        cdef int lenobjg
+        cdef int lenconsg
+        cdef int tmpidx
         global extprob
 
         if( not isinstance( prob, nlp.Problem ) ):
@@ -214,7 +240,7 @@ cdef class Solver( base.Solver ):
         self.Start[0] = 0 ## Cold start
 
         ## Set nF
-        if( self.prob.mixedCons ):
+        if( prob.mixedCons ):
             self.nF[0] = 1 + prob.Ncons
         else:
             self.nF[0] = 1 + prob.Nconslin + prob.Ncons
@@ -228,16 +254,17 @@ cdef class Solver( base.Solver ):
             self.neA[0] = 0
 
         ## Set lenG
-        if( isinstance( prob, nlp.SparseProblem ) and prob.objgpattern ):
-            self.lenG[0] = ( prob.objgpattern != 0 ).sum()
+        if( isinstance( prob, nlp.SparseProblem ) and prob.objgpattern != None ):
+            lenobjg = ( prob.objgpattern != 0 ).sum()
         else:
-            self.lenG[0] = prob.N
+            lenobjg = prob.N
 
-        if( isinstance( prob, nlp.SparseProblem ) and prob.consgpattern ):
-            self.lenG[0] += ( prob.consgpattern != 0 ).sum()
+        if( isinstance( prob, nlp.SparseProblem ) and prob.consgpattern != None ):
+            lenconsg = ( prob.consgpattern != 0 ).sum()
         else:
-            self.lenG[0] += prob.Ncons * prob.N
+            lenconsg = prob.Ncons * prob.N
 
+        self.lenG[0] = lenobjg + lenconsg
         self.neG[0] = self.lenG[0]
 
         ## I'm guessing the definition of m in pgs. 74,76
@@ -245,7 +272,7 @@ cdef class Solver( base.Solver ):
         self.default_maj_iter_limit = max( 1000, prob.Ncons + prob.Nconslin )
 
         ## Allocate if necessary
-        if( self.mustAllocate( self.prob.N, self.nF[0], self.lenA[0], self.lenG[0] ) ):
+        if( self.mustAllocate( prob.N, self.nF[0], self.lenA[0], self.lenG[0] ) ):
             self.deallocate()
             self.allocate()
 
@@ -260,12 +287,10 @@ cdef class Solver( base.Solver ):
         self.Flow[0] = -np.inf
         self.Fupp[0] = np.inf
 
-        ## We fill iGfun and jGvar as we write them in usrfun
         ## First row belongs to objg
         ## These are Fortran indices, must start from 1!
-        if( isinstance( prob, nlp.SparseProblem ) and prob.objgpattern ):
+        if( isinstance( prob, nlp.SparseProblem ) and prob.objgpattern != None ):
             objgpatsparse = coo_matrix( prob.objgpattern )
-            lenobjg = len( objgpatsparse.data )
 
             tmpiGfun = utils.convIntFortran( objgpatsparse.row + 1 )
             memcpy( &self.iGfun[0], utils.getPtr( tmpiGfun ),
@@ -274,7 +299,7 @@ cdef class Solver( base.Solver ):
             memcpy( &self.jGvar[0], utils.getPtr( tmpjGvar ),
                     lenobjg * sizeof( integer ) )
         else:
-            for idx in range( self.prob.N ):
+            for idx in range( prob.N ):
                 self.iGfun[idx] = 1
                 self.jGvar[idx] = 1 + idx
 
@@ -316,11 +341,8 @@ cdef class Solver( base.Solver ):
             memcpy( &self.Fupp[tmpidx], utils.getPtr( tmpconsub ),
                     prob.Ncons * sizeof( doublereal ) )
 
-            ## Rest is filled in Fortran-order
-            if( isinstance( prob, nlp.SparseProblem ) and prob.consgpattern ):
+            if( isinstance( prob, nlp.SparseProblem ) and prob.consgpattern != None ):
                 consgpatsparse = coo_matrix( prob.consgpattern )
-                lenconsg = len( consgpatsparse.data )
-                assert( self.lenG[0] == lenobjg + lenconsg )
 
                 tmpiGfun = utils.convIntFortran( consgpatsparse.row + 1 + tmpidx )
                 memcpy( &self.iGfun[lenobjg], utils.getPtr( tmpiGfun ),
@@ -331,8 +353,8 @@ cdef class Solver( base.Solver ):
             else:
                 for jdx in range( prob.N ):
                     for idx in range( prob.Ncons ):
-                        self.iGfun[prob.N + idx + prob.Ncons * jdx] = 2 + idx + prob.Nconslin
-                        self.jGvar[prob.N + idx + prob.Ncons * jdx] = 1 + jdx
+                        self.iGfun[lenobjg + idx + prob.Ncons * jdx] = 1 + idx + tmpidx
+                        self.jGvar[lenobjg + idx + prob.Ncons * jdx] = 1 + jdx
 
         memset( self.xstate, 0, self.prob.N * sizeof( integer ) )
         memset( self.Fstate, 0, self.nF[0] * sizeof( integer ) )
@@ -478,7 +500,7 @@ cdef class Solver( base.Solver ):
 
 
     def __dealloc__( self ):
-        self.deallocate_ws()
+        self.deallocateWS()
         self.deallocate()
 
 
