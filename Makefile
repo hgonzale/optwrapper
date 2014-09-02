@@ -4,14 +4,13 @@ CFLAGS = -O2 -g -fPIC
 
 modules = utils base npsol snopt
 
-all: dummy.o filehandler.c filehandler.o
+all: src/dummy.o src/filehandler.c src/filehandler.o
 	python setup.py build_ext --inplace
 
 clean:
-	-rm -f $(modules:%=%.so) $(modules:%=%.c)
-	-rm -f fort.*
+	-rm -f $(modules:%=src/%.c)
 	-rm -rf build
-	-rm -f *.o
+	-rm -rf optwrapper
 
 test:
 	@$(foreach module,$(modules),python -c "from $(module) import *; print('$(module) works fine.')";)
