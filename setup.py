@@ -32,5 +32,6 @@ setup( name = "OptWrapper",
        description = "Common optimization interface and wrappers for different solvers",
        author = "Jingdao Chen, Humberto Gonzalez",
        author_email = "hgonzale@ese.wustl.edu",
-       py_modules = "src/__init__",
+       package_dir = { "optwrapper": "src" },
+       packages = [ "optwrapper" ],
        ext_modules = cythonize( extensions ) )
