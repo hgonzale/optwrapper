@@ -70,9 +70,3 @@ Thumbs.db
 
 ## Fortran
 fort.*
-
-## Specific files
-base.c
-npsol.c
-snopt.c
-utils.c

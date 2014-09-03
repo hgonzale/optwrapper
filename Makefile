@@ -1,14 +1,11 @@
 F2C = f2c
 F2COPTS = -a -A
-CFLAGS = -O2 -g -fPIC
-PREFIX = /usr/local
 INSTALL_MANIFEST = install_manifest.txt
 
 modules = utils base npsol snopt
-objects = dummy filehandler
 f2ced = filehandler
 
-all: $(f2ced:%=src/%.c) $(objects:%=src/%.o)
+all: $(f2ced:%=src/%.c)
 	python setup.py build
 
 install: all
@@ -21,8 +18,6 @@ uninstall:
    fi;
 
 clean:
-	-rm -f $(modules:%=src/%.c)
-	-rm -f $(objects:%=src/%.o)
 	-rm -rf build
 
 test:
