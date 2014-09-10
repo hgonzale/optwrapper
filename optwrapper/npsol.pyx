@@ -4,12 +4,12 @@ cimport cpython.mem as mem
 cimport numpy as np
 import numpy as np
 
-from f2ch cimport *      ## tydefs from f2c.h
-cimport filehandler as fh
-cimport npsolh as npsol  ## import every function exposed in npsol.h
-cimport utils
-cimport base
-import nlp
+from optwrapper.f2ch cimport *      ## tydefs from f2c.h
+cimport optwrapper.filehandler as fh
+cimport optwrapper.npsolh as npsol  ## import every function exposed in npsol.h
+cimport optwrapper.utils as utils
+cimport optwrapper.base as base
+import optwrapper.nlp as nlp
 
 ## NPSOL's option strings
 cdef char* STR_NOLIST = "Nolist"

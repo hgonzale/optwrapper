@@ -1,4 +1,4 @@
-from f2ch cimport *
+from optwrapper.f2ch cimport *
 
 ctypedef int (*usrfun_fp)( integer *Status, integer *n, doublereal *x,
                            integer *needf, integer *nF, doublereal *f,

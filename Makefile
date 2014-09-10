@@ -5,11 +5,11 @@ INSTALL_MANIFEST = install_manifest.txt
 modules = utils base npsol snopt
 f2ced = filehandler
 
-all: $(f2ced:%=src/%.c)
+all: $(f2ced:%=optwrapper/%.c)
 	python setup.py build
 
 install: all
-	python setup.py install --prefix=$(PREFIX) --record=$(INSTALL_MANIFEST)
+	python setup.py install --record=$(INSTALL_MANIFEST)
 
 uninstall:
 	-if [ -r $(INSTALL_MANIFEST) ]; then \
@@ -21,7 +21,7 @@ clean:
 	-rm -rf build
 
 test:
-	@$(foreach module,$(modules),python -c "from optwrapper.$(module) import *; print('$(module) works fine.')";)
+	@cd ${HOME}; $(foreach module,$(modules),python -c "from optwrapper.$(module) import *; print('$(module) works fine.')";)
 
 %.c: %.f
 	$(F2C) $(F2COPTS) $<

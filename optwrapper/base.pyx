@@ -1,4 +1,4 @@
-cimport utils
+cimport optwrapper.utils as utils
 
 cdef class Soln:
     pass

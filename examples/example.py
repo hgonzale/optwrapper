@@ -1,6 +1,4 @@
-import nlp
-import npsol
-import snopt
+from optwrapper import nlp, npsol, snopt
 import numpy as np
 import math
 

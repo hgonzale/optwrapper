@@ -4,12 +4,12 @@ cimport numpy as np
 import numpy as np
 from scipy.sparse import coo_matrix
 
-from f2ch cimport *
-cimport filehandler as fh
-cimport snopth as snopt
-cimport utils
-cimport base
-import nlp
+from optwrapper.f2ch cimport *
+cimport optwrapper.filehandler as fh
+cimport optwrapper.snopth as snopt
+cimport optwrapper.utils as utils
+cimport optwrapper.base as base
+import optwrapper.nlp as nlp
 
 ## SNOPT's option strings
 cdef char* STR_NONDERIVATIVE_LINESEARCH = "Nonderivative linesearch"

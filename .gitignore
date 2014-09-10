@@ -70,3 +70,6 @@ Thumbs.db
 
 ## Fortran
 fort.*
+
+## Installation extras
+install_manifest.txt
