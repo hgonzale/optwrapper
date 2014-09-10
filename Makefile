@@ -24,6 +24,6 @@ test:
 	@cd ${HOME}; $(foreach module,$(modules),python -c "from optwrapper.$(module) import *; print('$(module) works fine.')";)
 
 %.c: %.f
-	$(F2C) $(F2COPTS) $<
+	$(F2C) $(F2COPTS) -d$(dir $<) $<
 
 .PHONY: all clean test install uninstall
