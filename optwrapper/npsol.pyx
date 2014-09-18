@@ -1,6 +1,6 @@
 from libc.string cimport memcpy
 from libc.math cimport sqrt
-cimport cpython.mem as mem
+from libc.stdlib cimport malloc, free
 cimport numpy as np
 import numpy as np
 
@@ -222,18 +222,18 @@ cdef class Solver( base.Solver ):
         if( self.mem_alloc ):
             return False
 
-        self.x = <doublereal *> mem.PyMem_Malloc( self.prob.N * sizeof( doublereal ) )
-        self.bl = <doublereal *> mem.PyMem_Malloc( self.nctotl * sizeof( doublereal ) )
-        self.bu = <doublereal *> mem.PyMem_Malloc( self.nctotl * sizeof( doublereal ) )
-        self.objg_val = <doublereal *> mem.PyMem_Malloc( self.prob.N * sizeof( doublereal ) )
-        self.consf_val = <doublereal *> mem.PyMem_Malloc( self.prob.Ncons * sizeof( doublereal ) )
-        self.consg_val = <doublereal *> mem.PyMem_Malloc( self.ldJ[0] * self.prob.N * sizeof( doublereal ) )
-        self.clamda = <doublereal *> mem.PyMem_Malloc( self.nctotl * sizeof( doublereal ) )
-        self.istate = <integer *> mem.PyMem_Malloc( self.nctotl * sizeof( integer ) )
-        self.iw = <integer *> mem.PyMem_Malloc( self.leniw[0] * sizeof( integer ) )
-        self.w = <doublereal *> mem.PyMem_Malloc( self.lenw[0] * sizeof( doublereal ) )
-        self.A = <doublereal *> mem.PyMem_Malloc( self.ldA[0] * self.prob.N * sizeof( doublereal ) )
-        self.R = <doublereal *> mem.PyMem_Malloc( self.prob.N * self.prob.N * sizeof( doublereal ) )
+        self.x = <doublereal *> malloc( self.prob.N * sizeof( doublereal ) )
+        self.bl = <doublereal *> malloc( self.nctotl * sizeof( doublereal ) )
+        self.bu = <doublereal *> malloc( self.nctotl * sizeof( doublereal ) )
+        self.objg_val = <doublereal *> malloc( self.prob.N * sizeof( doublereal ) )
+        self.consf_val = <doublereal *> malloc( self.prob.Ncons * sizeof( doublereal ) )
+        self.consg_val = <doublereal *> malloc( self.ldJ[0] * self.prob.N * sizeof( doublereal ) )
+        self.clamda = <doublereal *> malloc( self.nctotl * sizeof( doublereal ) )
+        self.istate = <integer *> malloc( self.nctotl * sizeof( integer ) )
+        self.iw = <integer *> malloc( self.leniw[0] * sizeof( integer ) )
+        self.w = <doublereal *> malloc( self.lenw[0] * sizeof( doublereal ) )
+        self.A = <doublereal *> malloc( self.ldA[0] * self.prob.N * sizeof( doublereal ) )
+        self.R = <doublereal *> malloc( self.prob.N * self.prob.N * sizeof( doublereal ) )
 
         if( self.x == NULL or
             self.bl == NULL or
@@ -260,18 +260,18 @@ cdef class Solver( base.Solver ):
         if( not self.mem_alloc ):
             return False
 
-        mem.PyMem_Free( self.x )
-        mem.PyMem_Free( self.bl )
-        mem.PyMem_Free( self.bu )
-        mem.PyMem_Free( self.objg_val )
-        mem.PyMem_Free( self.consf_val )
-        mem.PyMem_Free( self.consg_val )
-        mem.PyMem_Free( self.clamda )
-        mem.PyMem_Free( self.istate )
-        mem.PyMem_Free( self.iw )
-        mem.PyMem_Free( self.w )
-        mem.PyMem_Free( self.A )
-        mem.PyMem_Free( self.R )
+        free( self.x )
+        free( self.bl )
+        free( self.bu )
+        free( self.objg_val )
+        free( self.consf_val )
+        free( self.consg_val )
+        free( self.clamda )
+        free( self.istate )
+        free( self.iw )
+        free( self.w )
+        free( self.A )
+        free( self.R )
 
         self.mem_alloc = False
         return True
