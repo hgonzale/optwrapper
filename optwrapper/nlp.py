@@ -1,6 +1,8 @@
 import types
 import numpy as np
 
+#how do I ultimately assign my function outputs to what's in the second init function?
+
 class Problem:
     """
     General nonlinear programming optimization problem.
@@ -8,7 +10,222 @@ class Problem:
     Accepts box, linear, and nonlinear constraints.
     """
 
-    def __init__( self, N, Ncons=0, Nconslin=0, mixedCons=False ):
+    def __init__( self, ocp, Nsamples):
+        """
+        this constructor will transform an optimal control problem into a non-linear programming problem 
+
+        Arguments:
+        ocp: an instance from the OCP (optimal control problem) class 
+        Nsamples: the number of samples in the approximated version of the OCP 
+
+        NOTES FROM 11/25 MEETING:
+        -N in the nlp problem is the size of s 
+            -you need to set this 
+            -this will be super helpful to use throughout your code 
+        -s should be the input to all of your functions, then use decode to get the st/inp matrices 
+
+        """
+
+        def encode(st, inp):
+            """
+            this function creates one big vector of all of the states and inputs 
+
+            Arguments:
+            st: the matrix of states at all times tk for k=0...Nsamples
+            inp: the matrix of inputs at all times tk for k=0...Nsamples-1
+            """
+            s = np.zeros( N ) 
+
+            for k in range( Nsamples ):
+                s[ k*Nst : k*Nst+Nst ] = st[:,k]
+                s[ Nst*(Nsamples+1)+k*Ninp : Nst*(Nsamples+1)+k*Ninp+Ninp] = inp[:,k]
+
+
+            s[ Nst * Nsamples : Nst * (Nsamples + 1) ] = st[:,Nsamples]
+
+            return s 
+
+        def decode(s):
+            #note that the inputs Nst, Ninp, and Nsamples will not be necessary when you put this function in nlp.py
+            st = np.zeros( ( Nst, Nsamples + 1 ) )
+            inp = np.zeros( ( Ninp, Nsamples ) )
+
+            for k in range( Nsamples ):
+                st[:,k] = s[ k*Nst : k*Nst+Nst]
+                inp[:,k] = s[ Nst*(Nsamples+1)+k*Ninp : Nst*(Nsamples+1)+k*Ninp+Ninp ]
+
+            st[:,Nsamples] = s[ Nst * Nsamples : Nst * (Nsamples + 1) ]
+
+            return (st, inp)
+
+
+        def setBounds( ):
+            """
+            this function sets the lower and upper bounds on the optimization vector  
+
+            Arguments:
+            s: the optimization vector
+
+            """
+
+            #initialize the lb/ub vectors with all zeros 
+            lb = np.zeros( N )
+            ub = np.zeros( N )
+
+            #set all lower bounds on the optimization vector to match the box constraints
+            #for states and inputs given in OCP
+            for k in range( Nsamples ):
+                lb[ k*Nst : k*Nst+Nst ] = ocp.consstlb 
+                lb[ Nst*(Nsamples+1)+k*Ninp : Nst*(Nsamples+1)+k*Ninp+Ninp] = ocp.consinplb 
+                ub[ k*Nst : k*Nst+Nst ] = ocp.consstub 
+                ub[ Nst*(Nsamples+1)+k*Ninp : Nst*(Nsamples+1)+k*Ninp+Ninp] = ocp.consinpub 
+
+            lb[ Nst * Nsamples : Nst * (Nsamples + 1) ] = ocp.consstlb
+            ub[ Nst * Nsamples : Nst * (Nsamples + 1) ] = ocp.consstub
+
+            self.ub = ub
+            self.lb = lb
+
+        def setBoundsCons( ):
+            """
+            this function sets the lower and upper bounds on the constraints 
+
+            """
+
+            conslb = np.zeros ( self.Ncons )
+            consub = np.zeros ( self.Ncons )
+
+            conslb[Nst*(Nsamples + 1): Nst*(Nsamples + 1) + Nsamples * ocp.Nineqcons ] = -np.inf
+
+            self.conslb = conslb
+            self.consub = consub 
+
+            
+
+        def objectiveFctn( s ):
+            """
+            this function uses the instant cost and the final cost from the ocp problem and 
+            creates the objective function for the nlp problem  
+
+            Arguments:
+            s: the optimization vector
+
+            """
+
+            (st, inp) = decode(s) 
+
+            objfruncost = 0 
+            
+            for k in range( Nsamples ):
+                objfruncost = objfruncost + ocp.instcost(st[:,k],inp[:,k])*deltaT
+
+            objffincost = ocp.fincost(st[:,Nsamples])
+
+            return objfruncost + objffincost 
+
+        def objectiveGrad( s ):
+            """
+            this function returns the gradient of the objective function with respect to a vector
+            s, which is a concatenated vector of all of the states and inputs 
+
+            Arguments:
+            s: the optimization problem vector 
+
+            """
+
+            (st, inp) = decode(s)
+
+            objg = np.zeros( N )
+
+            for k in range( Nsamples ):
+                objg[ k*Nst : k*Nst+Nst ] = ocp.instcostgradst(st[:,k]) * deltaT
+                objg[ Nst*(Nsamples+1)+k*Ninp : Nst*(Nsamples+1)+k*Ninp+Ninp] = ocp.instcostgradin(inp[:,k]) * deltaT
+
+            objg[ Nst * Nsamples : Nst * (Nsamples + 1) ] = ocp.fincostgradst(st[:,Nsamples])
+
+            return objg
+
+        def constraintFctn( s ):
+            """
+            this function returns the Forward Euler constraints and the inequality constraints
+            from the ocp for the nlp problem 
+
+            Arguments:
+            s: the optimization vector 
+
+            """
+
+            (st, inp) = decode(s)
+
+            consf = np.zeros( self.Ncons )
+
+            #this for loop puts all of the forward Euler constraints into consf 
+            for k in range(0, Nsamples):
+                consf[k*Nst:k*Nst+Nst] = st[:,k+1] - st[:,k] - deltaT*ocp.dynamics(st[:,k],inp[:,k])
+
+            #this line puts the initial condition into the constraint function 
+            consf[Nst*Nsamples:Nst*(Nsamples + 1)] = ocp.init 
+
+            #this loop puts all of the inequality constraints into consf 
+            for k in range(1, Nsamples+1):
+                consf[Nst*(Nsamples + 1) + (k-1)*ocp.Nineqcons : Nst*(Nsamples + 1) + (k-1)*ocp.Nineqcons + ocp.Nineqcons] = ocp.cons(st[:,k])
+
+            return consf
+
+        def constraintGrad( s ):
+            """
+            this function returns the gradient of the constraint function
+
+            Arguments:
+            s: the optimization vector 
+
+            """
+
+            (st,inp) =  decode(s)
+
+            #rows from forward Euler constraints: rows = Nst*Nsamples
+            #rows from ocp inequality constraints: rows = Nineqconst*Nsamples 
+            rows = Nst*Nsamples + Nst + ocp.Nineqcons*Nsamples
+            columns = Nsamples*(Nst+Ninp)+ Nst 
+            consg = np.zeros( (rows, columns) )
+            #counter = 0 
+
+            for k in range(0,Nsamples):
+                consg[ k*Nst: k*Nst + Nst, k*Nst: k*Nst+Nst] = -np.identity(Nst) - deltaT*ocp.dynamicsgradst(st[:,k])
+                consg[ k*Nst : k*Nst + Nst, Nst*(k+1) : Nst*(k+1) + Nst ] = np.identity(Nst)
+                consg[ k*Nst : k*Nst + Nst, Nst*(Nsamples+1) + k*Ninp : Nst*(Nsamples+1) + k*Ninp + Ninp ] = -deltaT*ocp.dynamicsgradin(inp[:,k]) 
+
+            consg[Nst*Nsamples : Nst*Nsamples + Nst, 0: Nst ] = np.identity(Nst)
+
+            for k in range(0,Nsamples):
+                consg[Nst*Nsamples + Nst + k*ocp.Nineqcons : Nst*Nsamples + Nst + k*ocp.Nineqcons + ocp.Nineqcons, (k+1)*Nst: (k+1)*Nst + Nst] = ocp.consgradst(st[:,k+1])
+
+            return consg
+
+        Nst = ocp.Nst 
+        Ninp = ocp.Ninp 
+        self.N = Nst*(Nsamples+1) + Ninp*Nsamples 
+        N = self.N
+        deltaT = (ocp.tf - ocp.t0) / Nsamples
+        self.Nconslin = 0 #we do not have any linear constraints in this problem 
+        self.Ncons = Nst*(Nsamples + 1) + Nsamples*ocp.Nineqcons
+        
+
+        Ncons = self.Ncons
+        Nconslin = self.Nconslin
+        mixedCons = False
+
+
+        self.objf = objectiveFctn
+        self.objg = objectiveGrad
+        self.consf = constraintFctn
+        self.consg = constraintGrad
+        setBounds() ## this fctn sets self.lb and self.ub 
+        setBoundsCons() ## this fctn sets self.conslb and self.consub
+
+
+
+#    def __init__( self, N, Ncons=0, Nconslin=0, mixedCons=False ):
         """
         Arguments:
         N         number of optimization variables (required).
@@ -46,17 +263,17 @@ class Problem:
             raise ValueError( "If constrained are mixed type then Nconslin must be equal to Ncons" )
 
         self.init = np.zeros( self.N )
-        self.lb = None
-        self.ub = None
-        self.objf = None
-        self.objg = None
-        self.consf = None
+        self.lb = None  
+        self.ub = None  
+        self.objf = None  
+        self.objg = None 
+        self.consf = None 
         self.consg = None
-        self.conslb = None
-        self.consub = None
-        self.conslinA = None
-        self.conslinlb = None
-        self.conslinub = None
+        self.conslb = None  
+        self.consub = None  
+        self.conslinA = None  
+        self.conslinlb = None  
+        self.conslinub = None 
         self.soln = None
         self.mixedCons = mixedCons
 

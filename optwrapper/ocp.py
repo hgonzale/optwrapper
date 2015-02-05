@@ -7,259 +7,301 @@ class Problem:
 	Optimal Control Programming Problem
 	"""
 
-	def __init__(self, m, Ncons):
+	def __init__(self, Nst, Ninp, Nineqcons):
 		""" 
 		arguments:
-		m = the number of optimization variables 
-		Ncons = the number of constraints in h 
+		Nst = the number of states
+		Ninp = the number of inputs  
+		Nineqcons = the number of inequality constraints 
 		"""
 
 		try:
-			self.m = int(m)
+			self.Nst = int(Nst)
 		except:
 			raise ValueError("m must be an integer")
 
-		if (self.m <= 0):
+		if (self.Nst <= 0):
 			raise ValueError("m must be strictly positive")
 
-		self.init = np.zeros(self.m)
-		self.L = None
-		self.dLdx = None
-		self.dLdu = None
-		self.Phi = None
-		self.dPhidx = None
-		self.x_dot = None
-		self.dfdx = None
-		self.dfdu = None
-		self.h = None
-		self.dhdx = None
+		self.init = np.zeros(self.Nst)
+		self.t0 = None
+		self.tf = None
+		self.instcost = None
+		self.instcostgradst = None
+		self.instcostgradin = None
+		self.fincost = None
+		self.fincostgradst = None
+		self.dynamics = None
+		self.dynamicsgradst = None
+		self.dynamicsgradin = None
+		self.cons = None
+		self.consgradst = None
+		self.consstlb = None
+		self.consstub = None
+		self.consinplb = None 
+		self.consinpub = None
+
+		
 
 	def initPoint(self,init):
 		"""
 		sets the initial point for the optimization problem
 		
 		arguments:
-		init: initial condition, a 1-D array of size m, defaults to an array of zeros 
+		init: initial condition, a 1-D array of size Nst, defaults to an array of zeros 
 
 		"""
 
-		self.init = init
+		self.init = np.array(init)
 
-		if (self.init.shape != (self.m) ):
-			raise ValueError("the initial point must have size (" + str(self.m) + ",)." ) 
+		if (self.init.shape != (self.Nst,) ):
+			raise ValueError("the initial point must have size (" + str(self.Nst) + ",)." ) 
 
-	def instant_cost(self,L,dLdx,dLdu):
+	def initialFinalTime(self,t0,tf):
 		"""
-		set the instantaneous cost, L, and its gradients, dLdx and dLdu
+		sets the initial and final times for the optimization problem 
 
 		arguments:
-		L: the cost function
-		dLdx: the gradient with respect to x of the cost function
-		dLdu: the gradient with respect to u of the cost function
+		t0: the initial time of the optimization problem
+		tf: the final time of the optimization problem
 
 		"""
 
-		self.L = L 
-		self.dLdx = dLdx
-		self.dLdu = dLdu 
+		self.t0 = t0
+		self.tf = tf 
 
-		if ( type(L) != types.FunctionType ):
+	def instantCost(self,instcost,instcostgradst,instcostgradin):
+		"""
+		set the instant cost and its gradients with respect to the states and input
+
+		arguments:
+		instcost: the instant cost function
+		instcostgradst: the gradient with respect to the states of the instant cost function
+		instcostgradin: the gradient with respect to the input of the instant cost function
+
+		"""
+
+		self.instcost = instcost 
+		self.instcostgradst = instcostgradst
+		self.instcostgradin = instcostgradin 
+
+		if ( type(instcost) != types.FunctionType ):
 			raise ValueError("argument must be a function")
 
 	
-	def final_cost(self,Phi,dPhidx):
+	def finalCost(self,fincost,fincostgradst):
 		"""
-		sets the final cost, Phi and its gradient dPhidx
+		sets the final cost and its gradient with respect to the states
 
 		arguments:
-		Phi: the final cost
-		dPhidx: the gradient of the final cost with respect to x 
+		fincost: the final cost
+		fincostgradst: the gradient of the final cost with respect to the states
 
 		"""
 
-		self.Phi = Phi
-		self.dPhidx = dPhidx
+		self.fincost = fincost
+		self.fincostgradst = fincostgradst
 
-		if ( type(Phi) != types.FunctionType ):
+		if ( type(fincost) != types.FunctionType ):
 			raise ValueError("argument must be a function")
 
 
-	def dynamics(self,x_dot,dfdx,dfdu):
+	def dynamicsFctn(self,dynamics,dynamicsgradst,dynamicsgradin):
 		"""
-		sets the dynamics function, x_dot, and its gradients, dfdx and dfdu
+		sets the dynamics function and its gradients
 
 		arguments:
-		x_dot: the dynamics function 
-		dfdx: the derivative of the dynamics function with respect to x 
-		dfdu: the derivative of the dynamics function with respect to u 
+		dynamics: the dynamics function 
+		dynamicsgradst: the derivative of the dynamics function with respect to the states
+		dynamicsgradin: the derivative of the dynamics function with respect to the input
 
 		"""
 
-		self.x_dot = x_dot
-		self.dfdx = dfdx
-		self.dfdu = dfdu  
+		self.dynamics = dynamics
+		self.dynamicsgradst = dynamicsgradst
+		self.dynamicsgradin = dynamicsgradin 
 
-		if ( type(x_dot) != types.FunctionType ):
+		if ( type(dynamics) != types.FunctionType ):
 			raise ValueError("argument must be a function")
 
 
-	def cons(self,h,dhdx):
+	def consFctn(self,cons,consgradst):
 
 		""" 
 		defines the constraints and its gradients
 
 		arguments:
-		h: the matrix of constraints, must have size Ncons
-		dhdx: the gradient of the constraints with respect to x
+		cons: the matrix of constraints, must have size Nineqcons
+		consgradst: the gradient of the constraints with respect to the states
 
 		"""
 
-		self.h = h; 
-		self.dhdx = dhdx; 
+		self.cons = cons; 
+		self.consgradst = consgradst; 
 
-		if ( type(h) != types.FunctionType ):
+		if ( type(cons) != types.FunctionType ):
 			raise ValueError("argument must be a function")
 
-		# if (self.h(self.init).shape != (self.Ncons) ):
-		# 	raise ValueError("the constraints must have size (" + str(self.Ncons) + ",)." ) 
+		# if (self.cons(self.init).shape != (self.Nineqcons,) ):
+		# 	raise ValueError("the constraints must have size (" + str(self.Nineqcons) + ",)." ) 
 
-	def checkGrad(self, func, grad, size, point, u, h_step=1e-5 ,etol=1e-4 ,debug=False):
+	def consBox(self,consstlb, consstub, consinplb, consinpub):
 		"""
-		checks if the user defined gradients are correct using finite differences 
+		defines the box constraints on the states and inputs 
 
 		arguments:
-		func: the function you want to check 
-		grad: the gradient of the function you are checking
-		size: the size of the function 
-		point: evaluation point of size m; defaults to the init condition 
-		u: the input 
-		h_step: the optimization variable variation step size, defaults to 1e-5
-		etol: the error tolerance, defaults to 1e-4
-		debug: boolean to enable extra debugging information 
+		consstlb: the lower bound box constraints on the state; a vector of size Nst 
+		consstub: the upper bound box constraints on the state; a vector of size Nst
+		consinplb: the lower bound box constraints on the input; a vector of size Ninp
+		consinpub: the upper bound box constraints on the input; a vector of size Ninp
 
 		"""
 
-		if (point == None):
-			point = self.init 
-		# else:
-		# 	if (point.shape != (self.m) ):
-		# 		raise ValueError("the point must have size (" + str(self.Ncons) + ",)." ) 
+		self.consstlb = consstlb; 
+		self.consstub = consstub; 
+		self.consinplb = consinplb; 
+		self.consinpub = consinpub; 
+
+	# def checkGradSt(self, fctn, grad, fctnpoint, fctnin, h_step=1e-5 ,etol=1e-4 ,debug=False):
+	# 	"""
+	# 	checks if the user defined gradients are correct using finite differences 
+
+	# 	arguments:
+	# 	fctn: the function you want to check 
+	# 	grad: the gradient of the function you are checking
+	# 	fctnpoint: evaluation point of size Nst; defaults to the init condition 
+	# 	fctnin: the input for the function 
+	# 	h_step: the optimization variable variation step size, defaults to 1e-5
+	# 	etol: the error tolerance, defaults to 1e-4
+	# 	debug: boolean to enable extra debugging information 
+
+	# 	"""
+
+	# 	if (fctnpoint == None):
+	# 		fctnpoint = self.init 
+	# 	# else:
+	# 	# 	if (fctnpoint.shape != (self.Nst) ):
+	# 	# 		raise ValueError("the point must have size (" + str(self.Nineqcons) + ",)." ) 
 
 
-		if ( type(func) != types.FunctionType ):
-			raise ValueError("argument must be a function")
+	# 	if ( type(fctn) != types.FunctionType ):
+	# 		raise ValueError("argument must be a function")
 
-		if ( type(grad) != types.FunctionType ):
-			raise ValueError("argument must be a function")
+	# 	if ( type(grad) != types.FunctionType ):
+	# 		raise ValueError("argument must be a function")
+
+	# 	try:
+	# 		size = len( np.squeeze( fctn( fctnpoint, fctnin ) ) )
+	# 	except TypeError:
+	# 		size = 1
 
 
-		usrgrad = np.zeros( [size, self.m] )
-		numgrad = np.zeros( [size, self.m] )
+	# 	usrgrad = np.zeros( [size, self.Nst] )
+	# 	numgrad = np.zeros( [size, self.Nst] )
 
-		fph = np.zeros( size )
-		fmh = np.zeros( size )
+	# 	fph = np.zeros( size )
+	# 	fmh = np.zeros( size )
 
-		for k in range(0,self.m):
-			hvec = np.zeros( self.m )
-			hvec[k] = h_step 
+	# 	for k in range(0,self.Nst):
+	# 		hvec = np.zeros( self.Nst )
+	# 		hvec[k] = h_step 
 
-			fph = func((point + hvec),u)
-			fmh = func((point - hvec),u)
+	# 		fph = fctn((fctnpoint + hvec), fctnin )
+	# 		fmh = fctn((fctnpoint - hvec), fctnin )
 
-			if( np.any (np.isnan (fph) ) or np.any ( np.isnan (fmh) ) or np.any( np.isinf ( fph ) ) 
-				or np.any( np.isinf (fmh) ) ):
-				raise ValueError("function returned NaN or inf at iteration" + str(k) )
+	# 		if( np.any (np.isnan (fph) ) or np.any ( np.isnan (fmh) ) or np.any( np.isinf ( fph ) ) 
+	# 			or np.any( np.isinf (fmh) ) ):
+	# 			raise ValueError("function returned NaN or inf at iteration" + str(k) )
 
-			delta = (fph - fmh ) / 2.0 / h_step
-			numgrad[:,k] = delta 
+	# 		delta = (fph - fmh ) / 2.0 / h_step
+	# 		numgrad[:,k] = delta 
 
-		usrgrad = grad(point)
+	# 	usrgrad = grad(fctnpoint)
 		
-		if (np.any (np.isnan ( usrgrad) ) or np.any (np.isinf (usrgrad) ) ):
-			raise ValueError("gradient returned NaN or inf")
+	# 	if (np.any (np.isnan ( usrgrad) ) or np.any (np.isinf (usrgrad) ) ):
+	# 		raise ValueError("gradient returned NaN or inf")
 
-		errgrad = abs(numgrad - usrgrad)
-		if (errgrad.max() < etol ):
-			return(True, errgrad.max(), errgrad)
-		else:
-			if (debug):
-				idx = np.unravel_index(np.argmax(errgrad), errgrad.shape)
-				print "gradient incorrect in element  (" + str(idx[1]) + ",)."
-			return(False, errgrad.max(), errgrad)
+	# 	errgrad = abs(numgrad - usrgrad)
+	# 	if (errgrad.max() < etol ):
+	# 		return(True, errgrad.max(), usrgrad)
+	# 	else:
+	# 		if (debug):
+	# 			idx = np.unravel_index(np.argmax(errgrad), errgrad.shape)
+	# 			print "gradient incorrect in element  (" + str(idx[1]) + ",)."
+	# 		return(False, errgrad.max(), usrgrad)
 
-	def checkGrad_u(self, func, grad, point, u, h_step=1e-5 ,etol=1e-4 ,debug=False):
-		"""
-		checks if the user defined gradients are correct using finite differences 
+	# def checkGradIn(self, fctn, grad, fctnpoint, fctnin, h_step=1e-5 ,etol=1e-4 ,debug=False):
+	# 	"""
+	# 	checks if the user defined gradients are correct using finite differences 
 
-		arguments:
-		func: the function you want to check 
-		grad: the gradient of the function you are checking
-		size: the size of the function 
-		point: evaluation point of size m; defaults to the init condition 
-		u: the input 
-		p: the size of the input 
-		h_step: the optimization variable variation step size, defaults to 1e-5
-		etol: the error tolerance, defaults to 1e-4
-		debug: boolean to enable extra debugging information 
+	# 	arguments:
+	# 	fctn: the function you want to check 
+	# 	grad: the gradient of the function you are checking
+	# 	size: the size of the function 
+	# 	fctnpoint: evaluation point of size Nst; defaults to the init condition 
+	# 	fctnin: the function's input   
+	# 	h_step: the optimization variable variation step size, defaults to 1e-5
+	# 	etol: the error tolerance, defaults to 1e-4
+	# 	debug: boolean to enable extra debugging information 
 
-		"""
+	# 	"""
 
-		if (point == None):
-			point = self.init 
-		# else:
-		# 	if (point.shape != (self.m) ):
-		# 		raise ValueError("the point must have size (" + str(self.Ncons) + ",)." ) 
+	# 	if (fctnpoint == None):
+	# 		fctnpoint = self.init 
+	# 	# else:
+	# 	# 	if (point.shape != (self.Nst) ):
+	# 	# 		raise ValueError("the point must have size (" + str(self.Nineqcons) + ",)." ) 
 
 
-		if ( type(func) != types.FunctionType ):
-			raise ValueError("argument must be a function")
+	# 	if ( type(fctn) != types.FunctionType ):
+	# 		raise ValueError("argument must be a function")
 
-		if ( type(grad) != types.FunctionType ):
-			raise ValueError("argument must be a function")
+	# 	if ( type(grad) != types.FunctionType ):
+	# 		raise ValueError("argument must be a function")
 
-		try:
-			size = len( np.squeeze( func( point, u ) ) )
-		except TypeError:
-			size = 1
+	# 	try:
+	# 		size = len( np.squeeze( fctn( fctnpoint, fctnin ) ) )
+	# 	except TypeError:
+	# 		size = 1
 
-		try:
-			p = len( np.squeeze(u) )
-		except TypeError:
-			p = 1
+	# 	try:
+	# 		p = len( np.squeeze( fctnin ) )
+	# 	except TypeError:
+	# 		p = 1
 
-		usrgrad = np.zeros( [size, p] )
-		numgrad = np.zeros( [size, p] )
+	# 	usrgrad = np.zeros( [size, p] )
+	# 	numgrad = np.zeros( [size, p] )
 
-		fph = np.zeros( size )
-		fmh = np.zeros( size )
+	# 	fph = np.zeros( size )
+	# 	fmh = np.zeros( size )
 
-		for k in range(0,p):
-			hvec = np.zeros( p )
-			hvec[k] = h_step 
+	# 	for k in range(0,p):
+	# 		hvec = np.zeros( p )
+	# 		hvec[k] = h_step 
 
-			fph = func( point, (u+hvec) )
-			fmh = func( point, (u-hvec) )
+	# 		fph = fctn( fctnpoint, (fctnin + hvec) )
+	# 		fmh = fctn( fctnpoint, (fctnin - hvec) )
 
-			if( np.any (np.isnan (fph) ) or np.any ( np.isnan (fmh) ) or np.any( np.isinf ( fph ) ) 
-				or np.any( np.isinf (fmh) ) ):
-				raise ValueError("function returned NaN or inf at iteration" + str(k) )
+	# 		if( np.any (np.isnan (fph) ) or np.any ( np.isnan (fmh) ) or np.any( np.isinf ( fph ) ) 
+	# 			or np.any( np.isinf (fmh) ) ):
+	# 			raise ValueError("function returned NaN or inf at iteration" + str(k) )
 
-			delta = (fph - fmh ) / 2.0 / h_step
-			numgrad[:,k] = delta 
+	# 		delta = (fph - fmh ) / 2.0 / h_step
+	# 		numgrad[:,k] = delta 
 
-		usrgrad = grad(u)
+	# 	usrgrad = grad( fctnin )
 		
-		if (np.any (np.isnan ( usrgrad) ) or np.any (np.isinf (usrgrad) ) ):
-			raise ValueError("gradient returned NaN or inf")
+	# 	if (np.any (np.isnan ( usrgrad) ) or np.any (np.isinf (usrgrad) ) ):
+	# 		raise ValueError("gradient returned NaN or inf")
 
-		errgrad = abs(numgrad - usrgrad)
-		if (errgrad.max() < etol ):
-			return(True, errgrad.max(), errgrad)
-		else:
-			if (debug):
-				idx = np.unravel_index(np.argmax(errgrad), errgrad.shape)
-				print "gradient incorrect in element  (" + str(idx[1]) + ",)."
-			return(False, errgrad.max(), errgrad)
+	# 	errgrad = abs(numgrad - usrgrad)
+	# 	if (errgrad.max() < etol ):
+	# 		return(True, errgrad.max(), usrgrad)
+	# 	else:
+	# 		if (debug):
+	# 			idx = np.unravel_index(np.argmax(errgrad), errgrad.shape)
+	# 			print "gradient incorrect in element  (" + str(idx[1]) + ",)."
+	# 		return(False, errgrad.max(), usrgrad)
 
 
 
