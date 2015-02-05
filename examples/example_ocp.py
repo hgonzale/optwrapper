@@ -1,8 +1,5 @@
-import ocp
 import numpy as np
-from python scripts import optwrapper 
-from optwrapper import optwrapper 
-from optwrapper import nlp 
+from optwrapper import nlp,ocp 
 
 
 def instcost(x,u):
