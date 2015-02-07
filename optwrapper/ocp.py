@@ -23,25 +23,6 @@ class Problem:
 		if (self.Nst <= 0):
 			raise ValueError("m must be strictly positive")
 
-		self.init = np.zeros(self.Nst)
-		self.t0 = None
-		self.tf = None
-		self.instcost = None
-		self.instcostgradst = None
-		self.instcostgradin = None
-		self.fincost = None
-		self.fincostgradst = None
-		self.dynamics = None
-		self.dynamicsgradst = None
-		self.dynamicsgradin = None
-		self.cons = None
-		self.consgradst = None
-		self.consstlb = None
-		self.consstub = None
-		self.consinplb = None 
-		self.consinpub = None
-
-		
 
 	def initPoint(self,init):
 		"""
@@ -161,6 +142,27 @@ class Problem:
 		self.consstub = consstub; 
 		self.consinplb = consinplb; 
 		self.consinpub = consinpub; 
+
+
+	self.init = np.zeros(self.Nst)
+        self.t0 = None
+        self.tf = None
+        self.instcost = None
+        self.instcostgradst = None
+        self.instcostgradin = None
+        self.fincost = None
+        self.fincostgradst = None
+        self.dynamics = None
+        self.dynamicsgradst = None
+        self.dynamicsgradin = None
+        self.cons = None
+        self.consgradst = None
+        self.consstlb = None
+        self.consstub = None
+        self.consinplb = None
+        self.consinpub = None
+
+
 
 	# def checkGradSt(self, fctn, grad, fctnpoint, fctnin, h_step=1e-5 ,etol=1e-4 ,debug=False):
 	# 	"""

@@ -1,14 +1,11 @@
 import types
 import numpy as np
 
-#how do I ultimately assign my function outputs to what's in the second init function?
-
 class Problem:
     """
     General nonlinear programming optimization problem.
     Requires a nonlinear objective function and its gradient.
     Accepts box, linear, and nonlinear constraints.
-    """
 
     def __init__( self, ocp, Nsamples):
         """
@@ -18,13 +15,21 @@ class Problem:
         ocp: an instance from the OCP (optimal control problem) class 
         Nsamples: the number of samples in the approximated version of the OCP 
 
-        NOTES FROM 11/25 MEETING:
-        -N in the nlp problem is the size of s 
-            -you need to set this 
-            -this will be super helpful to use throughout your code 
-        -s should be the input to all of your functions, then use decode to get the st/inp matrices 
-
         """
+
+        Nst = self.ocp.Nst
+        Ninp = self.ocp.Ninp
+        self.N = Nst*(Nsamples+1) + Ninp*Nsamples
+        N = self.N
+        deltaT = (ocp.tf - ocp.t0) / Nsamples
+        self.Nconslin = 0 #we do not have any linear constraints in this problem 
+        self.Ncons = Nst*(Nsamples + 1) + Nsamples*ocp.Nineqcons
+        self.objf = objectiveFctn
+        self.objg = objectiveGrad
+        self.consf = constraintFctn
+        self.consg = constraintGrad
+        setBounds() ## this fctn sets self.lb and self.ub 
+        setBoundsCons() ## this fctn sets self.conslb and self.consub
 
         def encode(st, inp):
             """
@@ -46,7 +51,6 @@ class Problem:
             return s 
 
         def decode(s):
-            #note that the inputs Nst, Ninp, and Nsamples will not be necessary when you put this function in nlp.py
             st = np.zeros( ( Nst, Nsamples + 1 ) )
             inp = np.zeros( ( Ninp, Nsamples ) )
 
@@ -188,7 +192,6 @@ class Problem:
             rows = Nst*Nsamples + Nst + ocp.Nineqcons*Nsamples
             columns = Nsamples*(Nst+Ninp)+ Nst 
             consg = np.zeros( (rows, columns) )
-            #counter = 0 
 
             for k in range(0,Nsamples):
                 consg[ k*Nst: k*Nst + Nst, k*Nst: k*Nst+Nst] = -np.identity(Nst) - deltaT*ocp.dynamicsgradst(st[:,k])
@@ -202,80 +205,58 @@ class Problem:
 
             return consg
 
-        Nst = ocp.Nst 
-        Ninp = ocp.Ninp 
-        self.N = Nst*(Nsamples+1) + Ninp*Nsamples 
-        N = self.N
-        deltaT = (ocp.tf - ocp.t0) / Nsamples
-        self.Nconslin = 0 #we do not have any linear constraints in this problem 
-        self.Ncons = Nst*(Nsamples + 1) + Nsamples*ocp.Nineqcons
-        
-
-        Ncons = self.Ncons
-        Nconslin = self.Nconslin
-        mixedCons = False
-
-
-        self.objf = objectiveFctn
-        self.objg = objectiveGrad
-        self.consf = constraintFctn
-        self.consg = constraintGrad
-        setBounds() ## this fctn sets self.lb and self.ub 
-        setBoundsCons() ## this fctn sets self.conslb and self.consub
-
-
 
 #    def __init__( self, N, Ncons=0, Nconslin=0, mixedCons=False ):
-        """
-        Arguments:
-        N         number of optimization variables (required).
-        Nconslin  number of linear constraints (default: 0).
-        Ncons     number of constraints (default: 0).
+#        """
+#        Arguments:
+#        N         number of optimization variables (required).
+#        Nconslin  number of linear constraints (default: 0).
+#        Ncons     number of constraints (default: 0).
+#
+#        prob = optProblem( N=2, Ncons=2, Nconslin=3 )
+#        """
+#
+#        try:
+#            self.N = int( N )
+#        except:
+#            raise ValueError( "N must be an integer" )
+#
+#        if( self.N <= 0 ):
+#            raise ValueError( "N must be strictly positive" )
 
-        prob = optProblem( N=2, Ncons=2, Nconslin=3 )
-        """
+#        try:
+#            self.Nconslin = int( Nconslin )
+#        except:
+#            raise ValueError( "Nconslin was not provided or was not an integer" )
 
-        try:
-            self.N = int( N )
-        except:
-            raise ValueError( "N must be an integer" )
+#        if( self.Nconslin < 0 ):
+#            raise ValueError( "Nconslin must be positive" )
 
-        if( self.N <= 0 ):
-            raise ValueError( "N must be strictly positive" )
+#        try:
+#            self.Ncons = int( Ncons )
+#        except:
+#            raise ValueError( "Ncons was not provided or was not an integer" )
 
-        try:
-            self.Nconslin = int( Nconslin )
-        except:
-            raise ValueError( "Nconslin was not provided or was not an integer" )
+#        if( self.Ncons < 0 ):
+#            raise ValueError( "Ncons must be positive" )
 
-        if( self.Nconslin < 0 ):
-            raise ValueError( "Nconslin must be positive" )
+#        if( mixedCons and Nconslin != Ncons ):
+#            raise ValueError( "If constrained are mixed type then Nconslin must be equal to Ncons" )
 
-        try:
-            self.Ncons = int( Ncons )
-        except:
-            raise ValueError( "Ncons was not provided or was not an integer" )
-
-        if( self.Ncons < 0 ):
-            raise ValueError( "Ncons must be positive" )
-
-        if( mixedCons and Nconslin != Ncons ):
-            raise ValueError( "If constrained are mixed type then Nconslin must be equal to Ncons" )
-
-        self.init = np.zeros( self.N )
-        self.lb = None  
-        self.ub = None  
-        self.objf = None  
-        self.objg = None 
-        self.consf = None 
-        self.consg = None
-        self.conslb = None  
-        self.consub = None  
-        self.conslinA = None  
-        self.conslinlb = None  
-        self.conslinub = None 
-        self.soln = None
-        self.mixedCons = mixedCons
+#        self.init = np.zeros( self.N )
+#        self.lb = None  
+#        self.ub = None  
+#        self.objf = None  
+#        self.objg = None 
+#        self.consf = None 
+#        self.consg = None
+#        self.conslb = None  
+#        self.consub = None  
+#        self.conslinA = None  
+#        self.conslinlb = None  
+#        self.conslinub = None 
+#        self.soln = None
+#        self.mixedCons = mixedCons
 
 
     def initPoint( self, init ):

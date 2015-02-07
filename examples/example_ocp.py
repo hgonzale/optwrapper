@@ -27,10 +27,10 @@ def dynamics(x,u):
 	return np.dot(A,x) + np.dot(B,u)
 
 def dynamicsgradst(x):
-	return np.array( [ [1, 0], [0,1] ] )
+	return np.array( [ [1, 4], [2,5] ] )
 
 def dynamicsgradin(u):
-	return np.array( [ [1], [0] ] )
+	return np.array( [ [1, 0], [0,1] ] )
 
 def cons(x):
 	return np.array( [ x[0] - 2 , x[1] - 4 ] )
@@ -49,7 +49,8 @@ prob.consFctn(cons, consgradst)
 prob.consBox(-50.0, 50.0, -50.0, 50.0)
 
 
+nlp_prob = nlp.Problem(ocp=prob, Nsamples= 4)
 
-
+ 
 
 
