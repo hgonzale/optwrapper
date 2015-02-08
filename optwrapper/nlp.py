@@ -15,7 +15,6 @@ class Problem:
         Arguments:
         ocp: an instance from the OCP (optimal control problem) class
         Nsamples: the number of samples in the approximated version of the OCP
-
         """
 
         Nst = ocp.Nst
