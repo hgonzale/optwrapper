@@ -205,8 +205,8 @@ class Problem:
         self.consg = constraintGrad
         setBounds() ## this fctn sets self.lb and self.ub
         setBoundsCons() ## this fctn sets self.conslb and self.consub
-
-
+        self.mixedCons = False
+        self.init = np.zeros( ( self.N, 1 ) )
 
 
 #    def __init__( self, N, Ncons=0, Nconslin=0, mixedCons=False ):
