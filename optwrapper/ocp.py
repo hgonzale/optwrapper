@@ -1,311 +1,355 @@
-import numpy as np 
+import numpy as np
 import types
+from optwrapper import nlp
 
 class Problem:
 
-	""" 
-	Optimal Control Programming Problem
-	"""
-
-	def __init__(self, Nst, Ninp, Nineqcons):
-		""" 
-		arguments:
-		Nst = the number of states
-		Ninp = the number of inputs  
-		Nineqcons = the number of inequality constraints 
-		"""
-
-		try:
-			self.Nst = int(Nst)
-		except:
-			raise ValueError("m must be an integer")
-
-		if (self.Nst <= 0):
-			raise ValueError("m must be strictly positive")
-
-		self.init = np.zeros(self.Nst)
-		self.t0 = None
-		self.tf = None
-		self.instcost = None
-		self.instcostgradst = None
-		self.instcostgradin = None
-		self.fincost = None
-		self.fincostgradst = None
-		self.dynamics = None
-		self.dynamicsgradst = None
-		self.dynamicsgradin = None
-		self.cons = None
-		self.consgradst = None
-		self.consstlb = None
-		self.consstub = None
-		self.consinplb = None 
-		self.consinpub = None
+    """
+    Optimal Control Programming Problem
+    """
 
-		
+    def __init__( self, Nstates, Ninputs, Ncons ):
+        """
+        arguments:
+        Nstates = the number of states
+        Ninputs = the number of inputs
+        Ncons = the number of inequality constraints
+        """
 
-	def initPoint(self,init):
-		"""
-		sets the initial point for the optimization problem
-		
-		arguments:
-		init: initial condition, a 1-D array of size Nst, defaults to an array of zeros 
+        try:
+            self.Nstates = int( Nstates )
+        except:
+            raise ValueError( "Nstates must be an integer" )
 
-		"""
+        if( self.Nstates <= 0 ):
+            raise ValueError( "Nstates must be strictly positive" )
 
-		self.init = np.array(init)
+        self.init = np.zeros( ( self.Nstates, 1 ) )
+        self.Nstates = Nstates
+        self.Ninputs = Ninputs
+        self.Ncons = Ncons
+        self.t0 = 0
+        self.tf = 1
+        self.icostf = None
+        self.fcost = None
+        self.dynamics = None
+        self.cons = None
+        self.conslb = None
+        self.consub = None
+        self.consstlb = None
+        self.consstub = None
+        self.consinlb = None
+        self.consinub = None
 
-		if (self.init.shape != (self.Nst,) ):
-			raise ValueError("the initial point must have size (" + str(self.Nst) + ",)." ) 
 
-	def initialFinalTime(self,t0,tf):
-		"""
-		sets the initial and final times for the optimization problem 
+    def initCond( self, init ):
+        """
+        sets the initial point for the optimization problem
 
-		arguments:
-		t0: the initial time of the optimization problem
-		tf: the final time of the optimization problem
+        arguments:
+        init: initial condition, a 1-D array of size Nstates, defaults to an array of zeros
 
-		"""
+        """
 
-		self.t0 = t0
-		self.tf = tf 
+        self.init = np.asfortranarray( init )
 
-	def instantCost(self,instcost,instcostgradst,instcostgradin):
-		"""
-		set the instant cost and its gradients with respect to the states and input
+        if( self.init.shape != (self.Nstates, ) ):
+            raise ValueError( "Argument must have size (" + str(self.Nstates) + ",)." )
 
-		arguments:
-		instcost: the instant cost function
-		instcostgradst: the gradient with respect to the states of the instant cost function
-		instcostgradin: the gradient with respect to the input of the instant cost function
 
-		"""
+    def timeHorizon( self, t0, tf ):
+        """
+        sets the initial and final times for the optimization problem
 
-		self.instcost = instcost 
-		self.instcostgradst = instcostgradst
-		self.instcostgradin = instcostgradin 
+        arguments:
+        t0: the initial time of the optimization problem
+        tf: the final time of the optimization problem
 
-		if ( type(instcost) != types.FunctionType ):
-			raise ValueError("argument must be a function")
+        """
 
-	
-	def finalCost(self,fincost,fincostgradst):
-		"""
-		sets the final cost and its gradient with respect to the states
+        if( self.t0 >= self.tf ):
+            raise ValueError( "Final time must be larger than initial time." )
 
-		arguments:
-		fincost: the final cost
-		fincostgradst: the gradient of the final cost with respect to the states
+        self.t0 = float( t0 )
+        self.tf = float( tf )
 
-		"""
 
-		self.fincost = fincost
-		self.fincostgradst = fincostgradst
+    def costInstant( self, icost ):
+        """
+        set the instant cost and its gradients with respect to the states and input
 
-		if ( type(fincost) != types.FunctionType ):
-			raise ValueError("argument must be a function")
+        arguments:
+        icost: the instant cost function
 
+        """
 
-	def dynamicsFctn(self,dynamics,dynamicsgradst,dynamicsgradin):
-		"""
-		sets the dynamics function and its gradients
+        if ( type(icost) != types.FunctionType ):
+            raise ValueError( "Argument must be a function" )
 
-		arguments:
-		dynamics: the dynamics function 
-		dynamicsgradst: the derivative of the dynamics function with respect to the states
-		dynamicsgradin: the derivative of the dynamics function with respect to the input
+        self.icost = icost
 
-		"""
 
-		self.dynamics = dynamics
-		self.dynamicsgradst = dynamicsgradst
-		self.dynamicsgradin = dynamicsgradin 
+    def costFinal( self, fcost ):
+        """
+        sets the final cost and its gradient with respect to the states
 
-		if ( type(dynamics) != types.FunctionType ):
-			raise ValueError("argument must be a function")
+        arguments:
+        fcost: the final cost
 
+        """
 
-	def consFctn(self,cons,consgradst):
+        if ( type(fcost) != types.FunctionType ):
+            raise ValueError( "Argument must be a function" )
 
-		""" 
-		defines the constraints and its gradients
+        self.fcost = fcost
 
-		arguments:
-		cons: the matrix of constraints, must have size Nineqcons
-		consgradst: the gradient of the constraints with respect to the states
 
-		"""
+    def vectorField( self, dynamics ):
+        """
+        sets the dynamics function and its gradients
 
-		self.cons = cons; 
-		self.consgradst = consgradst; 
+        arguments:
+        dynamics: the dynamics function
+        dynamicsgradst: the derivative of the dynamics function with respect to the states
+        dynamicsgradin: the derivative of the dynamics function with respect to the input
 
-		if ( type(cons) != types.FunctionType ):
-			raise ValueError("argument must be a function")
+        """
 
-		# if (self.cons(self.init).shape != (self.Nineqcons,) ):
-		# 	raise ValueError("the constraints must have size (" + str(self.Nineqcons) + ",)." ) 
+        if ( type(dynamics) != types.FunctionType ):
+            raise ValueError( "Argument must be a function" )
 
-	def consBox(self,consstlb, consstub, consinplb, consinpub):
-		"""
-		defines the box constraints on the states and inputs 
+        self.dynamics = dynamics
 
-		arguments:
-		consstlb: the lower bound box constraints on the state; a vector of size Nst 
-		consstub: the upper bound box constraints on the state; a vector of size Nst
-		consinplb: the lower bound box constraints on the input; a vector of size Ninp
-		consinpub: the upper bound box constraints on the input; a vector of size Ninp
 
-		"""
+    def consNonlinear( self, cons, lb=None, ub=None ):
 
-		self.consstlb = consstlb; 
-		self.consstub = consstub; 
-		self.consinplb = consinplb; 
-		self.consinpub = consinpub; 
+        """
+        defines the constraints and its gradients
 
-	# def checkGradSt(self, fctn, grad, fctnpoint, fctnin, h_step=1e-5 ,etol=1e-4 ,debug=False):
-	# 	"""
-	# 	checks if the user defined gradients are correct using finite differences 
+        arguments:
+        cons: the matrix of constraints, must have size Ninputseqcons
 
-	# 	arguments:
-	# 	fctn: the function you want to check 
-	# 	grad: the gradient of the function you are checking
-	# 	fctnpoint: evaluation point of size Nst; defaults to the init condition 
-	# 	fctnin: the input for the function 
-	# 	h_step: the optimization variable variation step size, defaults to 1e-5
-	# 	etol: the error tolerance, defaults to 1e-4
-	# 	debug: boolean to enable extra debugging information 
+        """
 
-	# 	"""
+        if ( type(cons) != types.FunctionType ):
+            raise ValueError( "Argument must be a function" )
 
-	# 	if (fctnpoint == None):
-	# 		fctnpoint = self.init 
-	# 	# else:
-	# 	# 	if (fctnpoint.shape != (self.Nst) ):
-	# 	# 		raise ValueError("the point must have size (" + str(self.Nineqcons) + ",)." ) 
+        if( lb == None ):
+            lb = -np.inf * np.ones( self.Ncons )
 
+        if( ub == None ):
+            ub = np.zeros( self.Ncons )
 
-	# 	if ( type(fctn) != types.FunctionType ):
-	# 		raise ValueError("argument must be a function")
+        self.cons = cons
+        self.conslb = np.asfortranarray( lb )
+        self.consub = np.asfortranarray( ub )
 
-	# 	if ( type(grad) != types.FunctionType ):
-	# 		raise ValueError("argument must be a function")
 
-	# 	try:
-	# 		size = len( np.squeeze( fctn( fctnpoint, fctnin ) ) )
-	# 	except TypeError:
-	# 		size = 1
+    def consBoxState( self, lb, ub ):
+        """
+        defines the box constraints on the states and inputs
 
+        arguments:
+        consstlb: the lower bound box constraints on the state; a vector of size Nstates
+        consstub: the upper bound box constraints on the state; a vector of size Nstates
+        consinplb: the lower bound box constraints on the input; a vector of size Ninputs
+        consinpub: the upper bound box constraints on the input; a vector of size Ninputs
 
-	# 	usrgrad = np.zeros( [size, self.Nst] )
-	# 	numgrad = np.zeros( [size, self.Nst] )
+        """
 
-	# 	fph = np.zeros( size )
-	# 	fmh = np.zeros( size )
+        if( lb.shape != (self.Nstates, ) or ub.shape != (self.Nstates, ) ):
+            raise ValueError( "Arguments must have size (" + str(self.Nstates) + ",)." )
 
-	# 	for k in range(0,self.Nst):
-	# 		hvec = np.zeros( self.Nst )
-	# 		hvec[k] = h_step 
+        self.consstlb = np.asfortranarray( lb )
+        self.consstub = np.asfortranarray( ub )
 
-	# 		fph = fctn((fctnpoint + hvec), fctnin )
-	# 		fmh = fctn((fctnpoint - hvec), fctnin )
 
-	# 		if( np.any (np.isnan (fph) ) or np.any ( np.isnan (fmh) ) or np.any( np.isinf ( fph ) ) 
-	# 			or np.any( np.isinf (fmh) ) ):
-	# 			raise ValueError("function returned NaN or inf at iteration" + str(k) )
+    def consBoxInput( self, lb, ub ):
+        """
+        defines the box constraints on the states and inputs
 
-	# 		delta = (fph - fmh ) / 2.0 / h_step
-	# 		numgrad[:,k] = delta 
+        arguments:
+        consstlb: the lower bound box constraints on the state; a vector of size Nstates
+        consstub: the upper bound box constraints on the state; a vector of size Nstates
+        consinplb: the lower bound box constraints on the input; a vector of size Ninputs
+        consinpub: the upper bound box constraints on the input; a vector of size Ninputs
 
-	# 	usrgrad = grad(fctnpoint)
-		
-	# 	if (np.any (np.isnan ( usrgrad) ) or np.any (np.isinf (usrgrad) ) ):
-	# 		raise ValueError("gradient returned NaN or inf")
+        """
 
-	# 	errgrad = abs(numgrad - usrgrad)
-	# 	if (errgrad.max() < etol ):
-	# 		return(True, errgrad.max(), usrgrad)
-	# 	else:
-	# 		if (debug):
-	# 			idx = np.unravel_index(np.argmax(errgrad), errgrad.shape)
-	# 			print "gradient incorrect in element  (" + str(idx[1]) + ",)."
-	# 		return(False, errgrad.max(), usrgrad)
+        if( lb.shape != (self.Ninputs, ) or ub.shape != (self.Ninputs, ) ):
+            raise ValueError( "Arguments must have size (" + str(self.Ninputs) + ",)." )
 
-	# def checkGradIn(self, fctn, grad, fctnpoint, fctnin, h_step=1e-5 ,etol=1e-4 ,debug=False):
-	# 	"""
-	# 	checks if the user defined gradients are correct using finite differences 
+        self.consinlb = np.asfortranarray( lb )
+        self.consinub = np.asfortranarray( ub )
 
-	# 	arguments:
-	# 	fctn: the function you want to check 
-	# 	grad: the gradient of the function you are checking
-	# 	size: the size of the function 
-	# 	fctnpoint: evaluation point of size Nst; defaults to the init condition 
-	# 	fctnin: the function's input   
-	# 	h_step: the optimization variable variation step size, defaults to 1e-5
-	# 	etol: the error tolerance, defaults to 1e-4
-	# 	debug: boolean to enable extra debugging information 
 
-	# 	"""
+    ## TODO: use mixed constraints, implement sparse
+    def discForwardEuler( self, Nsamples ):
+        """
+        this constructor will transform an optimal control problem into a non-linear programming problem
 
-	# 	if (fctnpoint == None):
-	# 		fctnpoint = self.init 
-	# 	# else:
-	# 	# 	if (point.shape != (self.Nst) ):
-	# 	# 		raise ValueError("the point must have size (" + str(self.Nineqcons) + ",)." ) 
+        Arguments:
+        ocp: an instance from the OCP (optimal control problem) class
+        Nsamples: the number of samples in the approximated version of the OCP
+        """
 
+        ## index helpers
+        stidx = np.arange( 0, self.Nstates * ( Nsamples + 1 ) ).reshape(
+            ( self.Nstates, Nsamples + 1 ),
+            order='F' )
+        uidx = ( stidx.size  +
+                 np.arange( 0, self.Ninputs * Nsamples ).reshape( ( self.Ninputs, Nsamples ),
+                                                              order='F' ) )
+        dconsidx = stidx
+        iconsidx = ( dconsidx.size  +
+                     np.arange( 0, self.Ncons * Nsamples ).reshape( ( self.Ncons, Nsamples ),
+                                                                    order='F' ) )
 
-	# 	if ( type(fctn) != types.FunctionType ):
-	# 		raise ValueError("argument must be a function")
+        ## Useful parameters
+        deltaT = ( self.tf - self.t0 ) / ( Nsamples + 1 )
+        feuler = nlp.Problem( N = stidx.size + uidx.size,
+                              Ncons = dconsidx.size + iconsidx.size,
+                              Nconslin = 0 )
 
-	# 	if ( type(grad) != types.FunctionType ):
-	# 		raise ValueError("argument must be a function")
+        def encode( st, u ):
+            """
+            this function creates one big vector of all of the states and inputs
 
-	# 	try:
-	# 		size = len( np.squeeze( fctn( fctnpoint, fctnin ) ) )
-	# 	except TypeError:
-	# 		size = 1
+            Arguments:
+            st: the matrix of states at all times tk for k=0...Nsamples
+            u: the matrix of inputs at all times tk for k=0...Nsamples-1
+            """
 
-	# 	try:
-	# 		p = len( np.squeeze( fctnin ) )
-	# 	except TypeError:
-	# 		p = 1
+            s = np.zeros( ( feuler.N, ) )
 
-	# 	usrgrad = np.zeros( [size, p] )
-	# 	numgrad = np.zeros( [size, p] )
+            if( st.ndim == 2 and st.shape == ( self.Nstates, Nsamples+1 ) ):
+                s[ stidx.ravel( order='F' ) ] = st.ravel( order='F' )
+            elif( st.ndim == 1 and st.shape == ( self.Nstates, ) ):
+                s[ stidx.ravel( order='F' ) ] = np.tile( st, ( Nsamples+1, ) )
+            else:
+                raise ValueError( "unknown state vector format." )
 
-	# 	fph = np.zeros( size )
-	# 	fmh = np.zeros( size )
+            if( u.ndim == 2 and u.shape == ( self.Ninputs, Nsamples ) ):
+                s[ uidx.ravel( order='F' ) ] = u.ravel( order='F' )
+            elif( u.ndim == 1 and u.shape == ( self.Ninputs, ) ):
+                s[ uidx.ravel( order='F' ) ] = np.tile( u, ( Nsamples, ) )
+            else:
+                raise ValueError( "unknown input vector format." )
 
-	# 	for k in range(0,p):
-	# 		hvec = np.zeros( p )
-	# 		hvec[k] = h_step 
+            return s
 
-	# 		fph = fctn( fctnpoint, (fctnin + hvec) )
-	# 		fmh = fctn( fctnpoint, (fctnin - hvec) )
 
-	# 		if( np.any (np.isnan (fph) ) or np.any ( np.isnan (fmh) ) or np.any( np.isinf ( fph ) ) 
-	# 			or np.any( np.isinf (fmh) ) ):
-	# 			raise ValueError("function returned NaN or inf at iteration" + str(k) )
+        def decode( s ):
+            st = s[ stidx ]
+            u = s[ uidx ]
 
-	# 		delta = (fph - fmh ) / 2.0 / h_step
-	# 		numgrad[:,k] = delta 
+            return ( st, u )
 
-	# 	usrgrad = grad( fctnin )
-		
-	# 	if (np.any (np.isnan ( usrgrad) ) or np.any (np.isinf (usrgrad) ) ):
-	# 		raise ValueError("gradient returned NaN or inf")
 
-	# 	errgrad = abs(numgrad - usrgrad)
-	# 	if (errgrad.max() < etol ):
-	# 		return(True, errgrad.max(), usrgrad)
-	# 	else:
-	# 		if (debug):
-	# 			idx = np.unravel_index(np.argmax(errgrad), errgrad.shape)
-	# 			print "gradient incorrect in element  (" + str(idx[1]) + ",)."
-	# 		return(False, errgrad.max(), usrgrad)
+        def objf( s ):
+            """
+            this function uses the instant cost and the final cost from the ocp problem and
+            creates the objective function for the nlp problem
 
+            Arguments:
+            s: the optimization vector
 
+            """
 
+            ( st, u ) = decode( s )
 
+            tmp = 0
+            for k in range( Nsamples ):
+                tmp += self.icost( st[:,k], u[:,k], grad=False )
 
+            return tmp * deltaT + self.fcost( st[:,Nsamples], grad=False )
 
 
+        def objg( s ):
+            """
+            this function returns the gradient of the objective function with respect to a vector
+            s, which is a concatenated vector of all of the states and inputs
+
+            Arguments:
+            s: the optimization problem vector
+
+            """
+
+            ( st, u ) = decode( s )
+            out = np.zeros( ( feuler.N, ) )
+
+            for k in range( Nsamples ):
+                ( dx, du ) = self.icost( st[:,k], u[:,k] )[1:3]
+                out[ stidx[:,k] ] = dx * deltaT
+                out[ uidx[:,k] ] = du * deltaT
+
+            out[ stidx[:,Nsamples] ] = self.fcost( st[:,Nsamples] )[1]
+
+            return out
+
+
+        def consf( s ):
+            """
+            this function returns the Forward Euler constraints and the inequality constraints
+            from the ocp for the nlp problem
+
+            Arguments:
+            s: the optimization vector
+
+            """
+
+            ( st, u ) = decode(s)
+            out = np.zeros( ( feuler.Ncons, ) )
+
+            ## Forward Euler collocation equality constraints
+            out[ dconsidx[:,0] ] = st[:,0] - self.init
+            for k in range( Nsamples ):
+                out[ dconsidx[:,k+1] ] = ( st[:,k+1] - st[:,k] -
+                                           deltaT * self.dynamics( st[:,k], u[:,k], grad=False ) )
+
+            ## inequality constraints
+            for k in range( 0, Nsamples ):
+                out[ iconsidx[:,k] ] = self.cons( st[:,k+1], grad=False )
+
+            return out
+
+
+        def consg( s ):
+            """
+            this function returns the gradient of the constraint function
+
+            Arguments:
+            s: the optimization vector
+
+            """
+
+            ( st, u ) =  decode( s )
+
+            out = np.zeros( ( feuler.Ncons, feuler.N ) )
+
+            out[ np.ix_( dconsidx[:,0], stidx[:,0] ) ] = np.identity( self.Nstates )
+            for k in range( Nsamples ):
+                ( dyndx, dyndu ) = self.dynamics( st[:,k], u[:,k] )[1:3]
+                out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] = (
+                    - np.identity( self.Nstates ) - deltaT * dyndx )
+                out[ np.ix_( dconsidx[:,k+1], stidx[:,k+1] ) ] = np.identity( self.Nstates )
+                out[ np.ix_( dconsidx[:,k+1], uidx[:,k] ) ] = - deltaT * dyndu
+
+                out[ np.ix_( iconsidx[:,k], stidx[:,k+1] ) ] = self.cons( st[:,k+1] )[1]
+
+            return out
+
+        ## setup feuler now that all the functions are defined
+        feuler.initPoint( encode( self.init, np.zeros( ( self.Ninputs, ) ) ) )
+        feuler.consBox( encode( self.consstlb, self.consinlb ),
+                        encode( self.consstub, self.consinub ) )
+        feuler.objFctn( objf )
+        feuler.objGrad( objg )
+        feuler.consFctn( consf,
+                         np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
+                                           np.tile( self.conslb, ( Nsamples, ) ) ) ),
+                         np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
+                                           np.tile( self.consub, ( Nsamples, ) ) ) ) )
+        feuler.consGrad( consg )
+
+        return feuler
