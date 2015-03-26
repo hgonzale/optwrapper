@@ -31,19 +31,19 @@ def dynamics( x, u, grad=True ):
              B )
 
 def cons( x, grad=True ):
+    out = np.array( [ x[0] - 2,
+                      - x[1] - 4 ] )
     if( not grad ):
-        return np.array( [ x[0] - 2,
-                           x[1] - 4 ] )
+        return out
 
-    return ( np.array( [ x[0] - 2,
-                         x[1] - 4 ] ),
+    return ( out,
              np.array( [ [ 1, 0 ],
-                         [ 0, 1 ] ] ) )
+                         [ 0, -1 ] ] ) )
 
 ## main ##
 prob = ocp.Problem( Nstates=2, Ninputs=2, Ncons=2 )
 prob.initCond( [ 1, 1 ] )
-prob.timeHorizon( 0, 4 )
+prob.timeHorizon( 0, 5 )
 prob.costInstant( instcost )
 prob.costFinal( finalcost )
 prob.vectorField( dynamics )
@@ -53,31 +53,19 @@ prob.consBoxState( -50 * np.ones( prob.Nstates ),
 prob.consBoxInput( -10 * np.ones( prob.Ninputs ),
                    10 * np.ones( prob.Ninputs ) )
 
-nlpprob = prob.discForwardEuler( Nsamples=4 )
+( nlpprob, solndecode ) = prob.discForwardEuler( Nsamples=30 )
 nlpprob.checkGrad( h=1e-6, etol=1e-4, point=None, debug=True )
 
-# s =  np.array([1, 1, 3, 2, -1, 4, 0, 3, 2, -2, 0, 1, 1, 2, -1, 3, 2, 0 ] )
-
-# objf = nlp_prob.objf(s)
-# objg = nlp_prob.objg(s)
-# consf = nlp_prob.consf(s)
-# consg = nlp_prob.consg(s)
-
-# print objf
-# print objg
-# print consf
-# print consg
-
 solver = snopt.Solver( nlpprob )
-solver.debug = True
+solver.debug = False
 solver.printOpts[ "summaryFile" ] = "debugs.txt"
 solver.printOpts[ "printFile" ] = "debugp.txt"
 solver.printOpts[ "printLevel" ] = 10
 
-
-print( "First run..." )
 solver.solve()
 print( nlpprob.soln.getStatus() )
 print( "Value: " + str( nlpprob.soln.value ) )
-print( "Final point: " + str( nlpprob.soln.final ) )
 print( "Retval: " + str( nlpprob.soln.retval ) )
+( st, u, time ) = solndecode( nlpprob.soln.final )
+print( "Optimal state:\n" + str( st ) )
+print( "Optimal input:\n" + str( u ) )

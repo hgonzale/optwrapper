@@ -32,7 +32,7 @@ class Problem:
         self.tf = 1
         self.icostf = None
         self.fcost = None
-        self.dynamics = None
+        self.vfield = None
         self.cons = None
         self.conslb = None
         self.consub = None
@@ -67,11 +67,11 @@ class Problem:
 
         """
 
-        if( self.t0 >= self.tf ):
-            raise ValueError( "Final time must be larger than initial time." )
-
         self.t0 = float( t0 )
         self.tf = float( tf )
+
+        if( self.t0 >= self.tf ):
+            raise ValueError( "Final time must be larger than initial time." )
 
 
     def costInstant( self, icost ):
@@ -104,21 +104,19 @@ class Problem:
         self.fcost = fcost
 
 
-    def vectorField( self, dynamics ):
+    def vectorField( self, vfield ):
         """
-        sets the dynamics function and its gradients
+        sets the vfield function and its gradients
 
         arguments:
-        dynamics: the dynamics function
-        dynamicsgradst: the derivative of the dynamics function with respect to the states
-        dynamicsgradin: the derivative of the dynamics function with respect to the input
+        vfield: the vector field function
 
         """
 
-        if ( type(dynamics) != types.FunctionType ):
+        if ( type(vfield) != types.FunctionType ):
             raise ValueError( "Argument must be a function" )
 
-        self.dynamics = dynamics
+        self.vfield = vfield
 
 
     def consNonlinear( self, cons, lb=None, ub=None ):
@@ -197,15 +195,14 @@ class Problem:
         stidx = np.arange( 0, self.Nstates * ( Nsamples + 1 ) ).reshape(
             ( self.Nstates, Nsamples + 1 ),
             order='F' )
-        uidx = ( stidx.size  +
-                 np.arange( 0, self.Ninputs * Nsamples ).reshape( ( self.Ninputs, Nsamples ),
-                                                              order='F' ) )
+        uidx = stidx.size + np.arange( 0, self.Ninputs * Nsamples ).reshape(
+            ( self.Ninputs, Nsamples ),
+            order='F' )
         dconsidx = stidx
-        iconsidx = ( dconsidx.size  +
-                     np.arange( 0, self.Ncons * Nsamples ).reshape( ( self.Ncons, Nsamples ),
-                                                                    order='F' ) )
+        iconsidx = dconsidx.size + np.arange( 0, self.Ncons * Nsamples ).reshape(
+            ( self.Ncons, Nsamples ),
+            order='F' )
 
-        ## Useful parameters
         deltaT = ( self.tf - self.t0 ) / ( Nsamples + 1 )
         feuler = nlp.Problem( N = stidx.size + uidx.size,
                               Ncons = dconsidx.size + iconsidx.size,
@@ -244,6 +241,10 @@ class Problem:
             u = s[ uidx ]
 
             return ( st, u )
+
+
+        def solnDecode( s ):
+            return decode( s ) + ( np.linspace( self.t0, self.tf, Nsamples + 1 ), )
 
 
         def objf( s ):
@@ -298,14 +299,14 @@ class Problem:
 
             """
 
-            ( st, u ) = decode(s)
+            ( st, u ) = decode( s )
             out = np.zeros( ( feuler.Ncons, ) )
 
             ## Forward Euler collocation equality constraints
             out[ dconsidx[:,0] ] = st[:,0] - self.init
             for k in range( Nsamples ):
                 out[ dconsidx[:,k+1] ] = ( st[:,k+1] - st[:,k] -
-                                           deltaT * self.dynamics( st[:,k], u[:,k], grad=False ) )
+                                           deltaT * self.vfield( st[:,k], u[:,k], grad=False ) )
 
             ## inequality constraints
             for k in range( 0, Nsamples ):
@@ -329,7 +330,7 @@ class Problem:
 
             out[ np.ix_( dconsidx[:,0], stidx[:,0] ) ] = np.identity( self.Nstates )
             for k in range( Nsamples ):
-                ( dyndx, dyndu ) = self.dynamics( st[:,k], u[:,k] )[1:3]
+                ( dyndx, dyndu ) = self.vfield( st[:,k], u[:,k] )[1:3]
                 out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] = (
                     - np.identity( self.Nstates ) - deltaT * dyndx )
                 out[ np.ix_( dconsidx[:,k+1], stidx[:,k+1] ) ] = np.identity( self.Nstates )
@@ -352,4 +353,4 @@ class Problem:
                                            np.tile( self.consub, ( Nsamples, ) ) ) ) )
         feuler.consGrad( consg )
 
-        return feuler
+        return ( feuler, solnDecode )

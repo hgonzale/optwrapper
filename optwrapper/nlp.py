@@ -113,10 +113,10 @@ class Problem:
                               + "," + str(self.N) + ")." )
 
         if( not self.mixedCons ):
-            if( lb == None ):
+            if( lb is None ):
                 lb = -np.inf * np.ones( self.Nconslin )
 
-            if( ub == None ):
+            if( ub is None ):
                 ub = np.zeros( self.Nconslin )
 
             self.conslinlb = np.asfortranarray( lb )
@@ -181,10 +181,10 @@ class Problem:
         if( type(consf) != types.FunctionType ):
             raise ValueError( "Argument must be a function" )
 
-        if( lb == None ):
+        if( lb is None ):
             lb = -np.inf * np.ones( self.Ncons )
 
-        if( ub == None ):
+        if( ub is None ):
             ub = np.zeros( self.Ncons )
 
         self.consf = consf
@@ -435,7 +435,7 @@ class SparseProblem( Problem ):
 
             if( self.consgpattern.shape != ( self.Ncons, self.N ) ):
                 raise ValueError( "Argument 'pattern' must have size (" + str(self.Ncons)
-                                + "," + str(self.N) + ")." )
+                                  + "," + str(self.N) + ")." )
 
 
     def checkPatterns( self ):
