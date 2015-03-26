@@ -46,7 +46,6 @@ class Problem:
             return s 
 
         def decode(s):
-            #note that the inputs Nst, Ninp, and Nsamples will not be necessary when you put this function in nlp.py
             st = np.zeros( ( Nst, Nsamples + 1 ) )
             inp = np.zeros( ( Ninp, Nsamples ) )
 
@@ -209,13 +208,6 @@ class Problem:
         deltaT = (ocp.tf - ocp.t0) / Nsamples
         self.Nconslin = 0 #we do not have any linear constraints in this problem 
         self.Ncons = Nst*(Nsamples + 1) + Nsamples*ocp.Nineqcons
-        
-
-        Ncons = self.Ncons
-        Nconslin = self.Nconslin
-        mixedCons = False
-
-
         self.objf = objectiveFctn
         self.objg = objectiveGrad
         self.consf = constraintFctn
@@ -225,57 +217,57 @@ class Problem:
 
 
 
-#    def __init__( self, N, Ncons=0, Nconslin=0, mixedCons=False ):
-        """
-        Arguments:
-        N         number of optimization variables (required).
-        Nconslin  number of linear constraints (default: 0).
-        Ncons     number of constraints (default: 0).
+    # def __init__( self, N, Ncons=0, Nconslin=0, mixedCons=False ):
+    #     """
+    #     Arguments:
+    #     N         number of optimization variables (required).
+    #     Nconslin  number of linear constraints (default: 0).
+    #     Ncons     number of constraints (default: 0).
 
-        prob = optProblem( N=2, Ncons=2, Nconslin=3 )
-        """
+    #     prob = optProblem( N=2, Ncons=2, Nconslin=3 )
+    #     """
 
-        try:
-            self.N = int( N )
-        except:
-            raise ValueError( "N must be an integer" )
+    #     try:
+    #         self.N = int( N )
+    #     except:
+    #         raise ValueError( "N must be an integer" )
 
-        if( self.N <= 0 ):
-            raise ValueError( "N must be strictly positive" )
+    #     if( self.N <= 0 ):
+    #         raise ValueError( "N must be strictly positive" )
 
-        try:
-            self.Nconslin = int( Nconslin )
-        except:
-            raise ValueError( "Nconslin was not provided or was not an integer" )
+    #     try:
+    #         self.Nconslin = int( Nconslin )
+    #     except:
+    #         raise ValueError( "Nconslin was not provided or was not an integer" )
 
-        if( self.Nconslin < 0 ):
-            raise ValueError( "Nconslin must be positive" )
+    #     if( self.Nconslin < 0 ):
+    #         raise ValueError( "Nconslin must be positive" )
 
-        try:
-            self.Ncons = int( Ncons )
-        except:
-            raise ValueError( "Ncons was not provided or was not an integer" )
+    #     try:
+    #         self.Ncons = int( Ncons )
+    #     except:
+    #         raise ValueError( "Ncons was not provided or was not an integer" )
 
-        if( self.Ncons < 0 ):
-            raise ValueError( "Ncons must be positive" )
+    #     if( self.Ncons < 0 ):
+    #         raise ValueError( "Ncons must be positive" )
 
-        if( mixedCons and Nconslin != Ncons ):
-            raise ValueError( "If constrained are mixed type then Nconslin must be equal to Ncons" )
+    #     if( mixedCons and Nconslin != Ncons ):
+    #         raise ValueError( "If constrained are mixed type then Nconslin must be equal to Ncons" )
 
-        self.init = np.zeros( self.N )
-        self.lb = None  
-        self.ub = None  
-        self.objf = None  
-        self.objg = None 
-        self.consf = None 
-        self.consg = None
-        self.conslb = None  
-        self.consub = None  
-        self.conslinA = None  
-        self.conslinlb = None  
-        self.conslinub = None 
-        self.soln = None
-        self.mixedCons = mixedCons
+    #     self.init = np.zeros( self.N )
+    #     self.lb = None  
+    #     self.ub = None  
+    #     self.objf = None  
+    #     self.objg = None 
+    #     self.consf = None 
+    #     self.consg = None
+    #     self.conslb = None  
+    #     self.consub = None  
+    #     self.conslinA = None  
+    #     self.conslinlb = None  
+    #     self.conslinub = None 
+    #     self.soln = None
+    #     self.mixedCons = mixedCons
 
 
     def initPoint( self, init ):

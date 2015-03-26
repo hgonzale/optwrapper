@@ -1,7 +1,5 @@
 import ocp
 import numpy as np
-from python scripts import optwrapper 
-from optwrapper import optwrapper 
 from optwrapper import nlp 
 
 
@@ -30,10 +28,10 @@ def dynamics(x,u):
 	return np.dot(A,x) + np.dot(B,u)
 
 def dynamicsgradst(x):
-	return np.array( [ [1, 0], [0,1] ] )
+	return np.array( [ [1,4], [2,5] ] )
 
 def dynamicsgradin(u):
-	return np.array( [ [1], [0] ] )
+	return np.array( [ [1,0], [0,1] ] )
 
 def cons(x):
 	return np.array( [ x[0] - 2 , x[1] - 4 ] )
@@ -50,6 +48,8 @@ prob.finalCost( fincost, fincostgradst )
 prob.dynamicsFctn(dynamics, dynamicsgradst, dynamicsgradin)
 prob.consFctn(cons, consgradst)
 prob.consBox(-50.0, 50.0, -50.0, 50.0)
+
+print "hello world"
 
 
 
