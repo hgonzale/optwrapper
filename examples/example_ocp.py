@@ -8,11 +8,11 @@ def instcost(x,u):
     return np.dot(np.dot(np.transpose(x),Q),x) + np.dot(np.dot(np.transpose(u),R),u)
 
 def instcostgradst(x):
-    Q = np.identity(2) 
+    Q = np.identity(2)
     return 2*np.dot(np.transpose(x),Q)
 
 def instcostgradin(u):
-    R = np.identity(2) 
+    R = np.identity(2)
     return 2*np.dot(np.transpose(u),R)
 
 def fincost(x):
@@ -22,7 +22,7 @@ def fincostgradst(x):
     return np.array ( [0, 1 ] )
 
 def dynamics(x,u):
-    A = np.array( [ [1,4], [2,5] ] ) 
+    A = np.array( [ [1,4], [2,5] ] )
     B = np.array( [ [1,0], [0,1] ] )
     return np.dot(A,x) + np.dot(B,u)
 
@@ -57,9 +57,9 @@ nlp_prob = nlp.Problem(ocp=prob, Nsamples= 4)
 #print nlp_prob.conslb
 #print nlp_prob.consub
 
-s =  np.array([1, 1, 3, 2, -1, 4, 0, 3, 2, -2, 0, 1, 1, 2, -1, 3, 2, 0 ] ) 
+s =  np.array([1, 1, 3, 2, -1, 4, 0, 3, 2, -2, 0, 1, 1, 2, -1, 3, 2, 0 ] )
 
-objf = nlp_prob.objf(s) 
+objf = nlp_prob.objf(s)
 objg = nlp_prob.objg(s)
 consf = nlp_prob.consf(s)
 consg = nlp_prob.consg(s)
@@ -67,7 +67,7 @@ consg = nlp_prob.consg(s)
 print objf
 print objg
 print consf
-print consg 
+print consg
 
 solver = snopt.Solver( nlp_prob )
 solver.debug = True
@@ -82,7 +82,3 @@ print( prob.soln.getStatus() )
 print( "Value: " + str( prob.soln.value ) )
 print( "Final point: " + str( prob.soln.final ) )
 print( "Retval: " + str( prob.soln.retval ) )
-        
-
-
-
