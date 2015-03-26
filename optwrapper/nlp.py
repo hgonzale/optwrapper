@@ -273,6 +273,8 @@ class Problem:
 
         errgrad = abs( usrgrad - numgrad )
         if( errgrad.max() < etol ):
+            if( debug ):
+                print( "Numerical gradient check passed. Max error was: " + str( errgrad.max() ) )
             return( True, errgrad.max(), errgrad )
         else:
             if( debug ):

@@ -1,5 +1,6 @@
 import numpy as np
 import types
+from optwrapper import nlp
 
 class Problem:
 
@@ -50,10 +51,10 @@ class Problem:
 
         """
 
+        self.init = np.asfortranarray( init )
+
         if( self.init.shape != (self.Nstates, ) ):
             raise ValueError( "Argument must have size (" + str(self.Nstates) + ",)." )
-
-        self.init = np.asfortranarray( init )
 
 
     def timeHorizon( self, t0, tf ):
@@ -73,7 +74,7 @@ class Problem:
         self.tf = float( tf )
 
 
-    def instantCost( self, icost ):
+    def costInstant( self, icost ):
         """
         set the instant cost and its gradients with respect to the states and input
 
@@ -88,7 +89,7 @@ class Problem:
         self.icost = icost
 
 
-    def finalCost( self, fcost ):
+    def costFinal( self, fcost ):
         """
         sets the final cost and its gradient with respect to the states
 
@@ -103,7 +104,7 @@ class Problem:
         self.fcost = fcost
 
 
-    def dynamicsFctn( self, dynamics ):
+    def vectorField( self, dynamics ):
         """
         sets the dynamics function and its gradients
 
@@ -120,7 +121,7 @@ class Problem:
         self.dynamics = dynamics
 
 
-    def consFctn( self, cons, lb=None, ub=None ):
+    def consNonlinear( self, cons, lb=None, ub=None ):
 
         """
         defines the constraints and its gradients
@@ -144,7 +145,7 @@ class Problem:
         self.consub = np.asfortranarray( ub )
 
 
-    def stateBoxCons( self, lb, ub ):
+    def consBoxState( self, lb, ub ):
         """
         defines the box constraints on the states and inputs
 
@@ -163,7 +164,7 @@ class Problem:
         self.consstub = np.asfortranarray( ub )
 
 
-    def inputBoxCons( self, lb, ub ):
+    def consBoxInput( self, lb, ub ):
         """
         defines the box constraints on the states and inputs
 
@@ -183,7 +184,7 @@ class Problem:
 
 
     ## TODO: use mixed constraints, implement sparse
-    def toForwardEuler( self, Nsamples ):
+    def discForwardEuler( self, Nsamples ):
         """
         this constructor will transform an optimal control problem into a non-linear programming problem
 
@@ -193,8 +194,9 @@ class Problem:
         """
 
         ## index helpers
-        stidx = np.arange( 0, self.Nstates * ( Nsamples + 1 ) ).reshape( ( self.Nstates, Nsamples + 1 ),
-                                                                     order='F' )
+        stidx = np.arange( 0, self.Nstates * ( Nsamples + 1 ) ).reshape(
+            ( self.Nstates, Nsamples + 1 ),
+            order='F' )
         uidx = ( stidx.size  +
                  np.arange( 0, self.Ninputs * Nsamples ).reshape( ( self.Ninputs, Nsamples ),
                                                               order='F' ) )
@@ -220,16 +222,16 @@ class Problem:
 
             s = np.zeros( ( feuler.N, ) )
 
-            if( st.ndims == 2 and st.shape == ( self.Nstates, Nsamples+1 ) ):
+            if( st.ndim == 2 and st.shape == ( self.Nstates, Nsamples+1 ) ):
                 s[ stidx.ravel( order='F' ) ] = st.ravel( order='F' )
-            elif( st.ndims == 1 and st.shape == ( self.Nstates, ) ):
+            elif( st.ndim == 1 and st.shape == ( self.Nstates, ) ):
                 s[ stidx.ravel( order='F' ) ] = np.tile( st, ( Nsamples+1, ) )
             else:
                 raise ValueError( "unknown state vector format." )
 
-            if( u.ndims == 2 and u.shape == ( self.Ninputs, Nsamples ) ):
+            if( u.ndim == 2 and u.shape == ( self.Ninputs, Nsamples ) ):
                 s[ uidx.ravel( order='F' ) ] = u.ravel( order='F' )
-            elif( u.ndims == 1 and u.shape == ( self.Ninputs, ) ):
+            elif( u.ndim == 1 and u.shape == ( self.Ninputs, ) ):
                 s[ uidx.ravel( order='F' ) ] = np.tile( u, ( Nsamples, ) )
             else:
                 raise ValueError( "unknown input vector format." )
@@ -257,10 +259,10 @@ class Problem:
             ( st, u ) = decode( s )
 
             tmp = 0
-            for k in range( Nsamples + 1 ):
-                tmp = out + self.icost( st[:,k], u[:,k], grad=False )
+            for k in range( Nsamples ):
+                tmp += self.icost( st[:,k], u[:,k], grad=False )
 
-            return tmp * deltaT + self.fcost( st[:,Nsamples+1], grad=False )
+            return tmp * deltaT + self.fcost( st[:,Nsamples], grad=False )
 
 
         def objg( s ):
@@ -276,12 +278,12 @@ class Problem:
             ( st, u ) = decode( s )
             out = np.zeros( ( feuler.N, ) )
 
-            for k in range( Nsamples + 1 ):
+            for k in range( Nsamples ):
                 ( dx, du ) = self.icost( st[:,k], u[:,k] )[1:3]
                 out[ stidx[:,k] ] = dx * deltaT
                 out[ uidx[:,k] ] = du * deltaT
 
-            out[ stidx[:,Nsamples+1] ] = self.fcost( st[:,Nsamples+1] )[1]
+            out[ stidx[:,Nsamples] ] = self.fcost( st[:,Nsamples] )[1]
 
             return out
 
@@ -301,12 +303,12 @@ class Problem:
 
             ## Forward Euler collocation equality constraints
             out[ dconsidx[:,0] ] = st[:,0] - self.init
-            for k in range( Nsamples + 1 ):
+            for k in range( Nsamples ):
                 out[ dconsidx[:,k+1] ] = ( st[:,k+1] - st[:,k] -
                                            deltaT * self.dynamics( st[:,k], u[:,k], grad=False ) )
 
             ## inequality constraints
-            for k in range( 0, Nsamples + 1 ):
+            for k in range( 0, Nsamples ):
                 out[ iconsidx[:,k] ] = self.cons( st[:,k+1], grad=False )
 
             return out
@@ -325,14 +327,15 @@ class Problem:
 
             out = np.zeros( ( feuler.Ncons, feuler.N ) )
 
-            out[ dconsidx[:,0], stidx[:,0] ] = np.identity( self.Nstates )
-            for k in range( Nsamples + 1 ):
+            out[ np.ix_( dconsidx[:,0], stidx[:,0] ) ] = np.identity( self.Nstates )
+            for k in range( Nsamples ):
                 ( dyndx, dyndu ) = self.dynamics( st[:,k], u[:,k] )[1:3]
-                out[ dconsidx[:,k+1], stidx[:,k] ] = - np.identity( self.Nstates ) - deltaT * dyndx
-                out[ dconsidx[:,k+1], stidx[:,k+1] ] = np.identity( self.Nstates )
-                out[ dconsidx[:,k+1], uidx[:,k] ] = - deltaT * dyndu
+                out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] = (
+                    - np.identity( self.Nstates ) - deltaT * dyndx )
+                out[ np.ix_( dconsidx[:,k+1], stidx[:,k+1] ) ] = np.identity( self.Nstates )
+                out[ np.ix_( dconsidx[:,k+1], uidx[:,k] ) ] = - deltaT * dyndu
 
-                out[ iconsidx[:,k], stidx[:,k+1] ] = self.cons( st[:,k+1] )[1]
+                out[ np.ix_( iconsidx[:,k], stidx[:,k+1] ) ] = self.cons( st[:,k+1] )[1]
 
             return out
 
