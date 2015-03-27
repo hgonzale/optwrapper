@@ -230,14 +230,14 @@ class Problem:
 
         isCorrect = prob.checkGrad( h=1e-6, etol=1e-5, point, debug=False )
         """
-        if( self.objf == None or
-            self.objg == None ):
+        if( self.objf is None or
+            self.objg is None ):
             raise StandardError( "Objective must be set before gradients are checked." )
         if( self.Ncons > 0 and
-            ( self.consf == None or self.consg == None ) ):
+            ( self.consf is None or self.consg is None ) ):
             raise StandardError( "Constraints must be set before gradients are checked." )
 
-        if( point == None ):
+        if( point is None ):
             point = self.init
         else:
             point = np.asfortranarray( point )
@@ -298,8 +298,8 @@ class Problem:
         isCorrect = prob.check()
         """
 
-        if( self.lb == None or
-            self.ub == None or
+        if( self.lb is None or
+            self.ub is None or
             np.any( self.lb > self.ub ) ):
             if( debug ):
                 print( "Box constraints not set or lower bound larger than upper bound." )
@@ -311,7 +311,7 @@ class Problem:
                 print( "Initial condition not set or violates box constraints." )
             return False
 
-        if( self.objf == None or
+        if( self.objf is None or
             np.any( np.isnan( self.objf( self.init ) ) ) or
             np.any( np.isinf( self.objf( self.init ) ) ) ):
             if( debug ):
@@ -323,7 +323,7 @@ class Problem:
                 print( "Objective function must return a scalar array." )
             return False
 
-        if( self.objg == None or
+        if( self.objg is None or
             np.any( np.isnan( self.objg( self.init ) ) ) or
             np.any( np.isinf( self.objg( self.init ) ) ) ):
             if( debug ):
@@ -336,22 +336,22 @@ class Problem:
             return False
 
         if( Nconslin > 0 ):
-            if( self.conslinlb == None or
-                self.conslinub == None or
+            if( self.conslinlb is None or
+                self.conslinub is None or
                 np.any( self.conslinlb > self.conslinub ) ):
                 if( debug ):
                     print( "Linear constraint bounds not set or lower bound larger than upper bound." )
                 return False
 
         if( Ncons > 0 ):
-            if( self.conslb == None or
-                self.consub == None or
+            if( self.conslb is None or
+                self.consub is None or
                 np.any( self.conslb > self.consub ) ):
                 if( debug ):
                     print( "Constraint bounds not set or lower bound larger than upper bound." )
                 return False
 
-            if( self.consf == None or
+            if( self.consf is None or
                 np.any( np.isnan( self.consf( self.init ) ) ) or
                 np.any( np.isinf( self.consf( self.init ) ) ) ):
                 if( debug ):
@@ -363,7 +363,7 @@ class Problem:
                     print( "Constraint function must return array of size (" + str(self.Ncons) + ",)." )
                 return False
 
-            if( self.consg == None or
+            if( self.consg is None or
                 np.any( np.isnan( self.consg( self.init ) ) ) or
                 np.any( np.isinf( self.consg( self.init ) ) ) ):
                 if( debug ):
@@ -407,7 +407,7 @@ class SparseProblem( Problem ):
         """
         Problem.objGrad( self, objg )
 
-        if( pattern != None ):
+        if( not pattern is None ):
             self.objgpattern = np.asfortranarray( pattern, dtype=np.int )
 
             if( self.objgpattern.shape != ( self.N, ) ):
@@ -430,7 +430,7 @@ class SparseProblem( Problem ):
         """
         Problem.consGrad( self, consg )
 
-        if( pattern != None ):
+        if( not pattern is None ):
             self.consgpattern = np.asfortranarray( pattern, dtype=np.int )
 
             if( self.consgpattern.shape != ( self.Ncons, self.N ) ):
