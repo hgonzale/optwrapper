@@ -115,6 +115,8 @@ cdef class Solver( base.Solver ):
     cdef integer *istate
     cdef integer *iw
     cdef doublereal *w
+    cdef doublereal *objA
+    cdef doublereal *consA
     cdef doublereal *A
     cdef doublereal *R
 

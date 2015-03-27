@@ -8,7 +8,7 @@ class Problem:
     Accepts box, linear, and nonlinear constraints.
     """
 
-    def __init__( self, N, Ncons=0, Nconslin=0, mixedCons=False ):
+    def __init__( self, N, Ncons=0, Nconslin=0 ):
         """
         Arguments:
         N         number of optimization variables (required).
@@ -49,16 +49,17 @@ class Problem:
         self.lb = None
         self.ub = None
         self.objf = None
+        self.objmixedA = None
         self.objg = None
         self.consf = None
         self.consg = None
         self.conslb = None
         self.consub = None
+        self.consmixedA = None
         self.conslinA = None
         self.conslinlb = None
         self.conslinub = None
         self.soln = None
-        self.mixedCons = mixedCons
 
 
     def initPoint( self, init ):
@@ -112,22 +113,21 @@ class Problem:
             raise ValueError( "Argument 'A' must have size (" + str(self.Nconslin)
                               + "," + str(self.N) + ")." )
 
-        if( not self.mixedCons ):
-            if( lb is None ):
-                lb = -np.inf * np.ones( self.Nconslin )
+        if( lb is None ):
+            lb = -np.inf * np.ones( self.Nconslin )
 
-            if( ub is None ):
-                ub = np.zeros( self.Nconslin )
+        if( ub is None ):
+            ub = np.zeros( self.Nconslin )
 
-            self.conslinlb = np.asfortranarray( lb )
-            self.conslinub = np.asfortranarray( ub )
+        self.conslinlb = np.asfortranarray( lb )
+        self.conslinub = np.asfortranarray( ub )
 
-            if( self.conslinlb.shape != ( self.Nconslin, ) or
-                self.conslinub.shape != ( self.Nconslin, ) ):
-                raise ValueError( "Bounds must have size (" + str(self.Nconslin) + ",)." )
+        if( self.conslinlb.shape != ( self.Nconslin, ) or
+            self.conslinub.shape != ( self.Nconslin, ) ):
+            raise ValueError( "Bounds must have size (" + str(self.Nconslin) + ",)." )
 
 
-    def objFctn( self, objf ):
+    def objFctn( self, objf, A=None ):
         """
         Set objective function.
 
@@ -142,6 +142,12 @@ class Problem:
             raise ValueError( "Argument must be a function" )
 
         self.objf = objf
+
+        if( not A is None ):
+            self.objmixedA = np.asfortranarray( A )
+
+            if( self.objmixedA.shape != ( self.N, ) ):
+                raise ValueError( "Argument 'A' must have size (" + str(self.N) + ",)." )
 
 
     def objGrad( self, objg ):
@@ -161,7 +167,7 @@ class Problem:
         self.objg = objg
 
 
-    def consFctn( self, consf, lb=None, ub=None ):
+    def consFctn( self, consf, A=None, lb=None, ub=None ):
         """
         Set nonlinear constraints function.
 
@@ -195,6 +201,12 @@ class Problem:
             self.consub.shape != ( self.Ncons, ) ):
             raise ValueError( "Bound must have size (" + str(self.Ncons) + ",)." )
 
+        if( not A is None ):
+            self.consmixedA = np.asfortranarray( A )
+
+            if( self.consmixedA.shape != ( self.Ncons, self.N ) ):
+                raise ValueError( "Argument 'A' must have size ("
+                                  + str(self.Ncons) + "," + str(self.N) + ")." )
 
     def consGrad( self, consg ):
         """
@@ -387,8 +399,8 @@ class SparseProblem( Problem ):
     Accepts box, linear, and nonlinear constraints.
     """
 
-    def __init__( self, N, Ncons=0, Nconslin=0, mixedCons=False ):
-        Problem.__init__( self, N, Ncons, Nconslin, mixedCons )
+    def __init__( self, N, Ncons=0, Nconslin=0 ):
+        Problem.__init__( self, N, Ncons, Nconslin )
 
         self.objgpattern = None
         self.consgpattern = None
