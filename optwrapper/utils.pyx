@@ -27,24 +27,25 @@ cdef np.ndarray wrapPtr( void* array, np.ndarray dims, int typenum ):
         dims.dtype != np.intp ):
         dims = np.require( dims.flat, dtype=np.intp, requirements=['C', 'A'] )
 
-    return convFortran( np.PyArray_SimpleNewFromData( dims.size,
-                                                      <np.npy_intp *> np.PyArray_GETPTR1( dims, 0 ),
-                                                      typenum, array ) )
+    return np.PyArray_SimpleNewFromData( dims.size,
+                                         <np.npy_intp *> np.PyArray_GETPTR1( dims, 0 ),
+                                         typenum, array )
 
 
 cdef np.ndarray wrap1dPtr( void* array, int length, int typenum ):
     cdef np.npy_intp dims[1]
     dims[0] = <np.npy_intp> length
 
-    return convFortran( np.PyArray_SimpleNewFromData( 1, dims, typenum, array ) )
+    return np.PyArray_SimpleNewFromData( 1, dims, typenum, array )
 
 
 cdef np.ndarray wrap2dPtr( void* array, int rows, int cols, int typenum ):
     cdef np.npy_intp dims[2]
-    dims[0] = <np.npy_intp> rows
-    dims[1] = <np.npy_intp> cols
+    dims[0] = <np.npy_intp> cols
+    dims[1] = <np.npy_intp> rows
 
-    return convFortran( np.PyArray_SimpleNewFromData( 2, dims, typenum, array ) )
+    ## hack to return fortran-order array by transposing the c-ordered one
+    return np.PyArray_SimpleNewFromData( 2, dims, typenum, array ).T
 
 
 cdef void* getPtr( np.ndarray array ):

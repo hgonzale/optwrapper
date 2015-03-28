@@ -2,34 +2,35 @@ from optwrapper import nlp, npsol, snopt
 import numpy as np
 import math
 
-def objf(x):
-    return x[1]
+def objf( out, x ):
+    out[0] = x[1]
 
-def objg(x):
-    return np.array( [ 0, 1 ] )
+def objg( out, x ):
+    out[:] = [ 0, 1 ] ## this line is *not* the same as 'out = [0,1]'
+                      ## the latter replaces the pointer
 
-def consf(x):
-    return np.array( [ 4*x[1]*x[1],
-                       (x[0] - 2)*(x[0] - 2) + x[1]*x[1] ] )
+def consf( out, x ):
+    out[0] = 4*x[1]*x[1]
+    out[1] = (x[0] - 2)*(x[0] - 2) + x[1]*x[1]
 
-def consg(x):
-    return np.array( [ [ 0, 8*x[1] ],
-                       [ 2*(x[0]-2), 2*x[1] ] ] )
+def consg( out, x ):
+    out[0] = [ 0, 8*x[1] ]
+    out[1] = [ 2*(x[0]-2), 2*x[1] ]
 
 prob = nlp.Problem( N=2, Ncons=2 )
-prob.initPoint( [10.0, 12.0] )
+prob.initPoint( [1.0, -2.0] )
 prob.consBox( [0, -10], [5, 2] )
 
 prob.objFctn( objf )
 prob.objGrad( objg )
-prob.consFctn( consf, [ -np.inf, -np.inf ], [ 4, 5 ] )
+prob.consFctn( consf, lb=[ -np.inf, -np.inf ], ub=[ 4, 5 ] )
 prob.consGrad( consg )
 
-if( not prob.checkGrad() ):
+if( not prob.checkGrad( debug=True ) ):
     print( "Gradient does not match function." )
     raise SystemExit
 
-solver = snopt.Solver( prob )
+solver = npsol.Solver( prob )
 solver.debug = True
 solver.printOpts[ "summaryFile" ] = "debugs.txt"
 solver.printOpts[ "printFile" ] = "debugp.txt"

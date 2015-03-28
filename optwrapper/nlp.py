@@ -42,9 +42,6 @@ class Problem:
         if( self.Ncons < 0 ):
             raise ValueError( "Ncons must be positive" )
 
-        if( mixedCons and Nconslin != Ncons ):
-            raise ValueError( "If constrained are mixed type then Nconslin must be equal to Ncons" )
-
         self.init = np.zeros( self.N )
         self.lb = None
         self.ub = None
@@ -167,7 +164,7 @@ class Problem:
         self.objg = objg
 
 
-    def consFctn( self, consf, A=None, lb=None, ub=None ):
+    def consFctn( self, consf, lb=None, ub=None, A=None ):
         """
         Set nonlinear constraints function.
 
@@ -265,10 +262,10 @@ class Problem:
             hvec = np.zeros( self.N )
             hvec[k] = h
 
-            fph[0] = self.objf( point + hvec )
-            fmh[0] = self.objf( point - hvec )
-            fph[1:] = self.consf( point + hvec )
-            fmh[1:] = self.consf( point - hvec )
+            self.objf( fph[0:1], point + hvec )
+            self.objf( fmh[0:1], point - hvec )
+            self.consf( fph[1:], point + hvec )
+            self.consf( fmh[1:], point - hvec )
 
             if( np.any( np.isnan( fph ) ) or np.any( np.isnan( fmh ) ) or
                 np.any( np.isinf( fph ) ) or np.any( np.isinf( fmh ) ) ):
@@ -277,8 +274,8 @@ class Problem:
             delta = ( fph - fmh ) / 2.0 / h
             numgrad[:,k] = delta
 
-        usrgrad[0,:] = self.objg( point )
-        usrgrad[1:,:] = self.consg( point )
+        self.objg( usrgrad[0,:], point )
+        self.consg( usrgrad[1:,:], point )
         if( np.any( np.isnan( usrgrad ) ) or
             np.any( np.isinf( usrgrad ) ) ):
             raise ValueError( "Gradient returned NaN or inf." )

@@ -48,15 +48,22 @@ cdef object extprob
 cdef int funobj( integer* mode, integer* n,
                  doublereal* x, doublereal* f, doublereal* g,
                  integer* nstate ):
-    xarr = utils.wrap1dPtr( x, n[0], np.NPY_DOUBLE )
+    xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
+    print( ">>> x: " + str(xarr) )
 
     if( mode[0] != 1 ):
-        f[0] = extprob.objf( xarr )
+        farr = utils.wrap1dPtr( f, 1, utils.doublereal_type )
+        extprob.objf( farr, xarr )
+        if( not extprob.objmixedA is None ):
+            farr += extprob.objmixedA.dot( xarr )
+        print( ">>> f: " + str(farr) )
 
     if( mode[0] > 0 ):
-        tmpg = utils.convFortran( extprob.objg( xarr ) )
-        memcpy( g, utils.getPtr( tmpg ),
-                n[0] * sizeof( doublereal ) )
+        garr = utils.wrap1dPtr( g, n[0], utils.doublereal_type )
+        extprob.objg( garr, xarr )
+        if( not extprob.objmixedA is None ):
+            garr += extprob.objmixedA
+        print( ">>> g: " + str(garr) )
 
 
 ## pg. 18, Section 7.2
@@ -65,16 +72,25 @@ cdef int funcon( integer* mode, integer* ncnln,
                  doublereal* x, doublereal* c, doublereal* cJac,
                  integer* nstate ):
     xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
+    print( ">>> x: " + str(xarr) )
 
     if( mode[0] != 1 ):
-        tmpf = utils.convFortran( extprob.consf( xarr ) )
-        memcpy( c, utils.getPtr( tmpf ),
-                ncnln[0] * sizeof( doublereal ) )
+        carr = utils.wrap1dPtr( c, ncnln[0], utils.doublereal_type )
+        extprob.consf( carr, xarr )
+        if( not extprob.consmixedA is None ):
+            carr += extprob.consmixedA.dot( xarr )
+        print( ">>> c: " + str(carr) )
 
     if( mode[0] > 0 ):
-        tmpg = utils.convFortran( extprob.consg( xarr ) )
-        memcpy( cJac, utils.getPtr( tmpg ),
-                ncnln[0] * n[0] * sizeof( doublereal ) )
+        cJacarr = utils.wrap2dPtr( cJac, ncnln[0], n[0], utils.doublereal_type )
+        extprob.consg( cJacarr, xarr )
+        if( not extprob.consmixedA is None ):
+            cJacarr += extprob.consmixedA
+        print( ">>> cJac: " + str(cJacarr) )
+        print( cJac[0] )
+        print( cJac[1] )
+        print( cJac[2] )
+        print( cJac[3] )
 
 
 cdef class Soln( base.Soln ):
@@ -115,8 +131,6 @@ cdef class Solver( base.Solver ):
     cdef integer *istate
     cdef integer *iw
     cdef doublereal *w
-    cdef doublereal *objA
-    cdef doublereal *consA
     cdef doublereal *A
     cdef doublereal *R
 
@@ -141,10 +155,11 @@ cdef class Solver( base.Solver ):
         if( prob ):
             self.setupProblem( prob )
 
-        ## Set options
+        ## Set print options
         self.printOpts[ "summaryFile" ] = "stdout"
         self.printOpts[ "printLevel" ] = 0
         self.printOpts[ "minorPrintLevel" ] = 0
+        ## Set solve options
         self.solveOpts[ "infValue" ] = 1e20
         self.solveOpts[ "iterLimit" ] = self.default_iter_limit ## defined in setupProblem
         self.solveOpts[ "minorIterLimit" ] = self.default_iter_limit ## defined in setupProblem
@@ -153,7 +168,6 @@ cdef class Solver( base.Solver ):
         self.solveOpts[ "feasibilityTol" ] = 0 ## Invalid value
         self.solveOpts[ "optimalityTol" ] = 0 ## Invalid value
         self.solveOpts[ "verifyGrad" ] = False
-
 
 
     def setupProblem( self, prob ):
@@ -236,7 +250,6 @@ cdef class Solver( base.Solver ):
         self.w = <doublereal *> malloc( self.lenw[0] * sizeof( doublereal ) )
         self.A = <doublereal *> malloc( self.ldA[0] * self.prob.N * sizeof( doublereal ) )
         self.R = <doublereal *> malloc( self.prob.N * self.prob.N * sizeof( doublereal ) )
-
         if( self.x == NULL or
             self.bl == NULL or
             self.bu == NULL or
