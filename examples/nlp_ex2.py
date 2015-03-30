@@ -3,9 +3,11 @@ import math
 from optwrapper import nlp, npsol, snopt
 
 def objf( out, x ):
+    out[:] = 0
     pass
 
 def objg( out, x ):
+    out[:] = 0
     pass
 
 def consf( out, x ):
@@ -13,8 +15,8 @@ def consf( out, x ):
     out[1] = (x[0] - 2)*(x[0] - 2) + x[1]*x[1]
 
 def consg( out, x ):
-    out[0] = [ 0, 8*x[1] ]
-    out[1] = [ 2*(x[0]-2), 2*x[1] ]
+    out[0,:] = [ 0, 8*x[1] ]
+    out[1,:] = [ 2*(x[0]-2), 2*x[1] ]
 
 prob = nlp.Problem( N=2, Ncons=2 )
 prob.initPoint( [10.0, 12.0] )
@@ -29,7 +31,7 @@ if( not prob.checkGrad() ):
     print( "Gradient does not match function." )
     raise SystemExit
 
-solver = npsol.Solver( prob )
+solver = snopt.Solver( prob )
 solver.debug = True
 solver.printOpts[ "summaryFile" ] = "debugs.txt"
 solver.printOpts[ "printFile" ] = "debugp.txt"
