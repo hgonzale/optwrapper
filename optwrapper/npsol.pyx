@@ -49,21 +49,22 @@ cdef int funobj( integer* mode, integer* n,
                  doublereal* x, doublereal* f, doublereal* g,
                  integer* nstate ):
     xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
-    print( ">>> x: " + str(xarr) )
+    # print( ">>> x: " + str(xarr) )
 
     if( mode[0] != 1 ):
+        f[0] = 0.0 ## Initialize since f sometimes points to NaN
         farr = utils.wrap1dPtr( f, 1, utils.doublereal_type )
         extprob.objf( farr, xarr )
         if( not extprob.objmixedA is None ):
             farr += extprob.objmixedA.dot( xarr )
-        print( ">>> f: " + str(farr) )
+        # print( ">>> f: " + str(farr) )
 
     if( mode[0] > 0 ):
         garr = utils.wrap1dPtr( g, n[0], utils.doublereal_type )
         extprob.objg( garr, xarr )
         if( not extprob.objmixedA is None ):
             garr += extprob.objmixedA
-        print( ">>> g: " + str(garr) )
+        # print( ">>> g: " + str(garr) )
 
 
 ## pg. 18, Section 7.2
@@ -72,25 +73,21 @@ cdef int funcon( integer* mode, integer* ncnln,
                  doublereal* x, doublereal* c, doublereal* cJac,
                  integer* nstate ):
     xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
-    print( ">>> x: " + str(xarr) )
+    # print( ">>> x: " + str(xarr) )
 
     if( mode[0] != 1 ):
         carr = utils.wrap1dPtr( c, ncnln[0], utils.doublereal_type )
         extprob.consf( carr, xarr )
         if( not extprob.consmixedA is None ):
             carr += extprob.consmixedA.dot( xarr )
-        print( ">>> c: " + str(carr) )
+        # print( ">>> c: " + str(carr) )
 
     if( mode[0] > 0 ):
         cJacarr = utils.wrap2dPtr( cJac, ncnln[0], n[0], utils.doublereal_type )
         extprob.consg( cJacarr, xarr )
         if( not extprob.consmixedA is None ):
             cJacarr += extprob.consmixedA
-        print( ">>> cJac: " + str(cJacarr) )
-        print( cJac[0] )
-        print( cJac[1] )
-        print( cJac[2] )
-        print( cJac[3] )
+        # print( ">>> cJac: " + str(cJacarr) )
 
 
 cdef class Soln( base.Soln ):

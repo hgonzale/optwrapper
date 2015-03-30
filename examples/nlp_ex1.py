@@ -1,6 +1,6 @@
-from optwrapper import nlp, npsol, snopt
 import numpy as np
 import math
+from optwrapper import nlp, npsol, snopt
 
 def objf( out, x ):
     out[0] = x[1]
@@ -10,11 +10,11 @@ def objg( out, x ):
                       ## the latter replaces the pointer
 
 def consf( out, x ):
-    out[0] = 4*x[1]*x[1]
+    out[0] = 4*x[1]*x[1] - x[0]
     out[1] = (x[0] - 2)*(x[0] - 2) + x[1]*x[1]
 
 def consg( out, x ):
-    out[0] = [ 0, 8*x[1] ]
+    out[0] = [ -1, 8*x[1] ]
     out[1] = [ 2*(x[0]-2), 2*x[1] ]
 
 prob = nlp.Problem( N=2, Ncons=2 )

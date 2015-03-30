@@ -1,6 +1,6 @@
-from optwrapper import nlp, npsol, snopt
 import numpy as np
 import math
+from optwrapper import nlp, npsol, snopt
 
 def objf( out, x ):
     pass
@@ -22,7 +22,7 @@ prob.consBox( [0, -10], [5, 2] )
 
 prob.objFctn( objf, A=[0,1] )
 prob.objGrad( objg )
-prob.consFctn( consf, lb=[ -np.inf, -np.inf ], ub=[ 4, 5 ] )
+prob.consFctn( consf, lb=[ -np.inf, -np.inf ], ub=[ 4, 5 ], A = [[-1,0],[0,0]] )
 prob.consGrad( consg )
 
 if( not prob.checkGrad() ):
