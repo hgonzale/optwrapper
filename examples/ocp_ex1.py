@@ -54,7 +54,7 @@ prob.consBoxInput( -10 * np.ones( prob.Ninputs ),
                    10 * np.ones( prob.Ninputs ) )
 
 ( nlpprob, solndecode ) = prob.discForwardEuler( Nsamples=30 )
-nlpprob.checkGrad( h=1e-6, etol=1e-4, point=None, debug=True )
+# nlpprob.checkGrad( h=1e-6, etol=1e-4, point=None, debug=True )
 
 solver = snopt.Solver( nlpprob )
 solver.debug = False

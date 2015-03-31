@@ -30,7 +30,7 @@ if( not prob.checkGrad( debug=True ) ):
     print( "Gradient does not match function." )
     raise SystemExit
 
-solver = npsol.Solver( prob )
+solver = snopt.Solver( prob )
 solver.debug = True
 solver.printOpts[ "summaryFile" ] = "debugs.txt"
 solver.printOpts[ "printFile" ] = "debugp.txt"

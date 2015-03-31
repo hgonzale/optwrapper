@@ -289,7 +289,7 @@ class Problem:
             return decode( s ) + ( np.linspace( self.t0, self.tf, Nsamples + 1 ), )
 
 
-        def objf( s ):
+        def objf( out, s ):
             """
             this function uses the instant cost and the final cost from the ocp problem and
             creates the objective function for the nlp problem
@@ -305,10 +305,10 @@ class Problem:
             for k in range( Nsamples ):
                 tmp += self.icost( st[:,k], u[:,k], grad=False )
 
-            return tmp * deltaT + self.fcost( st[:,Nsamples], grad=False )
+            out[0] = tmp * deltaT + self.fcost( st[:,Nsamples], grad=False )
 
 
-        def objg( s ):
+        def objg( out, s ):
             """
             this function returns the gradient of the objective function with respect to a vector
             s, which is a concatenated vector of all of the states and inputs
@@ -319,16 +319,13 @@ class Problem:
             """
 
             ( st, u ) = decode( s )
-            out = np.zeros( ( feuler.N, ) )
 
             for k in range( Nsamples ):
                 ( dx, du ) = self.icost( st[:,k], u[:,k] )[1:3]
-                out[ stidx[:,k] ] = dx * deltaT
-                out[ uidx[:,k] ] = du * deltaT
+                out[ 0, stidx[:,k] ] = dx * deltaT
+                out[ 0, uidx[:,k] ] = du * deltaT
 
-            out[ stidx[:,Nsamples] ] = self.fcost( st[:,Nsamples] )[1]
-
-            return out
+            out[ 0, stidx[:,Nsamples] ] = self.fcost( st[:,Nsamples] )[1]
 
 
         def objgpattern():
@@ -348,7 +345,7 @@ class Problem:
             return out
 
 
-        def consf( s ):
+        def consf( out, s ):
             """
             this function returns the Forward Euler constraints and the inequality constraints
             from the ocp for the nlp problem
@@ -359,7 +356,6 @@ class Problem:
             """
 
             ( st, u ) = decode( s )
-            out = np.zeros( ( feuler.Ncons, ) )
 
             ## Forward Euler collocation equality constraints
             out[ dconsidx[:,0] ] = st[:,0] - self.init
@@ -371,10 +367,8 @@ class Problem:
             for k in range( 0, Nsamples ):
                 out[ iconsidx[:,k] ] = self.cons( st[:,k+1], grad=False )
 
-            return out
 
-
-        def consg( s ):
+        def consg( out, s ):
             """
             this function returns the gradient of the constraint function
 
@@ -384,8 +378,6 @@ class Problem:
             """
 
             ( st, u ) =  decode( s )
-
-            out = np.zeros( ( feuler.Ncons, feuler.N ) )
 
             out[ np.ix_( dconsidx[:,0], stidx[:,0] ) ] = np.identity( self.Nstates )
             for k in range( Nsamples ):
@@ -397,7 +389,6 @@ class Problem:
 
                 out[ np.ix_( iconsidx[:,k], stidx[:,k+1] ) ] = self.cons( st[:,k+1] )[1]
 
-            return out
 
         def consgpattern():
             if( self.vfielddxpattern is None or
