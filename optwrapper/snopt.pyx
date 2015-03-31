@@ -4,12 +4,13 @@ cimport numpy as np
 import numpy as np
 from scipy.sparse import coo_matrix, csr_matrix
 
-from optwrapper.f2ch cimport *
-cimport optwrapper.filehandler as fh
-cimport optwrapper.snopth as snopt
-cimport optwrapper.utils as utils
-cimport optwrapper.base as base
-import optwrapper.nlp as nlp
+from .f2ch cimport *
+cimport filehandler as fh
+cimport snopth as snopt
+cimport utils
+cimport base
+import nlp
+from .csr_vector import *
 
 ## SNOPT's option strings
 cdef char* STR_NONDERIVATIVE_LINESEARCH = "Nonderivative linesearch"
@@ -290,7 +291,7 @@ cdef class Solver( base.Solver ):
                 tmpobjGrows = utils.convIntFortran( np.ones( (prob.N,) ) )
                 tmpobjGcols = utils.convIntFortran( np.arange( 1, 1 + prob.N ) )
 
-            objGsparse = csr_matrix( ( np.ones( ( tmpobjGrows.size, ) ),
+            objGsparse = csr_vector( ( np.ones( ( tmpobjGrows.size, ) ),
                                        ( tmpobjGrows - 1,
                                          tmpobjGcols - 1 ) ) )
             memcpy( &self.iGfun[0], utils.getPtr( tmpobjGrows ),
