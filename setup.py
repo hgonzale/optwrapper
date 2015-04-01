@@ -4,7 +4,7 @@ from Cython.Build import cythonize
 import numpy as np
 
 major = "0"
-minor = "2+"
+minor = "3"
 
 extensions = [ Extension( "optwrapper.utils",
                           sources = [ "optwrapper/utils.pyx" ],
