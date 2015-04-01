@@ -6,8 +6,7 @@ def objf( out, x ):
     out[0] = x[1]
 
 def objg( out, x ):
-    ## out is a sparse matrix with shape (1,prob.N)
-    out[0,1] = 1
+    out[1] = 1
 
 def consf( out, x ):
     out[:] = [ 4*x[1]*x[1] - x[0],
@@ -26,9 +25,9 @@ prob.objGrad( objg, pattern=[ 0, 1 ] )
 prob.consFctn( consf, lb=[ -np.inf, -np.inf ], ub=[ 4, 5 ] )
 prob.consGrad( consg, pattern=[ [1,1], [1,1] ] )
 
-# if( not prob.checkGrad() ):
-#     print( "Gradient does not match function." )
-#     raise SystemExit
+if( not prob.checkGrad() ):
+    print( "Gradient does not match function." )
+    raise SystemExit
 
 solver = snopt.Solver( prob )
 solver.debug = True
