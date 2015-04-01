@@ -3,8 +3,8 @@ from distutils.extension import Extension
 from Cython.Build import cythonize
 import numpy as np
 
-major = 0
-minor = 3
+major = "0"
+minor = "2+"
 
 extensions = [ Extension( "optwrapper.utils",
                           sources = [ "optwrapper/utils.pyx" ],
@@ -14,7 +14,6 @@ extensions = [ Extension( "optwrapper.utils",
                           include_dirs = [ np.get_include(), "." ] ),
                Extension( "optwrapper.npsol",
                           sources = [ "optwrapper/npsol.pyx",
-                                      # "optwrapper/dummy.c",
                                       "optwrapper/filehandler.c" ],
                           include_dirs = [ np.get_include(), "." ],
                           libraries = [ "npsol",
@@ -24,7 +23,6 @@ extensions = [ Extension( "optwrapper.utils",
                                         "m" ] ),
                Extension( "optwrapper.snopt",
                           sources = [ "optwrapper/snopt.pyx",
-                                      # "optwrapper/dummy.c",
                                       "optwrapper/filehandler.c" ],
                           include_dirs = [ np.get_include(), "." ],
                           libraries = [ "snopt",
@@ -34,10 +32,11 @@ extensions = [ Extension( "optwrapper.utils",
                                         "m" ] ) ]
 
 setup( name = "OptWrapper",
-       version = "%d.%d" % ( major, minor ),
-       description = "Common optimization interface and wrappers for different solvers",
+       version = "{0}.{1}".format( major, minor ),
+       description = "Common interface for numerical optimization solvers",
        license = "BSD 2-Clause",
-       author = "Jingdao Chen, Humberto Gonzalez, Christa Stathopoulos",
-       author_email = "hgonzale@ese.wustl.edu",
+       maintainer = "Humberto Gonzalez",
+       maintainer_email = "hgonzale@wustl.edu",
+       download_url = "https://github.com/hgonzale/optwrapper",
        packages = [ "optwrapper" ],
        ext_modules = cythonize( extensions ) )
