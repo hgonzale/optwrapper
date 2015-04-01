@@ -1,7 +1,7 @@
 OptWrapper
 ----------
 
-This is a python wrapper for numerical optimization libraries. It contains general objects: problems and solvers. This version has been tested in Python 2.7 and 3.3.
+This is a python wrapper for numerical optimization solver libraries. It contains two general types of objects: problems and solvers. This version has been tested in Python versions 2.7 and 3.4, and Cython version 0.21 and 0.22.
 
 Currently there are two problems:
 1. Nonlinear Programming Problem (nlp.Problem)
@@ -10,7 +10,7 @@ and two solvers:
 1. NPSOL (npsol.Solver)
 2. SNOPT (snopt.Solver)
 
-The documentation is sketchy and most likely outdated, so for the time being you should read the code if you wonder how a particular feature works. Two (very simple) examples are provided in the 'examples' folder.
+The documentation is sketchy and most likely outdated, so for the time being you should read the code if you want to know how a particular feature works. A few simple-yet-illustrative examples are included in the 'examples' folder.
 
 
 Requirements
@@ -18,7 +18,7 @@ Requirements
 
 - Python (either 2.x or 3.x)
 - Cython
-- Numpy
+- NumPy + SciPy
 - NPSOL 6
 - SNOPT 7
 - f2c
@@ -27,9 +27,11 @@ Requirements
 Installation
 ------------
 
-To install the package using Python's distutils run:
-% make
+To install the package using Python's distutils either run:
 % sudo make install
+for an all-users installation, or:
+% make install_local
+for a single-user installation.
 
 To uninstall the package run:
 % sudo make uninstall
