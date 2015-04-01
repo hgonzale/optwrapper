@@ -1,15 +1,15 @@
-from libc.string cimport memcpy
+from libc.string cimport memcpy, memset
 from libc.math cimport sqrt
 from libc.stdlib cimport malloc, free
 cimport numpy as np
 import numpy as np
 
-from optwrapper.f2ch cimport *      ## tydefs from f2c.h
-cimport optwrapper.filehandler as fh
-cimport optwrapper.npsolh as npsol  ## import every function exposed in npsol.h
-cimport optwrapper.utils as utils
-cimport optwrapper.base as base
-import optwrapper.nlp as nlp
+from .f2ch cimport *      ## tydefs from f2c.h
+cimport filehandler as fh
+cimport npsolh as npsol  ## import every function exposed in npsol.h
+cimport utils
+cimport base
+import nlp
 
 ## NPSOL's option strings
 cdef char* STR_NOLIST = "Nolist"
@@ -51,8 +51,11 @@ cdef int funobj( integer* mode, integer* n,
     xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
     # print( ">>> x: " + str(xarr) )
 
+    ## we *have* to zero'd out all the pointers since npsol assumes
+    ## objf/g sets all the elements in the array, which is not true in
+    ## sparse problems or problems with only mixed-linear entries.
     if( mode[0] != 1 ):
-        f[0] = 0.0 ## Initialize since f sometimes points to NaN
+        f[0] = 0.0
         farr = utils.wrap1dPtr( f, 1, utils.doublereal_type )
         extprob.objf( farr, xarr )
         if( not extprob.objmixedA is None ):
@@ -60,6 +63,7 @@ cdef int funobj( integer* mode, integer* n,
         # print( ">>> f: " + str(farr) )
 
     if( mode[0] > 0 ):
+        memset( g, 0, n[0] * sizeof( doublereal ) )
         garr = utils.wrap1dPtr( g, n[0], utils.doublereal_type )
         extprob.objg( garr, xarr )
         if( not extprob.objmixedA is None ):
@@ -75,7 +79,11 @@ cdef int funcon( integer* mode, integer* ncnln,
     xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
     # print( ">>> x: " + str(xarr) )
 
+    ## we *have* to zero'd out all the pointers since npsol assumes
+    ## consf/g sets all the elements in the array, which is not true
+    ## in sparse problems or problems with only mixed-linear entries.
     if( mode[0] != 1 ):
+        memset( c, 0, ncnln[0] * sizeof( doublereal ) )
         carr = utils.wrap1dPtr( c, ncnln[0], utils.doublereal_type )
         extprob.consf( carr, xarr )
         if( not extprob.consmixedA is None ):
@@ -83,6 +91,7 @@ cdef int funcon( integer* mode, integer* ncnln,
         # print( ">>> c: " + str(carr) )
 
     if( mode[0] > 0 ):
+        memset( cJac, 0, ncnln[0] * n[0] * sizeof( doublereal ) )
         cJacarr = utils.wrap2dPtr( cJac, ncnln[0], n[0], utils.doublereal_type )
         extprob.consg( cJacarr, xarr )
         if( not extprob.consmixedA is None ):

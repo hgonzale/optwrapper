@@ -173,8 +173,8 @@ cdef class Solver( base.Solver ):
 
         self.mem_alloc = False
         self.mem_alloc_ws = False
-        memset( self.mem_size, 0, 4 ) ## Set mem_size to zero
-        memset( self.mem_size_ws, 0, 3 ) ## Set mem_size_ws to zero
+        memset( self.mem_size, 0, 4 * sizeof( int ) ) ## Set mem_size to zero
+        memset( self.mem_size_ws, 0, 3 * sizeof( int ) ) ## Set mem_size_ws to zero
         self.default_tol = np.sqrt( np.spacing(1) ) ## "Difference interval", pg. 71
         self.default_fctn_prec = np.power( np.spacing(1), 2.0/3.0 ) ## pg. 72, there is a typo there
         self.default_feas_tol = 1.0e-6 ## pg. 76
