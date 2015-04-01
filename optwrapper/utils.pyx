@@ -44,7 +44,7 @@ cdef np.ndarray wrap2dPtr( void* array, int rows, int cols, int typenum ):
     dims[0] = <np.npy_intp> cols
     dims[1] = <np.npy_intp> rows
 
-    ## hack to return fortran-order array by transposing the c-ordered one
+    ## hack to return fortran-ordered array by transposing the c-ordered one
     return np.PyArray_SimpleNewFromData( 2, dims, typenum, array ).T
 
 
