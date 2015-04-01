@@ -3,9 +3,10 @@
 /* BEGIN: Cython Metadata
 {
     "distutils": {
-        "include_dirs": [
-            "/opt/local/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/site-packages/numpy/core/include",
-            "."
+        "depends": [
+            "optwrapper/filehandler.h",
+            "/opt/local/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/site-packages/numpy/core/include/numpy/arrayobject.h",
+            "/opt/local/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/site-packages/numpy/core/include/numpy/ufuncobject.h"
         ],
         "libraries": [
             "snopt",
@@ -14,10 +15,9 @@
             "f2c",
             "m"
         ],
-        "depends": [
-            "optwrapper/filehandler.h",
-            "/opt/local/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/site-packages/numpy/core/include/numpy/ufuncobject.h",
-            "/opt/local/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/site-packages/numpy/core/include/numpy/arrayobject.h"
+        "include_dirs": [
+            "/opt/local/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/site-packages/numpy/core/include",
+            "."
         ]
     }
 }
@@ -2959,7 +2959,7 @@ static int __pyx_pf_10optwrapper_5snopt_6Solver___init__(struct __pyx_obj_10optw
  * 
  *         self.mem_alloc = False             # <<<<<<<<<<<<<<
  *         self.mem_alloc_ws = False
- *         memset( self.mem_size, 0, 4 ) ## Set mem_size to zero
+ *         memset( self.mem_size, 0, 4 * sizeof( int ) ) ## Set mem_size to zero
  */
   __pyx_v_self->mem_alloc = 0;
 
@@ -2967,32 +2967,32 @@ static int __pyx_pf_10optwrapper_5snopt_6Solver___init__(struct __pyx_obj_10optw
  * 
  *         self.mem_alloc = False
  *         self.mem_alloc_ws = False             # <<<<<<<<<<<<<<
- *         memset( self.mem_size, 0, 4 ) ## Set mem_size to zero
- *         memset( self.mem_size_ws, 0, 3 ) ## Set mem_size_ws to zero
+ *         memset( self.mem_size, 0, 4 * sizeof( int ) ) ## Set mem_size to zero
+ *         memset( self.mem_size_ws, 0, 3 * sizeof( int ) ) ## Set mem_size_ws to zero
  */
   __pyx_v_self->mem_alloc_ws = 0;
 
   /* "optwrapper/snopt.pyx":176
  *         self.mem_alloc = False
  *         self.mem_alloc_ws = False
- *         memset( self.mem_size, 0, 4 ) ## Set mem_size to zero             # <<<<<<<<<<<<<<
- *         memset( self.mem_size_ws, 0, 3 ) ## Set mem_size_ws to zero
+ *         memset( self.mem_size, 0, 4 * sizeof( int ) ) ## Set mem_size to zero             # <<<<<<<<<<<<<<
+ *         memset( self.mem_size_ws, 0, 3 * sizeof( int ) ) ## Set mem_size_ws to zero
  *         self.default_tol = np.sqrt( np.spacing(1) ) ## "Difference interval", pg. 71
  */
-  memset(__pyx_v_self->mem_size, 0, 4);
+  memset(__pyx_v_self->mem_size, 0, (4 * (sizeof(int))));
 
   /* "optwrapper/snopt.pyx":177
  *         self.mem_alloc_ws = False
- *         memset( self.mem_size, 0, 4 ) ## Set mem_size to zero
- *         memset( self.mem_size_ws, 0, 3 ) ## Set mem_size_ws to zero             # <<<<<<<<<<<<<<
+ *         memset( self.mem_size, 0, 4 * sizeof( int ) ) ## Set mem_size to zero
+ *         memset( self.mem_size_ws, 0, 3 * sizeof( int ) ) ## Set mem_size_ws to zero             # <<<<<<<<<<<<<<
  *         self.default_tol = np.sqrt( np.spacing(1) ) ## "Difference interval", pg. 71
  *         self.default_fctn_prec = np.power( np.spacing(1), 2.0/3.0 ) ## pg. 72, there is a typo there
  */
-  memset(__pyx_v_self->mem_size_ws, 0, 3);
+  memset(__pyx_v_self->mem_size_ws, 0, (3 * (sizeof(int))));
 
   /* "optwrapper/snopt.pyx":178
- *         memset( self.mem_size, 0, 4 ) ## Set mem_size to zero
- *         memset( self.mem_size_ws, 0, 3 ) ## Set mem_size_ws to zero
+ *         memset( self.mem_size, 0, 4 * sizeof( int ) ) ## Set mem_size to zero
+ *         memset( self.mem_size_ws, 0, 3 * sizeof( int ) ) ## Set mem_size_ws to zero
  *         self.default_tol = np.sqrt( np.spacing(1) ) ## "Difference interval", pg. 71             # <<<<<<<<<<<<<<
  *         self.default_fctn_prec = np.power( np.spacing(1), 2.0/3.0 ) ## pg. 72, there is a typo there
  *         self.default_feas_tol = 1.0e-6 ## pg. 76
@@ -3041,7 +3041,7 @@ static int __pyx_pf_10optwrapper_5snopt_6Solver___init__(struct __pyx_obj_10optw
   __pyx_v_self->default_tol = __pyx_t_6;
 
   /* "optwrapper/snopt.pyx":179
- *         memset( self.mem_size_ws, 0, 3 ) ## Set mem_size_ws to zero
+ *         memset( self.mem_size_ws, 0, 3 * sizeof( int ) ) ## Set mem_size_ws to zero
  *         self.default_tol = np.sqrt( np.spacing(1) ) ## "Difference interval", pg. 71
  *         self.default_fctn_prec = np.power( np.spacing(1), 2.0/3.0 ) ## pg. 72, there is a typo there             # <<<<<<<<<<<<<<
  *         self.default_feas_tol = 1.0e-6 ## pg. 76
@@ -13442,20 +13442,107 @@ static int __pyx_import_star_set(PyObject *o, PyObject* py_name, char *name) {
     type_name++;
   }
   if (0);
+  else if (__Pyx_StrEq(name, "objGsparse")) {
+    Py_INCREF(o);
+    Py_DECREF(__pyx_v_10optwrapper_5snopt_objGsparse);
+    __pyx_v_10optwrapper_5snopt_objGsparse = o;
+  }
+  else if (__Pyx_StrEq(name, "STR_SUPPRESS_PARAMETERS")) {
+    __pyx_v_10optwrapper_5snopt_STR_SUPPRESS_PARAMETERS = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_SUPPRESS_PARAMETERS) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 38; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_VERIFY_LEVEL")) {
+    __pyx_v_10optwrapper_5snopt_STR_VERIFY_LEVEL = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_VERIFY_LEVEL) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 42; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "extprob")) {
+    Py_INCREF(o);
+    Py_DECREF(__pyx_v_10optwrapper_5snopt_extprob);
+    __pyx_v_10optwrapper_5snopt_extprob = o;
+  }
+  else if (__Pyx_StrEq(name, "STR_MAJOR_PRINT_LEVEL")) {
+    __pyx_v_10optwrapper_5snopt_STR_MAJOR_PRINT_LEVEL = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_MAJOR_PRINT_LEVEL) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 29; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "lenconsg")) {
+    __pyx_v_10optwrapper_5snopt_lenconsg = __Pyx_PyInt_As_int(o); if ((__pyx_v_10optwrapper_5snopt_lenconsg == (int)-1) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 68; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_NONDERIVATIVE_LINESEARCH")) {
+    __pyx_v_10optwrapper_5snopt_STR_NONDERIVATIVE_LINESEARCH = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_NONDERIVATIVE_LINESEARCH) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "lenobjg")) {
+    __pyx_v_10optwrapper_5snopt_lenobjg = __Pyx_PyInt_As_int(o); if ((__pyx_v_10optwrapper_5snopt_lenobjg == (int)-1) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 67; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_SOLUTION_NO")) {
+    __pyx_v_10optwrapper_5snopt_STR_SOLUTION_NO = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_SOLUTION_NO) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 37; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_TOTAL_INTEGER_WORKSPACE")) {
+    __pyx_v_10optwrapper_5snopt_STR_TOTAL_INTEGER_WORKSPACE = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_TOTAL_INTEGER_WORKSPACE) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 40; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_MINOR_FEASIBILITY_TOLERANCE")) {
+    __pyx_v_10optwrapper_5snopt_STR_MINOR_FEASIBILITY_TOLERANCE = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_MINOR_FEASIBILITY_TOLERANCE) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 20; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_HESSIAN_FULL_MEMORY")) {
+    __pyx_v_10optwrapper_5snopt_STR_HESSIAN_FULL_MEMORY = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_HESSIAN_FULL_MEMORY) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 21; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_MINOR_ITERATIONS_LIMIT")) {
+    __pyx_v_10optwrapper_5snopt_STR_MINOR_ITERATIONS_LIMIT = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_MINOR_ITERATIONS_LIMIT) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 26; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_MINOR_PRINT_LEVEL")) {
+    __pyx_v_10optwrapper_5snopt_STR_MINOR_PRINT_LEVEL = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_MINOR_PRINT_LEVEL) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_SCALE_PRINT")) {
+    __pyx_v_10optwrapper_5snopt_STR_SCALE_PRINT = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_SCALE_PRINT) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 36; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_FUNCTION_PRECISION")) {
+    __pyx_v_10optwrapper_5snopt_STR_FUNCTION_PRECISION = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_FUNCTION_PRECISION) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 18; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_MAJOR_FEASIBILITY_TOLERANCE")) {
+    __pyx_v_10optwrapper_5snopt_STR_MAJOR_FEASIBILITY_TOLERANCE = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_MAJOR_FEASIBILITY_TOLERANCE) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_LINESEARCH_TOLERANCE")) {
+    __pyx_v_10optwrapper_5snopt_STR_LINESEARCH_TOLERANCE = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_LINESEARCH_TOLERANCE) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 27; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_MAJOR_OPTIMALITY_TOLERANCE")) {
+    __pyx_v_10optwrapper_5snopt_STR_MAJOR_OPTIMALITY_TOLERANCE = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_MAJOR_OPTIMALITY_TOLERANCE) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 28; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_VIOLATION_LIMIT")) {
+    __pyx_v_10optwrapper_5snopt_STR_VIOLATION_LIMIT = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_VIOLATION_LIMIT) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 43; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_QPSOLVER_CHOLESKY")) {
+    __pyx_v_10optwrapper_5snopt_STR_QPSOLVER_CHOLESKY = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_QPSOLVER_CHOLESKY) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 32; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_ITERATIONS_LIMIT")) {
+    __pyx_v_10optwrapper_5snopt_STR_ITERATIONS_LIMIT = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_ITERATIONS_LIMIT) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_HESSIAN_UPDATES")) {
+    __pyx_v_10optwrapper_5snopt_STR_HESSIAN_UPDATES = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_HESSIAN_UPDATES) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 22; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "consGsparse")) {
+    Py_INCREF(o);
+    Py_DECREF(__pyx_v_10optwrapper_5snopt_consGsparse);
+    __pyx_v_10optwrapper_5snopt_consGsparse = o;
+  }
+  else if (__Pyx_StrEq(name, "STR_DIFFERENCE_INTERVAL")) {
+    __pyx_v_10optwrapper_5snopt_STR_DIFFERENCE_INTERVAL = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_DIFFERENCE_INTERVAL) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_MAJOR_ITERATIONS_LIMIT")) {
+    __pyx_v_10optwrapper_5snopt_STR_MAJOR_ITERATIONS_LIMIT = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_MAJOR_ITERATIONS_LIMIT) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 25; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
   else if (__Pyx_StrEq(name, "statusInfo")) {
     if (!(likely(PyTuple_CheckExact(o))||((o) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "tuple", Py_TYPE(o)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 45; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
     Py_INCREF(o);
     Py_DECREF(__pyx_v_10optwrapper_5snopt_statusInfo);
     __pyx_v_10optwrapper_5snopt_statusInfo = ((PyObject*)o);
   }
+  else if (__Pyx_StrEq(name, "STR_SCALE_OPTION")) {
+    __pyx_v_10optwrapper_5snopt_STR_SCALE_OPTION = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_SCALE_OPTION) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 35; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_QPSOLVER_CG")) {
+    __pyx_v_10optwrapper_5snopt_STR_QPSOLVER_CG = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_QPSOLVER_CG) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
+  else if (__Pyx_StrEq(name, "STR_TOTAL_REAL_WORKSPACE")) {
+    __pyx_v_10optwrapper_5snopt_STR_TOTAL_REAL_WORKSPACE = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_TOTAL_REAL_WORKSPACE) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 41; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
+  }
   else if (__Pyx_StrEq(name, "STR_PIVOT_TOLERANCE")) {
     __pyx_v_10optwrapper_5snopt_STR_PIVOT_TOLERANCE = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_PIVOT_TOLERANCE) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 31; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_MAJOR_ITERATIONS_LIMIT")) {
-    __pyx_v_10optwrapper_5snopt_STR_MAJOR_ITERATIONS_LIMIT = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_MAJOR_ITERATIONS_LIMIT) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 25; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_HESSIAN_UPDATES")) {
-    __pyx_v_10optwrapper_5snopt_STR_HESSIAN_UPDATES = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_HESSIAN_UPDATES) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 22; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
   }
   else if (__Pyx_StrEq(name, "STR_TOTAL_CHARACTER_WORKSPACE")) {
     __pyx_v_10optwrapper_5snopt_STR_TOTAL_CHARACTER_WORKSPACE = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_TOTAL_CHARACTER_WORKSPACE) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 39; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
@@ -13463,95 +13550,8 @@ static int __pyx_import_star_set(PyObject *o, PyObject* py_name, char *name) {
   else if (__Pyx_StrEq(name, "STR_QPSOLVER_QN")) {
     __pyx_v_10optwrapper_5snopt_STR_QPSOLVER_QN = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_QPSOLVER_QN) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 34; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
   }
-  else if (__Pyx_StrEq(name, "STR_SUPPRESS_PARAMETERS")) {
-    __pyx_v_10optwrapper_5snopt_STR_SUPPRESS_PARAMETERS = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_SUPPRESS_PARAMETERS) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 38; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_MAJOR_PRINT_LEVEL")) {
-    __pyx_v_10optwrapper_5snopt_STR_MAJOR_PRINT_LEVEL = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_MAJOR_PRINT_LEVEL) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 29; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_TOTAL_REAL_WORKSPACE")) {
-    __pyx_v_10optwrapper_5snopt_STR_TOTAL_REAL_WORKSPACE = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_TOTAL_REAL_WORKSPACE) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 41; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_SCALE_PRINT")) {
-    __pyx_v_10optwrapper_5snopt_STR_SCALE_PRINT = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_SCALE_PRINT) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 36; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_MAJOR_OPTIMALITY_TOLERANCE")) {
-    __pyx_v_10optwrapper_5snopt_STR_MAJOR_OPTIMALITY_TOLERANCE = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_MAJOR_OPTIMALITY_TOLERANCE) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 28; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_MINOR_FEASIBILITY_TOLERANCE")) {
-    __pyx_v_10optwrapper_5snopt_STR_MINOR_FEASIBILITY_TOLERANCE = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_MINOR_FEASIBILITY_TOLERANCE) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 20; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_MINOR_ITERATIONS_LIMIT")) {
-    __pyx_v_10optwrapper_5snopt_STR_MINOR_ITERATIONS_LIMIT = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_MINOR_ITERATIONS_LIMIT) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 26; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_QPSOLVER_CG")) {
-    __pyx_v_10optwrapper_5snopt_STR_QPSOLVER_CG = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_QPSOLVER_CG) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_TOTAL_INTEGER_WORKSPACE")) {
-    __pyx_v_10optwrapper_5snopt_STR_TOTAL_INTEGER_WORKSPACE = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_TOTAL_INTEGER_WORKSPACE) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 40; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_QPSOLVER_CHOLESKY")) {
-    __pyx_v_10optwrapper_5snopt_STR_QPSOLVER_CHOLESKY = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_QPSOLVER_CHOLESKY) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 32; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_VERIFY_LEVEL")) {
-    __pyx_v_10optwrapper_5snopt_STR_VERIFY_LEVEL = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_VERIFY_LEVEL) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 42; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_VIOLATION_LIMIT")) {
-    __pyx_v_10optwrapper_5snopt_STR_VIOLATION_LIMIT = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_VIOLATION_LIMIT) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 43; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_SCALE_OPTION")) {
-    __pyx_v_10optwrapper_5snopt_STR_SCALE_OPTION = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_SCALE_OPTION) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 35; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_MAJOR_FEASIBILITY_TOLERANCE")) {
-    __pyx_v_10optwrapper_5snopt_STR_MAJOR_FEASIBILITY_TOLERANCE = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_MAJOR_FEASIBILITY_TOLERANCE) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_ITERATIONS_LIMIT")) {
-    __pyx_v_10optwrapper_5snopt_STR_ITERATIONS_LIMIT = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_ITERATIONS_LIMIT) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "lenconsg")) {
-    __pyx_v_10optwrapper_5snopt_lenconsg = __Pyx_PyInt_As_int(o); if ((__pyx_v_10optwrapper_5snopt_lenconsg == (int)-1) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 68; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_FUNCTION_PRECISION")) {
-    __pyx_v_10optwrapper_5snopt_STR_FUNCTION_PRECISION = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_FUNCTION_PRECISION) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 18; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "consGsparse")) {
-    Py_INCREF(o);
-    Py_DECREF(__pyx_v_10optwrapper_5snopt_consGsparse);
-    __pyx_v_10optwrapper_5snopt_consGsparse = o;
-  }
-  else if (__Pyx_StrEq(name, "extprob")) {
-    Py_INCREF(o);
-    Py_DECREF(__pyx_v_10optwrapper_5snopt_extprob);
-    __pyx_v_10optwrapper_5snopt_extprob = o;
-  }
-  else if (__Pyx_StrEq(name, "STR_MINOR_PRINT_LEVEL")) {
-    __pyx_v_10optwrapper_5snopt_STR_MINOR_PRINT_LEVEL = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_MINOR_PRINT_LEVEL) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_SOLUTION_NO")) {
-    __pyx_v_10optwrapper_5snopt_STR_SOLUTION_NO = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_SOLUTION_NO) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 37; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_NONDERIVATIVE_LINESEARCH")) {
-    __pyx_v_10optwrapper_5snopt_STR_NONDERIVATIVE_LINESEARCH = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_NONDERIVATIVE_LINESEARCH) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_LINESEARCH_TOLERANCE")) {
-    __pyx_v_10optwrapper_5snopt_STR_LINESEARCH_TOLERANCE = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_LINESEARCH_TOLERANCE) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 27; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_HESSIAN_FULL_MEMORY")) {
-    __pyx_v_10optwrapper_5snopt_STR_HESSIAN_FULL_MEMORY = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_HESSIAN_FULL_MEMORY) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 21; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "objGsparse")) {
-    Py_INCREF(o);
-    Py_DECREF(__pyx_v_10optwrapper_5snopt_objGsparse);
-    __pyx_v_10optwrapper_5snopt_objGsparse = o;
-  }
   else if (__Pyx_StrEq(name, "STR_INFINITE_BOUND")) {
     __pyx_v_10optwrapper_5snopt_STR_INFINITE_BOUND = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_INFINITE_BOUND) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "STR_DIFFERENCE_INTERVAL")) {
-    __pyx_v_10optwrapper_5snopt_STR_DIFFERENCE_INTERVAL = __Pyx_PyObject_AsString(o); if ((!__pyx_v_10optwrapper_5snopt_STR_DIFFERENCE_INTERVAL) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
-  }
-  else if (__Pyx_StrEq(name, "lenobjg")) {
-    __pyx_v_10optwrapper_5snopt_lenobjg = __Pyx_PyInt_As_int(o); if ((__pyx_v_10optwrapper_5snopt_lenobjg == (int)-1) && PyErr_Occurred()) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 67; __pyx_clineno = __LINE__; goto __pyx_L2_error;};
   }
   else {
     if (PyObject_SetAttr(__pyx_m, py_name, o) < 0) goto bad;
@@ -13868,8 +13868,8 @@ static int __Pyx_InitCachedConstants(void) {
   __Pyx_GIVEREF(__pyx_slice_);
 
   /* "optwrapper/snopt.pyx":178
- *         memset( self.mem_size, 0, 4 ) ## Set mem_size to zero
- *         memset( self.mem_size_ws, 0, 3 ) ## Set mem_size_ws to zero
+ *         memset( self.mem_size, 0, 4 * sizeof( int ) ) ## Set mem_size to zero
+ *         memset( self.mem_size_ws, 0, 3 * sizeof( int ) ) ## Set mem_size_ws to zero
  *         self.default_tol = np.sqrt( np.spacing(1) ) ## "Difference interval", pg. 71             # <<<<<<<<<<<<<<
  *         self.default_fctn_prec = np.power( np.spacing(1), 2.0/3.0 ) ## pg. 72, there is a typo there
  *         self.default_feas_tol = 1.0e-6 ## pg. 76
@@ -13879,7 +13879,7 @@ static int __Pyx_InitCachedConstants(void) {
   __Pyx_GIVEREF(__pyx_tuple__2);
 
   /* "optwrapper/snopt.pyx":179
- *         memset( self.mem_size_ws, 0, 3 ) ## Set mem_size_ws to zero
+ *         memset( self.mem_size_ws, 0, 3 * sizeof( int ) ) ## Set mem_size_ws to zero
  *         self.default_tol = np.sqrt( np.spacing(1) ) ## "Difference interval", pg. 71
  *         self.default_fctn_prec = np.power( np.spacing(1), 2.0/3.0 ) ## pg. 72, there is a typo there             # <<<<<<<<<<<<<<
  *         self.default_feas_tol = 1.0e-6 ## pg. 76
