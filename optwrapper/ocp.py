@@ -322,10 +322,10 @@ class Problem:
 
             for k in range( Nsamples ):
                 ( dx, du ) = self.icost( st[:,k], u[:,k] )[1:3]
-                out[ 0, stidx[:,k] ] = dx * deltaT
-                out[ 0, uidx[:,k] ] = du * deltaT
+                out[ stidx[:,k] ] = dx * deltaT
+                out[ uidx[:,k] ] = du * deltaT
 
-            out[ 0, stidx[:,Nsamples] ] = self.fcost( st[:,Nsamples] )[1]
+            out[ stidx[:,Nsamples] ] = self.fcost( st[:,Nsamples] )[1]
 
 
         def objgpattern():

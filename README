@@ -3,9 +3,10 @@ OptWrapper
 
 This is a python wrapper for numerical optimization solver libraries. It contains two general types of objects: problems and solvers. This version has been tested in Python versions 2.7 and 3.4, and Cython version 0.21 and 0.22.
 
-Currently there are two problems:
-1. Nonlinear Programming Problem (nlp.Problem)
-2. Sparse Nonlinear Programming Problem (nlp.SparseProblem)
+Currently there are three problems:
+1. Nonlinear programming (nlp.Problem)
+2. Sparse nonlinear programming (nlp.SparseProblem)
+3. Constrained optimal control (ocp.Problem)
 and two solvers:
 1. NPSOL (npsol.Solver)
 2. SNOPT (snopt.Solver)
