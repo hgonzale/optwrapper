@@ -91,7 +91,7 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
 
     if( needG[0] > 0 ):
         objg = extprob.objg( xarr )
-        if( isinstance( extprob, nlp.SparseProblem ) and extprob.objgpattern != None ):
+        if( isinstance( extprob, nlp.SparseProblem ) and not extprob.objgpattern is None ):
             tmpobjg = utils.convFortran( objg.ravel()[ np.flatnonzero( extprob.objgpattern ) ] )
             lenobjg = extprob.objgpattern.sum()
         else:
@@ -102,7 +102,7 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
                 lenobjg * sizeof( doublereal ) )
 
         consg = extprob.consg( xarr )
-        if( isinstance( extprob, nlp.SparseProblem ) and extprob.consgpattern != None ):
+        if( isinstance( extprob, nlp.SparseProblem ) and not extprob.consgpattern is None ):
             tmpconsg = utils.convFortran( consg.ravel()[ np.flatnonzero( extprob.consgpattern ) ] )
             lenconsg = extprob.consgpattern.sum()
         else:
@@ -252,12 +252,12 @@ cdef class Solver( base.Solver ):
             self.neA[0] = 0
 
         ## Set lenG
-        if( isinstance( prob, nlp.SparseProblem ) and prob.objgpattern != None ):
+        if( isinstance( prob, nlp.SparseProblem ) and not prob.objgpattern is None ):
             lenobjg = ( prob.objgpattern != 0 ).sum()
         else:
             lenobjg = prob.N
 
-        if( isinstance( prob, nlp.SparseProblem ) and prob.consgpattern != None ):
+        if( isinstance( prob, nlp.SparseProblem ) and not prob.consgpattern is None ):
             lenconsg = ( prob.consgpattern != 0 ).sum()
         else:
             lenconsg = prob.Ncons * prob.N
@@ -287,7 +287,7 @@ cdef class Solver( base.Solver ):
 
         ## First row belongs to objg
         ## These are Fortran indices, must start from 1!
-        if( isinstance( prob, nlp.SparseProblem ) and prob.objgpattern != None ):
+        if( isinstance( prob, nlp.SparseProblem ) and not prob.objgpattern is None ):
             objgpatsparse = coo_matrix( prob.objgpattern )
 
             tmpiGfun = utils.convIntFortran( objgpatsparse.row + 1 )
@@ -339,7 +339,7 @@ cdef class Solver( base.Solver ):
             memcpy( &self.Fupp[tmpidx], utils.getPtr( tmpconsub ),
                     prob.Ncons * sizeof( doublereal ) )
 
-            if( isinstance( prob, nlp.SparseProblem ) and prob.consgpattern != None ):
+            if( isinstance( prob, nlp.SparseProblem ) and not prob.consgpattern is None ):
                 consgpatsparse = coo_matrix( prob.consgpattern )
 
                 tmpiGfun = utils.convIntFortran( consgpatsparse.row + 1 + tmpidx )

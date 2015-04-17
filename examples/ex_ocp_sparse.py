@@ -12,12 +12,17 @@ def instcost( x, u, grad=True ):
              2 * x.dot(Q),
              2 * u.dot(R) )
 
+icostdxpattern = np.array( [ 1, 1 ], dtype=np.int )
+icostdupattern = np.array( [ 1, 1 ], dtype=np.int )
+
 def finalcost( x, grad=True ):
     if( not grad ):
         return x[1]
 
     return ( x[1],
              np.array( [ 0, 1 ] ) )
+
+fcostdxpattern = np.array( [ 0, 1 ], dtype=np.int )
 
 def dynamics( x, u, grad=True ):
     A = np.array( [ [1,4], [2,5] ] )
@@ -30,43 +35,37 @@ def dynamics( x, u, grad=True ):
              A,
              B )
 
-def cons( x, grad=True ):
-    if( not grad ):
-        return np.array( [ x[0] - 2,
-                           x[1] - 4 ] )
+vfielddxpattern = np.array( [[1,1],[1,1]], dtype=np.int )
+vfielddupattern = np.array( [[1,0],[0,1]], dtype=np.int )
 
-    return ( np.array( [ x[0] - 2,
-                         x[1] - 4 ] ),
+def cons( x, grad=True ):
+    out = np.array( [ x[0] - 2,
+                      - x[1] - 4 ] )
+    if( not grad ):
+        return out
+
+    return ( out,
              np.array( [ [ 1, 0 ],
-                         [ 0, 1 ] ] ) )
+                         [ 0, -1 ] ] ) )
+
+consdxpattern = np.array( [[1,0],[0,1]], dtype=np.int )
+
 
 ## main ##
 prob = ocp.Problem( Nstates=2, Ninputs=2, Ncons=2 )
 prob.initCond( [ 1, 1 ] )
-prob.timeHorizon( 0, 4 )
-prob.costInstant( instcost )
-prob.costFinal( finalcost )
-prob.vectorField( dynamics )
-prob.consNonlinear( cons )
+prob.timeHorizon( 0, 5 )
+prob.costInstant( instcost, dxpattern=icostdxpattern, dupattern=icostdupattern )
+prob.costFinal( finalcost, dxpattern=fcostdxpattern )
+prob.vectorField( dynamics, dxpattern=vfielddxpattern, dupattern=vfielddupattern )
+prob.consNonlinear( cons, dxpattern=consdxpattern )
 prob.consBoxState( -50 * np.ones( prob.Nstates ),
                    50 * np.ones( prob.Nstates ) )
 prob.consBoxInput( -10 * np.ones( prob.Ninputs ),
                    10 * np.ones( prob.Ninputs ) )
 
-nlpprob = prob.discForwardEuler( Nsamples=4 )
+( nlpprob, solndecode ) = prob.discForwardEuler( Nsamples=30 )
 nlpprob.checkGrad( h=1e-6, etol=1e-4, point=None, debug=True )
-
-# s =  np.array([1, 1, 3, 2, -1, 4, 0, 3, 2, -2, 0, 1, 1, 2, -1, 3, 2, 0 ] )
-
-# objf = nlp_prob.objf(s)
-# objg = nlp_prob.objg(s)
-# consf = nlp_prob.consf(s)
-# consg = nlp_prob.consg(s)
-
-# print objf
-# print objg
-# print consf
-# print consg
 
 solver = snopt.Solver( nlpprob )
 solver.debug = True
@@ -74,10 +73,10 @@ solver.printOpts[ "summaryFile" ] = "debugs.txt"
 solver.printOpts[ "printFile" ] = "debugp.txt"
 solver.printOpts[ "printLevel" ] = 10
 
-
-print( "First run..." )
 solver.solve()
-print( nlpprob.soln.getStatus() )
+print( "Status: " + nlpprob.soln.getStatus() )
 print( "Value: " + str( nlpprob.soln.value ) )
-print( "Final point: " + str( nlpprob.soln.final ) )
 print( "Retval: " + str( nlpprob.soln.retval ) )
+( st, u, time ) = solndecode( nlpprob.soln.final )
+print( "Optimal state:\n" + str( st ) )
+print( "Optimal input:\n" + str( u ) )

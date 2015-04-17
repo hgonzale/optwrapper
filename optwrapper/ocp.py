@@ -31,9 +31,15 @@ class Problem:
         self.t0 = 0
         self.tf = 1
         self.icostf = None
+        self.icostdxpattern = None
+        self.icostdupattern = None
         self.fcost = None
-        self.dynamics = None
+        self.fcostdxpattern = None
+        self.vfield = None
+        self.vfielddxpattern = None
+        self.vfielddupattern = None
         self.cons = None
+        self.consdxpattern = None
         self.conslb = None
         self.consub = None
         self.consstlb = None
@@ -67,14 +73,14 @@ class Problem:
 
         """
 
-        if( self.t0 >= self.tf ):
-            raise ValueError( "Final time must be larger than initial time." )
-
         self.t0 = float( t0 )
         self.tf = float( tf )
 
+        if( self.t0 >= self.tf ):
+            raise ValueError( "Final time must be larger than initial time." )
 
-    def costInstant( self, icost ):
+
+    def costInstant( self, icost, dxpattern=None, dupattern=None ):
         """
         set the instant cost and its gradients with respect to the states and input
 
@@ -87,9 +93,18 @@ class Problem:
             raise ValueError( "Argument must be a function" )
 
         self.icost = icost
+        if( not dxpattern is None and not dupattern is None ):
+            self.icostdxpattern = np.asfortranarray( dxpattern, dtype=np.int )
+            self.icostdupattern = np.asfortranarray( dupattern, dtype=np.int )
+            if( self.icostdxpattern.shape != ( self.Nstates, ) ):
+                raise ValueError( "Argument 'dxpattern' must have size (" +
+                                  str(self.Nstates) + ",)." )
+            if( self.icostdupattern.shape != ( self.Ninputs, ) ):
+                raise ValueError( "Argument 'dupattern' must have size (" +
+                                  str(self.Ninputs) + ",)." )
 
 
-    def costFinal( self, fcost ):
+    def costFinal( self, fcost, dxpattern=None ):
         """
         sets the final cost and its gradient with respect to the states
 
@@ -102,26 +117,38 @@ class Problem:
             raise ValueError( "Argument must be a function" )
 
         self.fcost = fcost
+        if( not dxpattern is None ):
+            self.fcostdxpattern = np.asfortranarray( dxpattern, dtype=np.int )
+            if( self.fcostdxpattern.shape != ( self.Nstates, ) ):
+                raise ValueError( "Argument 'dxpattern' must have size (" +
+                                  str(self.Nstates) + ",)." )
 
 
-    def vectorField( self, dynamics ):
+    def vectorField( self, vfield, dxpattern=None, dupattern=None ):
         """
-        sets the dynamics function and its gradients
+        sets the vfield function and its gradients
 
         arguments:
-        dynamics: the dynamics function
-        dynamicsgradst: the derivative of the dynamics function with respect to the states
-        dynamicsgradin: the derivative of the dynamics function with respect to the input
+        vfield: the vector field function
 
         """
 
-        if ( type(dynamics) != types.FunctionType ):
+        if ( type(vfield) != types.FunctionType ):
             raise ValueError( "Argument must be a function" )
 
-        self.dynamics = dynamics
+        self.vfield = vfield
+        if( not dxpattern is None and not dupattern is None ):
+            self.vfielddxpattern = np.asfortranarray( dxpattern, dtype=np.int )
+            self.vfielddupattern = np.asfortranarray( dupattern, dtype=np.int )
+            if( self.vfielddxpattern.shape != ( self.Nstates, self.Nstates ) ):
+                raise ValueError( "Argument 'dxpattern' must have size (" +
+                                  str(self.Nstates) + "," + str(self.Nstates) + ")." )
+            if( self.vfielddupattern.shape != ( self.Nstates, self.Ninputs ) ):
+                raise ValueError( "Argument 'dupattern' must have size (" +
+                                  str(self.Nstates) + "," + str(self.Ninputs) + ")." )
 
 
-    def consNonlinear( self, cons, lb=None, ub=None ):
+    def consNonlinear( self, cons, lb=None, ub=None, dxpattern=None ):
 
         """
         defines the constraints and its gradients
@@ -134,15 +161,24 @@ class Problem:
         if ( type(cons) != types.FunctionType ):
             raise ValueError( "Argument must be a function" )
 
-        if( lb == None ):
+        if( lb is None ):
             lb = -np.inf * np.ones( self.Ncons )
 
-        if( ub == None ):
+        if( ub is None ):
             ub = np.zeros( self.Ncons )
 
         self.cons = cons
         self.conslb = np.asfortranarray( lb )
         self.consub = np.asfortranarray( ub )
+        if( self.conslb.shape != (self.Ncons, ) or
+            self.consub.shape != (self.Ncons, ) ):
+            raise ValueError( "Bounds must have size (" + str(self.Ncons) + ",)." )
+
+        if( not dxpattern is None ):
+            self.consdxpattern = np.asfortranarray( dxpattern, dtype=np.int )
+            if( self.consdxpattern.shape != ( self.Ncons, self.Nstates ) ):
+                raise ValueError( "Argument 'dxpattern' must have size (" +
+                                  str(self.Ncons) + "," + str(self.Nstates) + ")." )
 
 
     def consBoxState( self, lb, ub ):
@@ -157,11 +193,12 @@ class Problem:
 
         """
 
-        if( lb.shape != (self.Nstates, ) or ub.shape != (self.Nstates, ) ):
-            raise ValueError( "Arguments must have size (" + str(self.Nstates) + ",)." )
-
         self.consstlb = np.asfortranarray( lb )
         self.consstub = np.asfortranarray( ub )
+
+        if( self.consstlb.shape != (self.Nstates, ) or
+            self.consstub.shape != (self.Nstates, ) ):
+            raise ValueError( "Arguments must have size (" + str(self.Nstates) + ",)." )
 
 
     def consBoxInput( self, lb, ub ):
@@ -176,14 +213,15 @@ class Problem:
 
         """
 
-        if( lb.shape != (self.Ninputs, ) or ub.shape != (self.Ninputs, ) ):
-            raise ValueError( "Arguments must have size (" + str(self.Ninputs) + ",)." )
-
         self.consinlb = np.asfortranarray( lb )
         self.consinub = np.asfortranarray( ub )
 
+        if( self.consinlb.shape != (self.Ninputs, ) or
+            self.consinub.shape != (self.Ninputs, ) ):
+            raise ValueError( "Arguments must have size (" + str(self.Ninputs) + ",)." )
 
-    ## TODO: use mixed constraints, implement sparse
+
+    ## TODO: use mixed constraints
     def discForwardEuler( self, Nsamples ):
         """
         this constructor will transform an optimal control problem into a non-linear programming problem
@@ -197,19 +235,20 @@ class Problem:
         stidx = np.arange( 0, self.Nstates * ( Nsamples + 1 ) ).reshape(
             ( self.Nstates, Nsamples + 1 ),
             order='F' )
-        uidx = ( stidx.size  +
-                 np.arange( 0, self.Ninputs * Nsamples ).reshape( ( self.Ninputs, Nsamples ),
-                                                              order='F' ) )
+        uidx = stidx.size + np.arange( 0, self.Ninputs * Nsamples ).reshape(
+            ( self.Ninputs, Nsamples ),
+            order='F' )
         dconsidx = stidx
-        iconsidx = ( dconsidx.size  +
-                     np.arange( 0, self.Ncons * Nsamples ).reshape( ( self.Ncons, Nsamples ),
-                                                                    order='F' ) )
+        iconsidx = dconsidx.size + np.arange( 0, self.Ncons * Nsamples ).reshape(
+            ( self.Ncons, Nsamples ),
+            order='F' )
 
-        ## Useful parameters
         deltaT = ( self.tf - self.t0 ) / ( Nsamples + 1 )
-        feuler = nlp.Problem( N = stidx.size + uidx.size,
-                              Ncons = dconsidx.size + iconsidx.size,
-                              Nconslin = 0 )
+
+        feuler = nlp.SparseProblem( N = stidx.size + uidx.size,
+                                    Ncons = dconsidx.size + iconsidx.size,
+                                    Nconslin = 0 )
+
 
         def encode( st, u ):
             """
@@ -244,6 +283,10 @@ class Problem:
             u = s[ uidx ]
 
             return ( st, u )
+
+
+        def solnDecode( s ):
+            return decode( s ) + ( np.linspace( self.t0, self.tf, Nsamples + 1 ), )
 
 
         def objf( s ):
@@ -288,6 +331,23 @@ class Problem:
             return out
 
 
+        def objgpattern():
+            if( self.icostdupattern is None or
+                self.icostdxpattern is None or
+                self.fcostdxpattern is None ):
+                return None
+
+            out = np.zeros( ( feuler.N, ), dtype=np.int )
+
+            for k in range( Nsamples ):
+                out[ stidx[:,k] ] = self.icostdxpattern
+                out[ uidx[:,k] ] = self.icostdupattern
+
+            out[ stidx[:,Nsamples] ] = self.fcostdxpattern
+
+            return out
+
+
         def consf( s ):
             """
             this function returns the Forward Euler constraints and the inequality constraints
@@ -298,14 +358,14 @@ class Problem:
 
             """
 
-            ( st, u ) = decode(s)
+            ( st, u ) = decode( s )
             out = np.zeros( ( feuler.Ncons, ) )
 
             ## Forward Euler collocation equality constraints
             out[ dconsidx[:,0] ] = st[:,0] - self.init
             for k in range( Nsamples ):
                 out[ dconsidx[:,k+1] ] = ( st[:,k+1] - st[:,k] -
-                                           deltaT * self.dynamics( st[:,k], u[:,k], grad=False ) )
+                                           deltaT * self.vfield( st[:,k], u[:,k], grad=False ) )
 
             ## inequality constraints
             for k in range( 0, Nsamples ):
@@ -329,7 +389,7 @@ class Problem:
 
             out[ np.ix_( dconsidx[:,0], stidx[:,0] ) ] = np.identity( self.Nstates )
             for k in range( Nsamples ):
-                ( dyndx, dyndu ) = self.dynamics( st[:,k], u[:,k] )[1:3]
+                ( dyndx, dyndu ) = self.vfield( st[:,k], u[:,k] )[1:3]
                 out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] = (
                     - np.identity( self.Nstates ) - deltaT * dyndx )
                 out[ np.ix_( dconsidx[:,k+1], stidx[:,k+1] ) ] = np.identity( self.Nstates )
@@ -339,17 +399,37 @@ class Problem:
 
             return out
 
+        def consgpattern():
+            if( self.vfielddxpattern is None or
+                self.vfielddupattern is None or
+                self.consdxpattern is None ):
+                return None
+
+            out = np.zeros( ( feuler.Ncons, feuler.N ), dtype=np.int )
+
+            out[ np.ix_( dconsidx[:,0], stidx[:,0] ) ] = np.identity( self.Nstates )
+            for k in range( Nsamples ):
+                out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] = (
+                    np.logical_or( np.identity( self.Nstates ), self.vfielddxpattern ) )
+                out[ np.ix_( dconsidx[:,k+1], stidx[:,k+1] ) ] = np.identity( self.Nstates )
+                out[ np.ix_( dconsidx[:,k+1], uidx[:,k] ) ] = self.vfielddupattern
+
+                out[ np.ix_( iconsidx[:,k], stidx[:,k+1] ) ] = self.consdxpattern
+
+            return out
+
+
         ## setup feuler now that all the functions are defined
         feuler.initPoint( encode( self.init, np.zeros( ( self.Ninputs, ) ) ) )
         feuler.consBox( encode( self.consstlb, self.consinlb ),
                         encode( self.consstub, self.consinub ) )
         feuler.objFctn( objf )
-        feuler.objGrad( objg )
+        feuler.objGrad( objg, pattern=objgpattern() )
         feuler.consFctn( consf,
                          np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
                                            np.tile( self.conslb, ( Nsamples, ) ) ) ),
                          np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
                                            np.tile( self.consub, ( Nsamples, ) ) ) ) )
-        feuler.consGrad( consg )
+        feuler.consGrad( consg, pattern=consgpattern() )
 
-        return feuler
+        return ( feuler, solnDecode )
