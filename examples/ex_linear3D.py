@@ -88,11 +88,26 @@ def consgradst(x):
 #create an instance of socp:
 prob = socp.Problem(Nst = 3, Ninpcont = 1, Nmodes = 3, Nineqcons = 0)
 prob.initPoint( [0.0, 0.0, 0.0] )
-prob.initialFinalTime( 0.0, 2.0 )
+prob.initialFinalTime( 0.0, 1.0 )
 prob.instantCost( instcost_, instcostgradst_, instcostgradinp_ ) 
 prob.finalCost( fincost, fincostgradst )
 prob.dynamicsFctn( dynamics, dynamicsgradst, dynamicsgradinpcont )
 prob.consFctn( cons, consgradst )
-prob.consBox( -1.0 * np.ones( prob.Nstates ), 2.0 * np.ones( prob.Nstates ), -20 * np.ones( prob.Ninpcont ), 20 * np.ones( prob.Ninpcont ) )
+prob.consBox( -1.0 * np.ones( prob.Nst ), 2.0 * np.ones( prob.Nst ), -20 * np.ones( prob.Ninpcont ), 20 * np.ones( prob.Ninpcont ) )
 
+nlpprob = nlp.Problem(socp = prob, Nsamples = 16 )
+
+solver = snopt.Solver( nlpprob ) 
+solver.debug = False
+solver.printOpts[ "summaryFile" ] = "debugs.txt"
+solver.printOpts[ "printFile" ] = "debugp.txt"
+solver.printOpts[ "printLevel" ] = 10
+
+solver.solve()
+print( "Status: " + nlpprob.soln.getStatus() )
+print( "Value: " + str( nlpprob.soln.value ) )
+print( "Retval: " + str( nlpprob.soln.retval ) )
+( st, u, time ) = solndecode( nlpprob.soln.final )
+print( "Optimal state:\n" + str( st ) )
+print( "Optimal input:\n" + str( u ) )
 

@@ -1,443 +1,246 @@
+import numpy as np 
 import types
-import numpy as np
 
 class Problem:
     """
-    General nonlinear programming optimization problem.
-    Requires a nonlinear objective function and its gradient.
-    Accepts box, linear, and nonlinear constraints.
+    this transforms a switched optimal control problem (socp) into a non-linear programming problem 
+    (nlp) so that the socp can be solved with a solver
+
+    requires a non-linear objective function and its gradient
+    requires constraints (box, linear, and non-linear)
+       
     """
 
-    def __init__( self, N, Ncons=0, Nconslin=0, mixedCons=False ):
+    def __init__(self, socp, Nsamples):
         """
-        Arguments:
-        N         number of optimization variables (required).
-        Nconslin  number of linear constraints (default: 0).
-        Ncons     number of constraints (default: 0).
+        arguments:
+        socp: an instance from the SOCP (switched optimal control problem) class
+        Nsamples: the number of samples in the approximated version of the SOCP
 
-        prob = optProblem( N=2, Ncons=2, Nconslin=3 )
         """
 
-        try:
-            self.N = int( N )
-        except:
-            raise ValueError( "N must be an integer" )
+        Nst = socp.Nst 
+        Ninpcont = socp.Ninpcont
+        Nmodes = socp.Nmodes
+        N = Nst*(Nsamples + 1) + Ninpcont*Nsamples + Nmodes*Nsamples #number of opt variables 
+        deltaT = (socp.tf - socp.t0) / Nsamples
+        self.N = N 
+        self.Nconslin = Nsamples #linear constraint for the relaxed discrete mode input 
+        self.Ncons = Nst * (Nsamples + 1) + Nsamples*socp.Nineqcons 
 
-        if( self.N <= 0 ):
-            raise ValueError( "N must be strictly positive" )
-
-        try:
-            self.Nconslin = int( Nconslin )
-        except:
-            raise ValueError( "Nconslin was not provided or was not an integer" )
+        def encode(st, inpcont, inpmode):
+            """
+            this function creates one big vector of all the states, continuous inputs, and mode inputs for all times 
 
-        if( self.Nconslin < 0 ):
-            raise ValueError( "Nconslin must be positive" )
+            arguments:
+            st: a matrix of all the states at all times tk = 0...Nsamples
+            inpcont: a matrix of all the continuous inputs at all times tk = 0...Nsamples - 1 
+            inpmode: a matrix of all the mode inputs at all times tk = 0...Nsamples
+            """
 
-        try:
-            self.Ncons = int( Ncons )
-        except:
-            raise ValueError( "Ncons was not provided or was not an integer" )
+            s = np.zeros(N)
 
-        if( self.Ncons < 0 ):
-            raise ValueError( "Ncons must be positive" )
+            for k in range( Nsamples ):
+                s[ k*Nst : k*Nst+Nst ] = st[:,k]
+                s[ Nst*(Nsamples+1)+k*Ninpcont : Nst*(Nsamples+1)+k*Ninpcont+Ninpcont] = inpcont[:,k]
+                s[ Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes : Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + Nmodes] = inpmode[:,k]
 
-        if( mixedCons and Nconslin != Ncons ):
-            raise ValueError( "If constrained are mixed type then Nconslin must be equal to Ncons" )
+            s[ Nst * Nsamples : Nst * (Nsamples + 1) ] = st[:,Nsamples]
 
-        self.init = np.zeros( self.N )
-        self.lb = None
-        self.ub = None
-        self.objf = None
-        self.objg = None
-        self.consf = None
-        self.consg = None
-        self.conslb = None
-        self.consub = None
-        self.conslinA = None
-        self.conslinlb = None
-        self.conslinub = None
-        self.soln = None
-        self.mixedCons = mixedCons
+            return s 
 
+        def decode(s):
+            """
+            this function creates the st, inpcont, and inpmode matrices from the optimizaion vector, s 
 
-    def initPoint( self, init ):
-        """
-        Sets initial value for optimization variable.
+            arguments:
+            s: the optimizaion vector of size N 
 
-        Arguments:
-        init  initial condition, must be a one-dimensional array of size N
-              (default: vector of zeros).
+            """
 
-        prob.initCond( [ 1.0, 1.0 ] )
-        """
-        self.init = np.asfortranarray( init )
+            st = np.zeros( (Nst, Nsamples+1) )
+            inpcont = np.zeros( (Ninpcont, Nsamples) )
+            inpmode = np.zeros( (Nmodes, Nsamples) )
 
-        if( self.init.shape != ( self.N, ) ):
-            raise ValueError( "Argument must have size (" + str(self.N) + ",)." )
+            for k in range(Nsamples):
+                st[:,k] = s[ k*Nst : k*Nst+Nst]
+                inpcont[:,k] = s[ Nst*(Nsamples+1)+k*Ninpcont : Nst*(Nsamples+1)+k*Ninpcont+Ninpcont ]
+                inpmode[:,k] = s[ Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes : Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + Nmodes]
 
+            st[:,Nsamples] = s[ Nst * Nsamples : Nst * (Nsamples + 1) ]
 
-    def consBox( self, lb, ub ):
-        """
-        Defines box constraints.
-
-        Arguments:
-        lb  lower bounds, one-dimensional array of size N.
-        ub  upper bounds, one-dimensional array of size N.
+            return (st, inpcont, inpmode)
 
-        prob.consBox( [-1,-2], [1,2] )
-        """
-        self.lb = np.asfortranarray( lb )
-        self.ub = np.asfortranarray( ub )
+        def setBounds():
+            """
+            this function sets the lower and upper bounds on the optimization vector 
+            """
 
-        if( self.lb.shape != ( self.N, ) or
-            self.ub.shape != ( self.N, ) ):
-            raise ValueError( "Bound must have size (" + str(self.N) + ",)." )
+            lb = np.zeros(N)
+            ub = np.zeros(N)
 
+            for k in range( Nsamples ):
+                lb[ k*Nst : k*Nst+Nst ] = socp.consstlb
+                lb[ Nst*(Nsamples+1)+k*Ninpcont : Nst*(Nsamples+1)+k*Ninpcont+Ninpcont] = socp.consinpcontlb
+                lb[ Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes : Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + Nmodes] = 0
+                ub[ k*Nst : k*Nst+Nst ] = socp.consstub
+                ub[ Nst*(Nsamples+1)+k*Ninpcont : Nst*(Nsamples+1)+k*Ninpcont+Ninpcont] = socp.consinpcontub
+                ub[ Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes : Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + Nmodes] = 1                
 
-    def consLinear( self, A, lb=None, ub=None ):
-        """
-        Defines linear constraints.
+            lb[ Nst * Nsamples : Nst * (Nsamples + 1) ] = socp.consstlb
+            ub[ Nst * Nsamples : Nst * (Nsamples + 1) ] = socp.consstub
 
-        Arguments:
-        A   linear constraint matrix, two-dimensional array of size (Nconslin,N).
-        lb  lower bounds, one-dimensional array of size Nconslin.
-        ub  upper bounds, one-dimensional array of size Nconslin.
+            self.ub = ub
+            self.lb = lb
 
-        prob.consLinear( [[1,-1],[1,1]], [-1,-2], [1,2] )
-        """
-        self.conslinA = np.asfortranarray( A )
+        def setBoundsCons():
+            """
+            this function sets the lower and upper bounds on the constraints 
 
-        if( self.conslinA.shape != ( self.Nconslin, self.N ) ):
-            raise ValueError( "Argument 'A' must have size (" + str(self.Nconslin)
-                              + "," + str(self.N) + ")." )
-
-        if( not self.mixedCons ):
-            if( lb is None ):
-                lb = -np.inf * np.ones( self.Nconslin )
+            """
 
-            if( ub is None ):
-                ub = np.zeros( self.Nconslin )
+            conslb = np.zeros ( self.Ncons )
+            consub = np.zeros ( self.Ncons )
 
-            self.conslinlb = np.asfortranarray( lb )
-            self.conslinub = np.asfortranarray( ub )
+            conslb[Nst*(Nsamples + 1): Nst*(Nsamples + 1) + Nsamples * socp.Nineqcons ] = -np.inf
 
-            if( self.conslinlb.shape != ( self.Nconslin, ) or
-                self.conslinub.shape != ( self.Nconslin, ) ):
-                raise ValueError( "Bounds must have size (" + str(self.Nconslin) + ",)." )
+            self.conslb = conslb
+            self.consub = consub
 
+        def objectiveFctn( s ):
+            """
+            this function uses the instant cost functions for the various modes from the and the final cost
+            function from the socp problem and creates the objective function for the nlp problem 
 
-    def objFctn( self, objf ):
-        """
-        Set objective function.
+            arguments:
+            s: the optimization vector 
 
-        Arguments:
-        objf  objective function, must return a scalar.
+            """
 
-        def objf(x):
-            return x[1]
-        prob.objFctn( objf )
-        """
-        if( type(objf) != types.FunctionType ):
-            raise ValueError( "Argument must be a function" )
-
-        self.objf = objf
-
-
-    def objGrad( self, objg ):
-        """
-        Set objective gradient.
-
-        Arguments:
-        objg  gradient function, must return a one-dimensional array of size N.
-
-        def objg(x):
-            return np.array( [2,-1] )
-        prob.objGrad( objg )
-        """
-        if( type(objg) != types.FunctionType ):
-            raise ValueError( "Argument must be a function" )
-
-        self.objg = objg
-
-
-    def consFctn( self, consf, lb=None, ub=None ):
-        """
-        Set nonlinear constraints function.
-
-        Arguments:
-        consf  constraint function, must return a one-dimensional array of
-               size Ncons.
-        lb     lower bounds, one-dimensional array of size Ncons (default: vector
-               of -inf).
-        ub     upper bounds, one-dimensional array of size Ncons (default: vector
-               of zeros).
-
-        def consf(x):
-            return np.array( [ x[0] - x[1],
-                               x[0] + x[1] ] )
-        prob.consFctn( consf )
-        """
-        if( type(consf) != types.FunctionType ):
-            raise ValueError( "Argument must be a function" )
-
-        if( lb is None ):
-            lb = -np.inf * np.ones( self.Ncons )
-
-        if( ub is None ):
-            ub = np.zeros( self.Ncons )
-
-        self.consf = consf
-        self.conslb = np.asfortranarray( lb )
-        self.consub = np.asfortranarray( ub )
-
-        if( self.conslb.shape != ( self.Ncons, ) or
-            self.consub.shape != ( self.Ncons, ) ):
-            raise ValueError( "Bound must have size (" + str(self.Ncons) + ",)." )
-
-
-    def consGrad( self, consg ):
-        """
-        Set nonlinear constraints gradient.
-
-        Arguments:
-        consg  constraint gradient, must return a two-dimensional array of
-               size (Ncons,N), where entry [i,j] is the derivative of i-th
-               constraint w.r.t. the j-th variables.
-
-        def consg(x):
-            return np.array( [ [ 2*x[0], 8*x[1] ],
-                               [ 2*(x[0]-2), 2*x[1] ] ] )
-        prob.consGrad( consg )
-        """
-        if( type(consg) != types.FunctionType ):
-            raise ValueError( "Argument must be a function" )
-
-        self.consg = consg
-
-
-    def checkGrad( self, h=1e-5, etol=1e-4, point=None, debug=False ):
-        """
-        Checks if user-defined gradients are correct using finite
-        differences.
-
-        Arguments:
-        h      optimization variable variation step size (default: 1e-5).
-        etol   error tolerance (default: 1e-4).
-        point  evaluation point one-dimensional array of size N (default:
-               initial condition).
-        debug  boolean to enable extra debug information (default: False).
-
-        isCorrect = prob.checkGrad( h=1e-6, etol=1e-5, point, debug=False )
-        """
-        if( self.objf is None or
-            self.objg is None ):
-            raise StandardError( "Objective must be set before gradients are checked." )
-        if( self.Ncons > 0 and
-            ( self.consf is None or self.consg is None ) ):
-            raise StandardError( "Constraints must be set before gradients are checked." )
-
-        if( point is None ):
-            point = self.init
-        else:
-            point = np.asfortranarray( point )
-            if( point.shape != ( self.N, ) ):
-                raise ValueError( "Argument 'point' must have size (" + str(self.N) + ",)." )
-
-        usrgrad = np.zeros( [ self.Ncons + 1, self.N ] )
-        numgrad = np.zeros( [ self.Ncons + 1, self.N ] )
-
-        fph = np.zeros( self.Ncons + 1 )
-        fmh = np.zeros( self.Ncons + 1 )
-        for k in range( 0, self.N ):
-            hvec = np.zeros( self.N )
-            hvec[k] = h
-
-            fph[0] = self.objf( point + hvec )
-            fmh[0] = self.objf( point - hvec )
-            fph[1:] = self.consf( point + hvec )
-            fmh[1:] = self.consf( point - hvec )
-
-            if( np.any( np.isnan( fph ) ) or np.any( np.isnan( fmh ) ) or
-                np.any( np.isinf( fph ) ) or np.any( np.isinf( fmh ) ) ):
-                raise ValueError( "Function returned NaN or inf at iteration " + str(k) )
-
-            delta = ( fph - fmh ) / 2.0 / h
-            numgrad[:,k] = delta
-
-        usrgrad[0,:] = self.objg( point )
-        usrgrad[1:,:] = self.consg( point )
-        if( np.any( np.isnan( usrgrad ) ) or
-            np.any( np.isinf( usrgrad ) ) ):
-            raise ValueError( "Gradient returned NaN or inf." )
-
-        errgrad = abs( usrgrad - numgrad )
-        if( errgrad.max() < etol ):
-            if( debug ):
-                print( "Numerical gradient check passed. Max error was: " + str( errgrad.max() ) )
-            return( True, errgrad.max(), errgrad )
-        else:
-            if( debug ):
-                idx = np.unravel_index( np.argmax(err), err.shape )
-                if( idx[0] == 0 ):
-                    print( "Objective gradient incorrect in element=("
-                           + str(idx[1]) + ")" )
-                else:
-                    print( "Constraint gradient incorrect in element=( "
-                           + str(idx[0]-1) + "," + str(idx[1]) + ")" )
-            return( False, errgrad.max(), errgrad )
-
-
-    def check( self, debug=False ):
-        """
-        General checks required before solver is executed.
-
-        Arguments:
-        debug  boolean to enable extra debug information (default: False).
-
-        isCorrect = prob.check()
-        """
-
-        if( self.lb is None or
-            self.ub is None or
-            np.any( self.lb > self.ub ) ):
-            if( debug ):
-                print( "Box constraints not set or lower bound larger than upper bound." )
-            return False
-
-        if( np.any( self.lb > self.init ) or
-            np.any( self.init > self.ub ) ):
-            if( debug ):
-                print( "Initial condition not set or violates box constraints." )
-            return False
-
-        if( self.objf is None or
-            np.any( np.isnan( self.objf( self.init ) ) ) or
-            np.any( np.isinf( self.objf( self.init ) ) ) ):
-            if( debug ):
-                print( "Objective function not set or return NaN/inf for initial condition." )
-            return False
-
-        if( self.objf( self.init ).shape != (1,) ):
-            if( debug ):
-                print( "Objective function must return a scalar array." )
-            return False
-
-        if( self.objg is None or
-            np.any( np.isnan( self.objg( self.init ) ) ) or
-            np.any( np.isinf( self.objg( self.init ) ) ) ):
-            if( debug ):
-                print( "Objective gradient not set or return NaN/inf for initial condition." )
-            return False
-
-        if( self.objg( self.init ).shape != ( self.N, ) ):
-            if( debug ):
-                print( "Objective gradient must return array of size (" + str(self.N) + ",)." )
-            return False
-
-        if( Nconslin > 0 ):
-            if( self.conslinlb is None or
-                self.conslinub is None or
-                np.any( self.conslinlb > self.conslinub ) ):
-                if( debug ):
-                    print( "Linear constraint bounds not set or lower bound larger than upper bound." )
-                return False
-
-        if( Ncons > 0 ):
-            if( self.conslb is None or
-                self.consub is None or
-                np.any( self.conslb > self.consub ) ):
-                if( debug ):
-                    print( "Constraint bounds not set or lower bound larger than upper bound." )
-                return False
-
-            if( self.consf is None or
-                np.any( np.isnan( self.consf( self.init ) ) ) or
-                np.any( np.isinf( self.consf( self.init ) ) ) ):
-                if( debug ):
-                    print( "Constraint function not set or return NaN/inf for initial condition." )
-                return False
-
-            if( self.consf( self.init ).shape != ( self.Ncons, ) ):
-                if( debug ):
-                    print( "Constraint function must return array of size (" + str(self.Ncons) + ",)." )
-                return False
-
-            if( self.consg is None or
-                np.any( np.isnan( self.consg( self.init ) ) ) or
-                np.any( np.isinf( self.consg( self.init ) ) ) ):
-                if( debug ):
-                    print( "Constraint gradient not set or return NaN/inf for initial condition." )
-                return False
-
-            if( self.consg( self.init ).shape != ( self.Ncons, self.N ) ):
-                if( debug ):
-                    print( "Constraint gradient must return array of size ("
-                           + str(self.Ncons) + "," + str(self.N) + ")." )
-                return False
-
-        return True
-
-
-
-class SparseProblem( Problem ):
-    """
-    General nonlinear programming optimization problem.
-    Requires a nonlinear objective function and its gradient.
-    Accepts box, linear, and nonlinear constraints.
-    """
-
-    def __init__( self, N, Ncons=0, Nconslin=0, mixedCons=False ):
-        Problem.__init__( self, N, Ncons, Nconslin, mixedCons )
-
-        self.objgpattern = None
-        self.consgpattern = None
-
-
-    def objGrad( self, objg, pattern=None ):
-        """
-        Set objective gradient.
-
-        Arguments:
-        objg  gradient function, must return a one-dimensional array of size N.
-
-        def objg(x):
-            return np.array( [2,-1] )
-        prob.objGrad( objg )
-        """
-        Problem.objGrad( self, objg )
-
-        if( not pattern is None ):
-            self.objgpattern = np.asfortranarray( pattern, dtype=np.int )
-
-            if( self.objgpattern.shape != ( self.N, ) ):
-                raise ValueError( "Argument 'pattern' must have size (" + str(self.N) + ",)." )
-
-
-    def consGrad( self, consg, pattern=None ):
-        """
-        Set nonlinear constraints gradient.
-
-        Arguments:
-        consg  constraint gradient, must return a two-dimensional array of
-               size (Ncons,N), where entry [i,j] is the derivative of i-th
-               constraint w.r.t. the j-th variables.
-
-        def consg(x):
-            return np.array( [ [ 2*x[0], 8*x[1] ],
-                               [ 2*(x[0]-2), 2*x[1] ] ] )
-        prob.consGrad( consg )
-        """
-        Problem.consGrad( self, consg )
-
-        if( not pattern is None ):
-            self.consgpattern = np.asfortranarray( pattern, dtype=np.int )
-
-            if( self.consgpattern.shape != ( self.Ncons, self.N ) ):
-                raise ValueError( "Argument 'pattern' must have size (" + str(self.Ncons)
-                                  + "," + str(self.N) + ")." )
-
-
-    def checkPatterns( self ):
-        ## TODO
-        pass
+            (st, inpcont, inpmode) = decode(s)
+
+            objfruncost = 0 
+
+            for i in range(Nmodes):
+                for k in range(Nsamples):
+                    instcostarray = socp.instcost(st[:,k], inpcont[:,k])
+                    objfruncost = objfruncost + (inpmode[i,k] * instcostarray[i] * deltaT)
+
+            objffincost = socp.fincost(st[:,Nsamples])
+
+            return objfruncost + objffincost
+
+        def objectiveGrad( s ):
+            """
+            this function returns the gradient of the objective function with respect to the optimization 
+            vector, s, which is a concatenated vector of all the states, continuous inputs, and modal inputs
+
+            arguments:
+            s: optimization vector
+
+            """
+
+            (st, inpcont, inpmode) = decode(s)
+
+            objg = np.zeros(N)
+
+            for k in range(Nsamples):
+                gradstprev = 0
+                gradinpprev = 0 
+                for i in range(Nmodes):
+                    gradstcurrent = inpmode[i,k] * deltaT * socp.instcostgradst(st[:,k])[i]
+                    gradstprev = gradstprev + gradstcurrent
+                    gradinpcurrent = inpmode[i,k] * deltaT * socp.instcostgradinpcont(inpcont[:,k])[i]
+                    gradinpprev = gradinpprev + gradinpcurrent
+                objg[ k*Nst : k*Nst+Nst ] = gradstprev  
+                objg[ Nst*(Nsamples+1)+k*Ninpcont : Nst*(Nsamples+1)+k*Ninpcont+Ninpcont] = gradinpprev
+                objg[ Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes : Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + Nmodes ] = socp.instcost(st[:,k], inpcont[:,k]) * deltaT
+
+            objg[ Nst * Nsamples : Nst * (Nsamples + 1) ] = socp.fincostgradst(st[:,Nsamples])
+
+            return objg
+
+        def constraintFctn( s ):
+            """
+            this function returns the Forward Euler Constraints, the initial condition imposement, and the 
+            inequality constraints from socp for the nlp problem 
+
+            arguments:
+            the optimization vector s 
+
+            """
+
+            (st, inpcont, inpmode) = decode(s) 
+
+            consf = np.zeros( self.Ncons )
+
+            for k in range(Nsamples):
+                dynnew = 0
+                for i in range(Nmodes):
+                    dyninter = inpmode[i,k] * socp.dynamics(st[:,k], inpcont[:,k])[i] 
+                    dynnew = dyninter + dynnew
+                consf[k*Nst:k*Nst+Nst] = st[:,k+1] - st[:,k] - deltaT*dynnew
+
+            consf[Nst*Nsamples:Nst*(Nsamples + 1)] = socp.init
+
+            for k in range(1, Nsamples+1):
+                consf[Nst*(Nsamples + 1) + (k-1)*socp.Nineqcons : Nst*(Nsamples + 1) + (k-1)*socp.Nineqcons + socp.Nineqcons] = socp.cons(st[:,k])
+
+            return consf
+
+        def constraintGrad( s ):
+            """
+            this function returns the gradient of the constraint function 
+
+            arguments:
+            s: the optimization vector 
+
+            """
+
+            (st, inpcont, inpmode) = decode(s)
+
+            #rows from forward Euler constraints: Nst * Nsamples 
+            rows = Nst * Nsamples + Nst + socp.Nineqcons * Nsamples
+            columns = Nst*(Nsamples+1) + Ninpcont*Nsamples + Nmodes*Nsamples
+            consg = np.zeros( (rows, columns) )
+
+            #this for loop puts the forward euler constraints into the consg matrix 
+            for k in range(Nsamples):
+                cgradstprev = 0 
+                cgradinpprev = 0 
+                for i in range(Nmodes):
+                    cgradstcurrent = inpmode[i,k] *  socp.dynamicsgradst(st[:,k])[i]
+                    cgradstprev = cgradstprev + cgradstcurrent
+                    cgradinpcurrent = inpmode[i,k] * socp.dynamicsgradinp(inpcont[:,k])[i]
+                    cgradinpprev = cgradinpprev + cgradinpcurrent
+                #fwd euler cons grad wrt states 
+                consg[ k*Nst : k*Nst + Nst, k*Nst: k*Nst+Nst] = -np.identity(Nst) - deltaT*cgradstprev
+                consg[ k*Nst : k*Nst + Nst, Nst*(k+1) : Nst*(k+1) + Nst ] = np.identity(Nst)
+                consg[ k*Nst : k*Nst + Nst, Nst*(Nsamples+1) + k*Ninpcont : Nst*(Nsamples+1) + k*Ninpcont + Ninpcont ] = -deltaT*cgradinpprev
+                dyn_array = socp.dynamics(st[:,k], inpcont[:,k])
+                for i in range(Nmodes):
+                    consg[k*Nst : k*Nst + Nst, Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + i] = -deltaT * dyn_array[i]
+
+            #this puts the initial condition constraint into consg
+            consg[ Nst*Nsamples : Nst*Nsamples + Nst, 0: Nst ] = np.identity(Nst)
+
+            #this for loop puts the constraint function gradients into consg 
+            for k in range(Nsamples):
+                consg[ Nst * Nsamples + Nst + k*socp.Nineqcons : Nst * Nsamples + Nst + k*socp.Nineqcons + socp.Nineqcons, (k+1)*Nst: (k+1)*Nst + Nst ] = socp.consgradst(st[:,k+1])
+
+
+            return consg
+
+        self.objf = objectiveFctn
+        self.objg = objectiveGrad
+        self.consf = constraintFctn
+        self.consg = constraintGrad
+        setBounds() ## this fctn sets self.lb and self.ub
+        setBoundsCons() ## this fctn sets self.conslb and self.consub
+        self.mixedCons = False
+        self.init = np.zeros( ( self.N, 1 ) )
+#        self.conslinA = None
+
+
+
+
