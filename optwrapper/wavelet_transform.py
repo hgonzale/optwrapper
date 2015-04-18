@@ -1,15 +1,15 @@
-import numpy as np 
-import math 
-import matplotlib.pyplot as plt 
+import numpy as np
+import math
+import matplotlib.pyplot as plt
 
 def haar_coeff(t, d, N):
     """
-    this function calculates the Haar coefficients when the input function is not uniformly sampled 
+    this function calculates the Haar coefficients when the input function is not uniformly sampled
 
     inputs:
     t: an array of the times that the function is sampled at
     d: an array of the function values at the sampled times in t
-    
+
     """
     t = np.array(t)
     d = np.array(d)
@@ -53,9 +53,9 @@ def haar_coeff(t, d, N):
 
     cidx = 1
     for k in range( N ):
-        for j in range( 2**k ): 
-            low = float(j) / 2**k 
-            mid = (.5 + j) / 2**k 
+        for j in range( 2**k ):
+            low = float(j) / 2**k
+            mid = (.5 + j) / 2**k
             high = (1. + j) / 2**k
 
             idx = 0
@@ -72,20 +72,20 @@ def haar_coeff(t, d, N):
 
             cidx += 1
 
-    return coeff 
+    return coeff
 
 def inv_haar(coeff):
     """
     this function calculates the inverse haar transform, given the coefficients of the haar transform
 
     input:
-    coeff: the coefficients of the haar transform; vector of size 2**N, where N is the number of Haar samples 
+    coeff: the coefficients of the haar transform; vector of size 2**N, where N is the number of Haar samples
 
     """
 
     coeff = np.array(coeff)
 
-    N = coeff.size 
+    N = coeff.size
     n = int( math.log(N, 2) )
 
     p = np.array( [0.0, 0.0] )
@@ -106,10 +106,10 @@ def inv_haar(coeff):
             H[i,j] = 2**(P)
         for j in range( int((N*((Q-0.5)/(2**P)))), int((N*(Q/(2**P)))) ):
             H[i,j] = -2**(P)
-    
+
     H = np.transpose(H)
 
-    print H
+    print( H )
 
     return np.dot(H, coeff)
 

@@ -1,14 +1,14 @@
-import numpy as np 
+import numpy as np
 import types
 
 class Problem:
     """
-    this transforms a switched optimal control problem (socp) into a non-linear programming problem 
+    this transforms a switched optimal control problem (socp) into a non-linear programming problem
     (nlp) so that the socp can be solved with a solver
 
     requires a non-linear objective function and its gradient
     requires constraints (box, linear, and non-linear)
-       
+
     """
 
     def __init__(self, socp, Nsamples):
@@ -19,22 +19,22 @@ class Problem:
 
         """
 
-        Nst = socp.Nst 
+        Nst = socp.Nst
         Ninpcont = socp.Ninpcont
         Nmodes = socp.Nmodes
-        N = Nst*(Nsamples + 1) + Ninpcont*Nsamples + Nmodes*Nsamples #number of opt variables 
+        N = Nst*(Nsamples + 1) + Ninpcont*Nsamples + Nmodes*Nsamples #number of opt variables
         deltaT = (socp.tf - socp.t0) / Nsamples
-        self.N = N 
-        self.Nconslin = Nsamples #linear constraint for the relaxed discrete mode input 
-        self.Ncons = Nst * (Nsamples + 1) + Nsamples*socp.Nineqcons 
+        self.N = N
+        self.Nconslin = Nsamples #linear constraint for the relaxed discrete mode input
+        self.Ncons = Nst * (Nsamples + 1) + Nsamples*socp.Nineqcons
 
         def encode(st, inpcont, inpmode):
             """
-            this function creates one big vector of all the states, continuous inputs, and mode inputs for all times 
+            this function creates one big vector of all the states, continuous inputs, and mode inputs for all times
 
             arguments:
             st: a matrix of all the states at all times tk = 0...Nsamples
-            inpcont: a matrix of all the continuous inputs at all times tk = 0...Nsamples - 1 
+            inpcont: a matrix of all the continuous inputs at all times tk = 0...Nsamples - 1
             inpmode: a matrix of all the mode inputs at all times tk = 0...Nsamples
             """
 
@@ -47,14 +47,14 @@ class Problem:
 
             s[ Nst * Nsamples : Nst * (Nsamples + 1) ] = st[:,Nsamples]
 
-            return s 
+            return s
 
         def decode(s):
             """
-            this function creates the st, inpcont, and inpmode matrices from the optimizaion vector, s 
+            this function creates the st, inpcont, and inpmode matrices from the optimizaion vector, s
 
             arguments:
-            s: the optimizaion vector of size N 
+            s: the optimizaion vector of size N
 
             """
 
@@ -73,7 +73,7 @@ class Problem:
 
         def setBounds():
             """
-            this function sets the lower and upper bounds on the optimization vector 
+            this function sets the lower and upper bounds on the optimization vector
             """
 
             lb = np.zeros(N)
@@ -85,7 +85,7 @@ class Problem:
                 lb[ Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes : Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + Nmodes] = 0
                 ub[ k*Nst : k*Nst+Nst ] = socp.consstub
                 ub[ Nst*(Nsamples+1)+k*Ninpcont : Nst*(Nsamples+1)+k*Ninpcont+Ninpcont] = socp.consinpcontub
-                ub[ Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes : Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + Nmodes] = 1                
+                ub[ Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes : Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + Nmodes] = 1
 
             lb[ Nst * Nsamples : Nst * (Nsamples + 1) ] = socp.consstlb
             ub[ Nst * Nsamples : Nst * (Nsamples + 1) ] = socp.consstub
@@ -95,7 +95,7 @@ class Problem:
 
         def setBoundsCons():
             """
-            this function sets the lower and upper bounds on the constraints 
+            this function sets the lower and upper bounds on the constraints
 
             """
 
@@ -107,19 +107,28 @@ class Problem:
             self.conslb = conslb
             self.consub = consub
 
+        def setLinCons():
+            A = np.zeros( (Nsamples, N ) )
+            for k in range( Nsamples ):
+                A[ k, Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes : Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + Nmodes] = 1
+
+            self.conslinA = A
+            self.conslinlb = np.ones( (Nsamples,) )
+            self.conslinub = np.ones( (Nsamples,) )
+
         def objectiveFctn( s ):
             """
             this function uses the instant cost functions for the various modes from the and the final cost
-            function from the socp problem and creates the objective function for the nlp problem 
+            function from the socp problem and creates the objective function for the nlp problem
 
             arguments:
-            s: the optimization vector 
+            s: the optimization vector
 
             """
 
             (st, inpcont, inpmode) = decode(s)
 
-            objfruncost = 0 
+            objfruncost = 0
 
             for i in range(Nmodes):
                 for k in range(Nsamples):
@@ -132,7 +141,7 @@ class Problem:
 
         def objectiveGrad( s ):
             """
-            this function returns the gradient of the objective function with respect to the optimization 
+            this function returns the gradient of the objective function with respect to the optimization
             vector, s, which is a concatenated vector of all the states, continuous inputs, and modal inputs
 
             arguments:
@@ -146,13 +155,13 @@ class Problem:
 
             for k in range(Nsamples):
                 gradstprev = 0
-                gradinpprev = 0 
+                gradinpprev = 0
                 for i in range(Nmodes):
                     gradstcurrent = inpmode[i,k] * deltaT * socp.instcostgradst(st[:,k])[i]
                     gradstprev = gradstprev + gradstcurrent
                     gradinpcurrent = inpmode[i,k] * deltaT * socp.instcostgradinpcont(inpcont[:,k])[i]
                     gradinpprev = gradinpprev + gradinpcurrent
-                objg[ k*Nst : k*Nst+Nst ] = gradstprev  
+                objg[ k*Nst : k*Nst+Nst ] = gradstprev
                 objg[ Nst*(Nsamples+1)+k*Ninpcont : Nst*(Nsamples+1)+k*Ninpcont+Ninpcont] = gradinpprev
                 objg[ Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes : Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + Nmodes ] = socp.instcost(st[:,k], inpcont[:,k]) * deltaT
 
@@ -162,22 +171,22 @@ class Problem:
 
         def constraintFctn( s ):
             """
-            this function returns the Forward Euler Constraints, the initial condition imposement, and the 
-            inequality constraints from socp for the nlp problem 
+            this function returns the Forward Euler Constraints, the initial condition imposement, and the
+            inequality constraints from socp for the nlp problem
 
             arguments:
-            the optimization vector s 
+            the optimization vector s
 
             """
 
-            (st, inpcont, inpmode) = decode(s) 
+            (st, inpcont, inpmode) = decode(s)
 
             consf = np.zeros( self.Ncons )
 
             for k in range(Nsamples):
                 dynnew = 0
                 for i in range(Nmodes):
-                    dyninter = inpmode[i,k] * socp.dynamics(st[:,k], inpcont[:,k])[i] 
+                    dyninter = inpmode[i,k] * socp.dynamics(st[:,k], inpcont[:,k])[i]
                     dynnew = dyninter + dynnew
                 consf[k*Nst:k*Nst+Nst] = st[:,k+1] - st[:,k] - deltaT*dynnew
 
@@ -190,30 +199,30 @@ class Problem:
 
         def constraintGrad( s ):
             """
-            this function returns the gradient of the constraint function 
+            this function returns the gradient of the constraint function
 
             arguments:
-            s: the optimization vector 
+            s: the optimization vector
 
             """
 
             (st, inpcont, inpmode) = decode(s)
 
-            #rows from forward Euler constraints: Nst * Nsamples 
+            #rows from forward Euler constraints: Nst * Nsamples
             rows = Nst * Nsamples + Nst + socp.Nineqcons * Nsamples
             columns = Nst*(Nsamples+1) + Ninpcont*Nsamples + Nmodes*Nsamples
             consg = np.zeros( (rows, columns) )
 
-            #this for loop puts the forward euler constraints into the consg matrix 
+            #this for loop puts the forward euler constraints into the consg matrix
             for k in range(Nsamples):
-                cgradstprev = 0 
-                cgradinpprev = 0 
+                cgradstprev = 0
+                cgradinpprev = 0
                 for i in range(Nmodes):
                     cgradstcurrent = inpmode[i,k] *  socp.dynamicsgradst(st[:,k])[i]
                     cgradstprev = cgradstprev + cgradstcurrent
                     cgradinpcurrent = inpmode[i,k] * socp.dynamicsgradinp(inpcont[:,k])[i]
                     cgradinpprev = cgradinpprev + cgradinpcurrent
-                #fwd euler cons grad wrt states 
+                #fwd euler cons grad wrt states
                 consg[ k*Nst : k*Nst + Nst, k*Nst: k*Nst+Nst] = -np.identity(Nst) - deltaT*cgradstprev
                 consg[ k*Nst : k*Nst + Nst, Nst*(k+1) : Nst*(k+1) + Nst ] = np.identity(Nst)
                 consg[ k*Nst : k*Nst + Nst, Nst*(Nsamples+1) + k*Ninpcont : Nst*(Nsamples+1) + k*Ninpcont + Ninpcont ] = -deltaT*cgradinpprev
@@ -224,7 +233,7 @@ class Problem:
             #this puts the initial condition constraint into consg
             consg[ Nst*Nsamples : Nst*Nsamples + Nst, 0: Nst ] = np.identity(Nst)
 
-            #this for loop puts the constraint function gradients into consg 
+            #this for loop puts the constraint function gradients into consg
             for k in range(Nsamples):
                 consg[ Nst * Nsamples + Nst + k*socp.Nineqcons : Nst * Nsamples + Nst + k*socp.Nineqcons + socp.Nineqcons, (k+1)*Nst: (k+1)*Nst + Nst ] = socp.consgradst(st[:,k+1])
 
@@ -237,10 +246,10 @@ class Problem:
         self.consg = constraintGrad
         setBounds() ## this fctn sets self.lb and self.ub
         setBoundsCons() ## this fctn sets self.conslb and self.consub
+        setLinCons()
         self.mixedCons = False
         self.init = np.zeros( ( self.N, 1 ) )
-#        self.conslinA = None
 
 
-
-
+class SparseProblem:
+    pass

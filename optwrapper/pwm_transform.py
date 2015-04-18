@@ -1,21 +1,21 @@
-import numpy as np 
-import matplotlib.pyplot as plt 
+import numpy as np
+import matplotlib.pyplot as plt
 
 
 def pwm(t, d):
     """
-    this function generates the pwm transformation of the discrete input vectors 
+    this function generates the pwm transformation of the discrete input vectors
 
     arguments:
     t: the time vector of Haar sample times; size: (2**N)+1 (where N corresponds to the Haar transform)
-    d: the matrix of discrete modal values at each Haar time sample; size: #modes x 2**N 
+    d: the matrix of discrete modal values at each Haar time sample; size: #modes x 2**N
 
     """
 
     t = np.array(t)
 
     #Nmodes = number of modes
-    #N = number of Haar samples 
+    #N = number of Haar samples
     (Nmodes, N) = np.shape(d)
 
     t_pwm = np.array( [ ] )
@@ -37,9 +37,6 @@ def pwm(t, d):
 
     t_pwm = np.append(t_pwm, 1.0)
 
-    # print t_pwm
-    # print d_pwm
-
     return (t_pwm, d_pwm)
 
 ##main
@@ -54,8 +51,8 @@ d = np.array( [ [.2, 1.0, 0.0, 0.5], [0.7, 0.0, 0.5, 0.0], [0.1, 0.0, 0.5, 0.5] 
 
 (t_pwm, d_pwm) = pwm(t,d)
 
-print t_pwm 
-print d_pwm
+print( t_pwm )
+print( d_pwm )
 
 plt.step(t_pwm, np.hstack( (d_pwm[0,:], d[0,-1]) ), where='post' )
 plt.title('d1')

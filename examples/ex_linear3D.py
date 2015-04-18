@@ -107,7 +107,4 @@ solver.solve()
 print( "Status: " + nlpprob.soln.getStatus() )
 print( "Value: " + str( nlpprob.soln.value ) )
 print( "Retval: " + str( nlpprob.soln.retval ) )
-( st, u, time ) = solndecode( nlpprob.soln.final )
-print( "Optimal state:\n" + str( st ) )
-print( "Optimal input:\n" + str( u ) )
 
