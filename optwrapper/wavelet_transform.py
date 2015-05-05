@@ -15,10 +15,10 @@ def haar_coeff(t, d, N):
     d = np.array(d)
 
     if( t.size - 1 != d.size ):
-        raise ValueError("error")
+        raise ValueError("error1")
 
     if( t[0] != 0.0 ):
-        raise ValueError("error")
+        raise ValueError("error2")
 
     tf = 1.0
     t0 = 0.0
@@ -109,30 +109,27 @@ def inv_haar(coeff):
 
     H = np.transpose(H)
 
-    print( H )
+    #print( H )
 
     return np.dot(H, coeff)
 
-
+#all code below was used for testing 
 ##main
-t = [ 0, 0.7/4, 1.4/2, 3.2/4, 1]
-d = [ 1, 2, 4, -7 ]
-N = 5
+#t = [ 0, 0.7/4, 1.4/2, 3.2/4, 1]
+#d = [ 1, 2, 4, -7 ]
+#N = 5
 
-(coeff) = haar_coeff( t, d, N)
+#(coeff) = haar_coeff( t, d, N)
 
-print( "coeff: {0}".format( coeff ) )
+#print( "coeff: {0}".format( coeff ) )
 
-#dinv = wave.idwt( X = coeff, wf = 'h', k=2, centered=True )
-#print( np.cumsum(dinv) )
+#dinv = inv_haar(coeff)
+#print( "dinv: {0}".format( dinv ) )
 
-dinv = inv_haar(coeff)
-print( "dinv: {0}".format( dinv ) )
+#tinv = np.linspace( 0.0, 1.0, 2**N + 1)
 
-tinv = np.linspace( 0.0, 1.0, 2**N + 1)
-
-plt.plot( t, np.hstack( (d,d[-1])), 'ro', tinv[:-1], dinv, 'bs')
-plt.show()
+#plt.plot( t, np.hstack( (d,d[-1])), 'ro', tinv[:-1], dinv, 'bs')
+#plt.show()
 
 
 # t1 = [0, 1.0/6, 2.0/6, .5, 4.0/6, 5.0/6, 1]
