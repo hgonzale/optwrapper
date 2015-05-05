@@ -132,8 +132,8 @@ class Problem:
 
             for i in range(Nmodes):
                 for k in range(Nsamples):
-                    instcostarray = socp.instcost(st[:,k], inpcont[:,k])
-                    objfruncost = objfruncost + (inpmode[i,k] * instcostarray[i] * deltaT)
+                    instcostarray = socp.instcost[i](st[:,k], inpcont[:,k])
+                    objfruncost = objfruncost + (inpmode[i,k] * instcostarray * deltaT)
 
             objffincost = socp.fincost(st[:,Nsamples])
 
@@ -156,14 +156,16 @@ class Problem:
             for k in range(Nsamples):
                 gradstprev = 0
                 gradinpprev = 0
+		gradmode = np.zeros( Nmodes  )
                 for i in range(Nmodes):
-                    gradstcurrent = inpmode[i,k] * deltaT * socp.instcostgradst(st[:,k])[i]
+                    gradstcurrent = inpmode[i,k] * deltaT * socp.instcostgradst[i](st[:,k])
                     gradstprev = gradstprev + gradstcurrent
-                    gradinpcurrent = inpmode[i,k] * deltaT * socp.instcostgradinpcont(inpcont[:,k])[i]
+                    gradinpcurrent = inpmode[i,k] * deltaT * socp.instcostgradinpcont[i](inpcont[:,k])
                     gradinpprev = gradinpprev + gradinpcurrent
+		    gradmode[i] = socp.instcost[i](st[:,k], inpcont[:,k]) * deltaT 
                 objg[ k*Nst : k*Nst+Nst ] = gradstprev
                 objg[ Nst*(Nsamples+1)+k*Ninpcont : Nst*(Nsamples+1)+k*Ninpcont+Ninpcont] = gradinpprev
-                objg[ Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes : Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + Nmodes ] = socp.instcost(st[:,k], inpcont[:,k]) * deltaT
+                objg[ Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes : Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + Nmodes ] = gradmode 
 
             objg[ Nst * Nsamples : Nst * (Nsamples + 1) ] = socp.fincostgradst(st[:,Nsamples])
 
@@ -186,7 +188,7 @@ class Problem:
             for k in range(Nsamples):
                 dynnew = 0
                 for i in range(Nmodes):
-                    dyninter = inpmode[i,k] * socp.dynamics(st[:,k], inpcont[:,k])[i]
+                    dyninter = inpmode[i,k] * socp.dynamics[i](st[:,k], inpcont[:,k])
                     dynnew = dyninter + dynnew
                 consf[k*Nst:k*Nst+Nst] = st[:,k+1] - st[:,k] - deltaT*dynnew
 
@@ -218,17 +220,17 @@ class Problem:
                 cgradstprev = 0
                 cgradinpprev = 0
                 for i in range(Nmodes):
-                    cgradstcurrent = inpmode[i,k] *  socp.dynamicsgradst(st[:,k])[i]
+                    cgradstcurrent = inpmode[i,k] *  socp.dynamicsgradst[i](st[:,k])
                     cgradstprev = cgradstprev + cgradstcurrent
-                    cgradinpcurrent = inpmode[i,k] * socp.dynamicsgradinp(inpcont[:,k])[i]
+                    cgradinpcurrent = inpmode[i,k] * socp.dynamicsgradinp[i](inpcont[:,k])
                     cgradinpprev = cgradinpprev + cgradinpcurrent
                 #fwd euler cons grad wrt states
                 consg[ k*Nst : k*Nst + Nst, k*Nst: k*Nst+Nst] = -np.identity(Nst) - deltaT*cgradstprev
                 consg[ k*Nst : k*Nst + Nst, Nst*(k+1) : Nst*(k+1) + Nst ] = np.identity(Nst)
                 consg[ k*Nst : k*Nst + Nst, Nst*(Nsamples+1) + k*Ninpcont : Nst*(Nsamples+1) + k*Ninpcont + Ninpcont ] = -deltaT*cgradinpprev
-                dyn_array = socp.dynamics(st[:,k], inpcont[:,k])
                 for i in range(Nmodes):
-                    consg[k*Nst : k*Nst + Nst, Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + i] = -deltaT * dyn_array[i]
+		    dyn_array = socp.dynamics[i](st[:,k], inpcont[:,k])
+                    consg[k*Nst : k*Nst + Nst, Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + i] = -deltaT * dyn_array
 
             #this puts the initial condition constraint into consg
             consg[ Nst*Nsamples : Nst*Nsamples + Nst, 0: Nst ] = np.identity(Nst)
@@ -248,7 +250,7 @@ class Problem:
         setBoundsCons() ## this fctn sets self.conslb and self.consub
         setLinCons()
         self.mixedCons = False
-        self.init = np.zeros( ( self.N, 1 ) )
+        self.init = np.zeros( ( self.N, ) )
 
 
 class SparseProblem:
