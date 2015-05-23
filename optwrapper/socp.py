@@ -1,246 +1,360 @@
 import numpy as np
 import types
+from optwrapper import ocp
 
-class Problem:
+class Problem( ocp.Problem ):
     """
-    this transforms a switched optimal control problem (socp) into a non-linear programming problem
-    (nlp) so that the socp can be solved with a solver
-
-    requires a non-linear objective function and its gradient
-    requires constraints (box, linear, and non-linear)
+    Switched Optimal Control Problem
 
     """
 
-    def __init__(self, socp, Nsamples):
+    def __init__( self, Nstates, Ninputs, Nmodes, Ncons ):
         """
         arguments:
-        socp: an instance from the SOCP (switched optimal control problem) class
-        Nsamples: the number of samples in the approximated version of the SOCP
+        Nstates: number of continuous states
+        Ninputs: number of continuous inputs
+        Nmodes:  number of modes (or discrete inputs)
+        Ncons:   number of inequality constraints
+        """
+
+        try:
+            self.Nmodes = int( Nmodes )
+        except:
+            raise ValueError( "Nmodes must be an integer" )
+
+        if( self.Nmodes < 1 ):
+            raise ValueError( "Nmodes must be larger than zero" )
+
+        ocp.Problem.__init__( self, Nstates, Ninputs, Ncons )
+
+
+    def costInstant( self, icost, dxpattern=None, dupattern=None ):
+        """
+        set the instant cost functions and their gradients
+
+        arguments:
+        icost:     tuple of instant cost functions
+        dxpattern: tuple of binary pattern of the state gradient for sparse nlp (optional)
+        dupattern: tuple of binary pattern of the input gradient for sparse nlp (optional)
 
         """
 
-        Nst = socp.Nst
-        Ninpcont = socp.Ninpcont
-        Nmodes = socp.Nmodes
-        N = Nst*(Nsamples + 1) + Ninpcont*Nsamples + Nmodes*Nsamples #number of opt variables
-        deltaT = (socp.tf - socp.t0) / Nsamples
-        self.N = N
-        self.Nconslin = Nsamples #linear constraint for the relaxed discrete mode input
-        self.Ncons = Nst * (Nsamples + 1) + Nsamples*socp.Nineqcons
+        try:
+            self.icost = tuple( icost )
+        except:
+            raise ValueError( "icost must be a tuple" )
 
-        def encode(st, inpcont, inpmode):
+        if( len( self.icost ) != self.Nmodes ):
+            raise ValueError( "icost must have Nmodes elements" )
+
+        tmpdx = list( dxpattern )
+        for k in range( self.Nmodes ):
+            tmpdx[k] = np.asfortranarray( tmpdx[k], dtype=np.int )
+            if( tmpdx[k].shape != ( self.Nstates, ) ):
+                raise ValueError( "Each dxpattern must have size (" +
+                                  str(self.Nstates) + ",)." )
+        self.dxpattern = tuple( tmpdx )
+
+        tmpdu = list( dupattern )
+        for k in range( self.Nmodes ):
+            tmpdu[k] = np.asfortranarray( tmpdu[k], dtype=np.int )
+            if( tmpdu[k].shape != ( self.Ninputs, ) ):
+                raise ValueError( "Each dupattern must have size (" +
+                                  str(self.Ninputs) + ",)." )
+        self.dupattern = tuple( tmpdu )
+
+
+    def vectorField( self, vfield, dxpattern=None, dupattern=None ):
+        """
+        sets the vector field function and its gradients
+
+        arguments:
+        vfield:    vector field function
+        dxpattern: binary pattern of the state gradient for sparse nlp (optional)
+        dupattern: binary pattern of the input gradient for sparse nlp (optional)
+
+        """
+
+        try:
+            self.vfield = tuple( vfield )
+        except:
+            raise ValueError( "vfield must be a tuple" )
+
+        if( len( self.vfield ) != self.Nmodes ):
+            raise ValueError( "vfield must have Nmodes elements" )
+
+        tmpdx = list( dxpattern )
+        for k in range( self.Nmodes ):
+            tmpdx[k] = np.asfortranarray( tmpdx[k], dtype=np.int )
+            if( tmpdx[k].shape != ( self.Nstates, self.Nstates ) ):
+                raise ValueError( "Each dxpattern must have size (" +
+                                  str(self.Nstates) + "," + str(self.Nstates) + ")." )
+
+            self.dxpattern = tuple( tmpdx )
+
+        tmpdu = list( dupattern )
+        for k in range( self.Nmodes ):
+            tmpdu[k] = np.asfortranarray( tmpdu[k], dtype=np.int )
+            if( tmpdu[k].shape != ( self.Nstates, self.Ninputs ) ):
+                raise ValueError( "Each dupattern must have size (" +
+                                  str(self.Nstates) + "," + str(self.Ninputs) + ")." )
+        self.dupattern = tuple( tmpdu )
+
+
+    def discForwardEuler( self, Nsamples ):
+        """
+        transforms this switched optimal control problem into a nonlinear programming problem using
+        the Forward Euler ODE approximation with uniform sampling, and relaxing the discrete inputs
+        as vectors in the simplex with dimension Nmodes
+
+        Arguments:
+        Nsamples: number of discrete time samples
+
+        Returns:
+        feuler:     nlp.SparseProblem instance
+        solnDecode: function to decode final nonlinear programming vector
+
+        """
+
+        ## index helpers
+        stidx = np.arange( 0, self.Nstates * ( Nsamples + 1 ) ).reshape(
+            ( self.Nstates, Nsamples + 1 ), order='F' )
+        uidx = ( stidx.size +
+                 np.arange( 0, self.Ninputs * Nsamples ).reshape( ( self.Ninputs, Nsamples ),
+                                                                  order='F' ) )
+        didx = ( stidx.size + uidx.size +
+                 np.arange( 0, self.Nmodes * Nsamples ).reshape( ( self.Nmodes, Nsamples ),
+                                                                 order='F' ) )
+        dconsidx = stidx
+        iconsidx = ( dconsidx.size +
+                     np.arange( 0, self.Ncons * Nsamples ).reshape( ( self.Ncons, Nsamples ),
+                                                                    order='F' ) )
+
+        deltaT = ( self.tf - self.t0 ) / ( Nsamples + 1 )
+
+        feuler = nlp.SparseProblem( N = stidx.size + uidx.size + didx.size,
+                                    Ncons = dconsidx.size + iconsidx.size,
+                                    Nconslin = Nsamples )
+
+
+        def encode( st, u, d ):
             """
-            this function creates one big vector of all the states, continuous inputs, and mode inputs for all times
+            ( state, continuous input, discrete input ) -> optimization vector
 
-            arguments:
-            st: a matrix of all the states at all times tk = 0...Nsamples
-            inpcont: a matrix of all the continuous inputs at all times tk = 0...Nsamples - 1
-            inpmode: a matrix of all the mode inputs at all times tk = 0...Nsamples
             """
 
-            s = np.zeros(N)
+            s = np.zeros( ( feuler.N, ) )
 
-            for k in range( Nsamples ):
-                s[ k*Nst : k*Nst+Nst ] = st[:,k]
-                s[ Nst*(Nsamples+1)+k*Ninpcont : Nst*(Nsamples+1)+k*Ninpcont+Ninpcont] = inpcont[:,k]
-                s[ Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes : Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + Nmodes] = inpmode[:,k]
+            if( st.ndim == 2 and st.shape == ( self.Nstates, Nsamples+1 ) ):
+                s[ stidx.ravel( order='F' ) ] = st.ravel( order='F' )
+            elif( st.ndim == 1 and st.shape == ( self.Nstates, ) ):
+                s[ stidx.ravel( order='F' ) ] = np.tile( st, ( Nsamples+1, ) )
+            else:
+                raise ValueError( "unknown state vector format." )
 
-            s[ Nst * Nsamples : Nst * (Nsamples + 1) ] = st[:,Nsamples]
+            if( u.ndim == 2 and u.shape == ( self.Ninputs, Nsamples ) ):
+                s[ uidx.ravel( order='F' ) ] = u.ravel( order='F' )
+            elif( u.ndim == 1 and u.shape == ( self.Ninputs, ) ):
+                s[ uidx.ravel( order='F' ) ] = np.tile( u, ( Nsamples, ) )
+            else:
+                raise ValueError( "unknown continuous input vector format." )
+
+            if( d.ndim == 2 and d.shape == ( self.Nmodes, Nsamples ) ):
+                s[ didx.ravel( order='F' ) ] = d.ravel( order='F' )
+            elif( d.ndim == 1 and d.shape == ( self.Nmodes, ) ):
+                s[ didx.ravel( order='F' ) ] = np.tile( d, ( Nsamples, ) )
+            else:
+                raise ValueError( "unknown discrete input vector format." )
 
             return s
 
-        def decode(s):
-            """
-            this function creates the st, inpcont, and inpmode matrices from the optimizaion vector, s
 
-            arguments:
-            s: the optimizaion vector of size N
+        def decode( s ):
+            """
+            optimization vector -> ( state, input )
 
             """
 
-            st = np.zeros( (Nst, Nsamples+1) )
-            inpcont = np.zeros( (Ninpcont, Nsamples) )
-            inpmode = np.zeros( (Nmodes, Nsamples) )
+            st = s[ stidx ]
+            u = s[ uidx ]
+            d = s[ didx ]
 
-            for k in range(Nsamples):
-                st[:,k] = s[ k*Nst : k*Nst+Nst]
-                inpcont[:,k] = s[ Nst*(Nsamples+1)+k*Ninpcont : Nst*(Nsamples+1)+k*Ninpcont+Ninpcont ]
-                inpmode[:,k] = s[ Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes : Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + Nmodes]
+            return ( st, u, d )
 
-            st[:,Nsamples] = s[ Nst * Nsamples : Nst * (Nsamples + 1) ]
 
-            return (st, inpcont, inpmode)
-
-        def setBounds():
+        def solnDecode( s ):
             """
-            this function sets the lower and upper bounds on the optimization vector
+            decodes final solution vector
+
+            Arguments:
+            s: nonlinear programming optimization vector
+
+            Returns:
+            st: state matrix with dimension (Nstates,Nsamples+1)
+            u:  input matrix with dimension (Ninputs,Nsamples)
+            t:  time vector with dimension (Nsamples+1,)
             """
 
-            lb = np.zeros(N)
-            ub = np.zeros(N)
+            return decode( s ) + ( np.linspace( self.t0, self.tf, Nsamples + 1 ), )
+
+
+        def objf( out, s ):
+            """
+            discretized nonlinear programming cost function
+
+            """
+
+            ( st, u, d ) = decode( s )
+
+            out[0] = 0
+            for k in range( Nsamples ):
+                for idx in range( self.Nmodes ):
+                    out[0] += d[idx,k] * self.icost[idx]( st[:,k], u[:,k], grad=False )
+
+            out[0] *= deltaT
+            out[0] += self.fcost( st[:,Nsamples], grad=False )
+
+
+        def objg( out, s ):
+            """
+            discretized nonlinear programming cost gradient
+
+            """
+
+            ( st, u, d ) = decode( s )
 
             for k in range( Nsamples ):
-                lb[ k*Nst : k*Nst+Nst ] = socp.consstlb
-                lb[ Nst*(Nsamples+1)+k*Ninpcont : Nst*(Nsamples+1)+k*Ninpcont+Ninpcont] = socp.consinpcontlb
-                lb[ Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes : Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + Nmodes] = 0
-                ub[ k*Nst : k*Nst+Nst ] = socp.consstub
-                ub[ Nst*(Nsamples+1)+k*Ninpcont : Nst*(Nsamples+1)+k*Ninpcont+Ninpcont] = socp.consinpcontub
-                ub[ Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes : Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + Nmodes] = 1
+                for idx in range( self.Nmodes ):
+                    ( fx, dx, du ) = self.icost[idx]( st[:,k], u[:,k] )
+                    out[ stidx[:,k] ] += d[idx,k] * dx * deltaT
+                    out[ uidx[:,k] ] += d[idx,k] * du * deltaT
+                    out[ didx[idx,k] ] = fx * deltaT
 
-            lb[ Nst * Nsamples : Nst * (Nsamples + 1) ] = socp.consstlb
-            ub[ Nst * Nsamples : Nst * (Nsamples + 1) ] = socp.consstub
+            out[ stidx[:,Nsamples] ] = self.fcost( st[:,Nsamples] )[1]
 
-            self.ub = ub
-            self.lb = lb
 
-        def setBoundsCons():
+        def objgpattern():
             """
-            this function sets the lower and upper bounds on the constraints
+            binary pattern of the sparse cost gradient
 
             """
 
-            conslb = np.zeros ( self.Ncons )
-            consub = np.zeros ( self.Ncons )
+            if( self.icostdupattern is None or
+                self.icostdxpattern is None or
+                self.fcostdxpattern is None ):
+                return None
 
-            conslb[Nst*(Nsamples + 1): Nst*(Nsamples + 1) + Nsamples * socp.Nineqcons ] = -np.inf
+            out = np.zeros( ( feuler.N, ), dtype=np.int )
 
-            self.conslb = conslb
-            self.consub = consub
-
-        def setLinCons():
-            A = np.zeros( (Nsamples, N ) )
             for k in range( Nsamples ):
-                A[ k, Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes : Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + Nmodes] = 1
+                for idx in range( self.Nmodes ):
+                    out[ stidx[:,k] ] += self.icostdxpattern[idx]
+                    out[ uidx[:,k] ] += self.icostdupattern[idx]
+                    out[ didx[idx,k] ] = 1
 
-            self.conslinA = A
-            self.conslinlb = np.ones( (Nsamples,) )
-            self.conslinub = np.ones( (Nsamples,) )
+            out[ stidx[:,Nsamples] ] = self.fcostdxpattern
 
-        def objectiveFctn( s ):
+            return out
+
+
+        def consf( out, s ):
             """
-            this function uses the instant cost functions for the various modes from the and the final cost
-            function from the socp problem and creates the objective function for the nlp problem
-
-            arguments:
-            s: the optimization vector
-
-            """
-
-            (st, inpcont, inpmode) = decode(s)
-
-            objfruncost = 0
-
-            for i in range(Nmodes):
-                for k in range(Nsamples):
-                    instcostarray = socp.instcost[i](st[:,k], inpcont[:,k])
-                    objfruncost = objfruncost + (inpmode[i,k] * instcostarray * deltaT)
-
-            objffincost = socp.fincost(st[:,Nsamples])
-
-            return objfruncost + objffincost
-
-        def objectiveGrad( s ):
-            """
-            this function returns the gradient of the objective function with respect to the optimization
-            vector, s, which is a concatenated vector of all the states, continuous inputs, and modal inputs
-
-            arguments:
-            s: optimization vector
+            discretized nonlinear programming constraint function
 
             """
 
-            (st, inpcont, inpmode) = decode(s)
+            ( st, u, d ) = decode( s )
 
-            objg = np.zeros(N)
+            ## initial condition collocation constraint
+            out[ dconsidx[:,0] ] = st[:,0] - self.init
+            for k in range( Nsamples ):
+                ## Forward Euler collocation equality constraints
+                fx = 0
+                for idx in range( self.Nmodes ):
+                    fx += d[idx,k] * self.vfield[idx]( st[:,k], u[:,k], grad=False )
+                out[ dconsidx[:,k+1] ] = st[:,k+1] - st[:,k] - deltaT * fx
 
-            for k in range(Nsamples):
-                gradstprev = 0
-                gradinpprev = 0
-		gradmode = np.zeros( Nmodes  )
-                for i in range(Nmodes):
-                    gradstcurrent = inpmode[i,k] * deltaT * socp.instcostgradst[i](st[:,k])
-                    gradstprev = gradstprev + gradstcurrent
-                    gradinpcurrent = inpmode[i,k] * deltaT * socp.instcostgradinpcont[i](inpcont[:,k])
-                    gradinpprev = gradinpprev + gradinpcurrent
-		    gradmode[i] = socp.instcost[i](st[:,k], inpcont[:,k]) * deltaT 
-                objg[ k*Nst : k*Nst+Nst ] = gradstprev
-                objg[ Nst*(Nsamples+1)+k*Ninpcont : Nst*(Nsamples+1)+k*Ninpcont+Ninpcont] = gradinpprev
-                objg[ Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes : Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + Nmodes ] = gradmode 
+                ## inequality constraints
+                out[ iconsidx[:,k] ] = self.cons( st[:,k+1], grad=False )
 
-            objg[ Nst * Nsamples : Nst * (Nsamples + 1) ] = socp.fincostgradst(st[:,Nsamples])
 
-            return objg
-
-        def constraintFctn( s ):
+        def consg( out, s ):
             """
-            this function returns the Forward Euler Constraints, the initial condition imposement, and the
-            inequality constraints from socp for the nlp problem
-
-            arguments:
-            the optimization vector s
+            discretized nonlinear programming constraint gradient
 
             """
 
-            (st, inpcont, inpmode) = decode(s)
+            ( st, u, d ) =  decode( s )
 
-            consf = np.zeros( self.Ncons )
+            out[ np.ix_( dconsidx[:,0], stidx[:,0] ) ] = np.identity( self.Nstates )
+            for k in range( Nsamples ):
+                out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] = - np.identity( self.Nstates )
+                out[ np.ix_( dconsidx[:,k+1], stidx[:,k+1] ) ] = np.identity( self.Nstates )
+                for idx in range( self.Nmodes ):
+                    ( fx, dyndx, dyndu ) = self.vfield[idx]( st[:,k], u[:,k] )
+                    out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] += - d[idx,k] * dyndx * deltaT
+                    out[ np.ix_( dconsidx[:,k+1], uidx[:,k] ) ] += - d[idx,k] * dyndu * deltaT
+                    out[ np.ix_( dconsidx[:,k+1], didx[idx,k] ) ] = - fx * deltaT
 
-            for k in range(Nsamples):
-                dynnew = 0
-                for i in range(Nmodes):
-                    dyninter = inpmode[i,k] * socp.dynamics[i](st[:,k], inpcont[:,k])
-                    dynnew = dyninter + dynnew
-                consf[k*Nst:k*Nst+Nst] = st[:,k+1] - st[:,k] - deltaT*dynnew
+                out[ np.ix_( iconsidx[:,k], stidx[:,k+1] ) ] = self.cons( st[:,k+1] )[1]
 
-            consf[Nst*Nsamples:Nst*(Nsamples + 1)] = socp.init
 
-            for k in range(1, Nsamples+1):
-                consf[Nst*(Nsamples + 1) + (k-1)*socp.Nineqcons : Nst*(Nsamples + 1) + (k-1)*socp.Nineqcons + socp.Nineqcons] = socp.cons(st[:,k])
-
-            return consf
-
-        def constraintGrad( s ):
+        def consgpattern():
             """
-            this function returns the gradient of the constraint function
-
-            arguments:
-            s: the optimization vector
+            binary pattern of the sparse nonlinear constraint gradient
 
             """
 
-            (st, inpcont, inpmode) = decode(s)
+            if( self.vfielddxpattern is None or
+                self.vfielddupattern is None or
+                self.consdxpattern is None ):
+                return None
 
-            #rows from forward Euler constraints: Nst * Nsamples
-            rows = Nst * Nsamples + Nst + socp.Nineqcons * Nsamples
-            columns = Nst*(Nsamples+1) + Ninpcont*Nsamples + Nmodes*Nsamples
-            consg = np.zeros( (rows, columns) )
+            out = np.zeros( ( feuler.Ncons, feuler.N ), dtype=np.int )
 
-            #this for loop puts the forward euler constraints into the consg matrix
-            for k in range(Nsamples):
-                cgradstprev = 0
-                cgradinpprev = 0
-                for i in range(Nmodes):
-                    cgradstcurrent = inpmode[i,k] *  socp.dynamicsgradst[i](st[:,k])
-                    cgradstprev = cgradstprev + cgradstcurrent
-                    cgradinpcurrent = inpmode[i,k] * socp.dynamicsgradinp[i](inpcont[:,k])
-                    cgradinpprev = cgradinpprev + cgradinpcurrent
-                #fwd euler cons grad wrt states
-                consg[ k*Nst : k*Nst + Nst, k*Nst: k*Nst+Nst] = -np.identity(Nst) - deltaT*cgradstprev
-                consg[ k*Nst : k*Nst + Nst, Nst*(k+1) : Nst*(k+1) + Nst ] = np.identity(Nst)
-                consg[ k*Nst : k*Nst + Nst, Nst*(Nsamples+1) + k*Ninpcont : Nst*(Nsamples+1) + k*Ninpcont + Ninpcont ] = -deltaT*cgradinpprev
-                for i in range(Nmodes):
-		    dyn_array = socp.dynamics[i](st[:,k], inpcont[:,k])
-                    consg[k*Nst : k*Nst + Nst, Nst*(Nsamples+1) + Ninpcont*Nsamples + k*Nmodes + i] = -deltaT * dyn_array
+            out[ np.ix_( dconsidx[:,0], stidx[:,0] ) ] = np.identity( self.Nstates )
+            for k in range( Nsamples ):
+                out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] = np.identity( self.Nstates )
+                out[ np.ix_( dconsidx[:,k+1], stidx[:,k+1] ) ] = np.identity( self.Nstates )
+                for idx in range( self.Nmodes ):
+                    out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] += self.vfielddxpattern[idx]
+                    out[ np.ix_( dconsidx[:,k+1], uidx[:,k] ) ] += self.vfielddupattern[idx]
+                    out[ np.ix_( dconsidx[:,k+1], didx[idx,k] ) ] = np.ones( (self.Nstates,) )
 
-            #this puts the initial condition constraint into consg
-            consg[ Nst*Nsamples : Nst*Nsamples + Nst, 0: Nst ] = np.identity(Nst)
+                out[ np.ix_( iconsidx[:,k], stidx[:,k+1] ) ] = self.consdxpattern
 
-            #this for loop puts the constraint function gradients into consg
-            for k in range(Nsamples):
-                consg[ Nst * Nsamples + Nst + k*socp.Nineqcons : Nst * Nsamples + Nst + k*socp.Nineqcons + socp.Nineqcons, (k+1)*Nst: (k+1)*Nst + Nst ] = socp.consgradst(st[:,k+1])
+            return out
 
 
-            return consg
+        ## setup feuler now that all the functions are defined
+        feuler.initPoint( encode( self.init,
+                                  np.zeros( (self.Ninputs,) ),
+                                  1/self.Nmodes * np.ones( (self.Nmodes,) ) ) )
+        feuler.consBox( encode( self.consstlb, self.consinlb, np.zeros( (self.Nmodes,) ) ),
+                        encode( self.consstub, self.consinub, np.ones( (self.Nmodes,) ) ) )
+        feuler.objFctn( objf )
+        feuler.objGrad( objg, pattern=objgpattern() )
+
+        ###############
+        ###############
+        
+        feuler.consFctn( consf,
+                         np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
+                                           np.tile( self.conslb, ( Nsamples, ) ) ) ),
+                         np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
+                                           np.tile( self.consub, ( Nsamples, ) ) ) ) )
+        feuler.consGrad( consg, pattern=consgpattern() )
+
+        return ( feuler, solnDecode )
+
+        # def setLinCons():
+        #     A = np.zeros( (Nsamples, N ) )
+        #     for k in range( Nsamples ):
+        #         A[ k, Nstates*(Nsamples+1) + Ninputs*Nsamples + k*Nmodes : Nstates*(Nsamples+1) + Ninputs*Nsamples + k*Nmodes + Nmodes] = 1
+
+        #     self.conslinA = A
+        #     self.conslinlb = np.ones( (Nsamples,) )
+        #     self.conslinub = np.ones( (Nsamples,) )
 
         self.objf = objectiveFctn
         self.objg = objectiveGrad
@@ -251,7 +365,3 @@ class Problem:
         setLinCons()
         self.mixedCons = False
         self.init = np.zeros( ( self.N, ) )
-
-
-class SparseProblem:
-    pass
