@@ -359,7 +359,7 @@ class Problem( ocp.Problem ):
         return ( feuler, solnDecode )
 
 
-def wavelet_transform( t, arr, N ):
+def haarWaveletApprox( t, arr, N ):
     """
     computes Haar Wavelet approximation of a nonuniform-sampled function
 
@@ -453,3 +453,42 @@ def wavelet_transform( t, arr, N ):
             H[k,j] = -2**P
 
     return np.dot( coeff, H )
+
+
+def pwmTransform( t, d ):
+    """
+    computes the pwm transformation of a uniformly sampled discrete input matrix
+
+    Arguments:
+    t: array of uniform time samples of dimension (Nsamples+1,)
+    d: array of discrete input samples of dimension (Ndims,Nsamples)
+
+    """
+
+    ## sanity checks
+    try:
+        ( Nmodes, Nsamples ) = d.shape
+    except:
+        raise TypeError( "d must be a two-dimensional array" )
+
+    if( t.size - 1 != Nsamples ):
+        raise TypeError( "t must have length {0}".format( Nsamples + 1 ) )
+
+    if( t[-1] <= t[0] ):
+        raise ValueError( "final time is smaller or equal than initial time" )
+
+    tpwm = np.zeros( (Nmodes*Nsamples + 1,) )
+    dpwm = np.zeros( (Nmodes, Nmodes*Nsamples ) )
+
+    deltaT = (t[-1] - t[0]) / Nsamples
+
+    tpwm[0] = t[0]
+    pwmidx = 1
+    for k in range( Nsamples ):
+        for j in range( Nmodes ):
+            if( d[j,k] > 0 ):
+                tpwm[pwmidx] = t[k] + deltaT * np.sum( d[:j+1,k] )
+                dpwm[j,pwmidx-1] = 1
+                pwmidx += 1
+
+    return ( tpwm[:pwmidx], dpwm[:,:pwmidx-1] )
