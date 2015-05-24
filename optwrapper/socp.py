@@ -1,6 +1,6 @@
+from __future__ import division
 import numpy as np
 import types
-from __future__ import division
 from optwrapper import ocp
 
 class Problem( ocp.Problem ):
@@ -359,108 +359,97 @@ class Problem( ocp.Problem ):
         return ( feuler, solnDecode )
 
 
-    def wavelet_transform( t, arr, N ):
-        """
-        computes Haar Wavelet approximation of a nonuniform-sampled function
+def wavelet_transform( t, arr, N ):
+    """
+    computes Haar Wavelet approximation of a nonuniform-sampled function
 
-        Arguments:
-        t:   array of time samples of dimension (Nsamples+1,)
-        arr: array of function samples of dimension (Ndims,Nsamples)
-        N:   new sampling rate of the wavelet transform
+    Arguments:
+    t:   array of time samples of dimension (Nsamples+1,)
+    arr: array of function samples of dimension (Ndims,Nsamples)
+    N:   new sampling rate of the wavelet transform
 
-        Returns:
-        warr: Haar wavelet transform of arr with dimension (Ndims,2**N)
+    Returns:
+    out: Haar wavelet transform of arr with dimension (Ndims,2**N)
 
-        """
+    """
 
-        ## sanity checks
-        try:
-            ( Ndims, Nsamples ) = arr.shape
-        except:
-            raise TypeError( "arr must be a two-dimensional array" )
+    ## sanity checks
+    try:
+        ( Ndims, Nsamples ) = arr.shape
+    except:
+        raise TypeError( "arr must be a two-dimensional array" )
 
-        try:
-            N = int( N )
-        except:
-            raise TypeError( "N must be an integer" )
+    try:
+        N = int( N )
+    except:
+        raise TypeError( "N must be an integer" )
 
-        if( t.size - 1 != Nsamples ):
-            raise TypeError( "t must have length {0}".format( Nsamples + 1 ) )
+    if( t.size - 1 != Nsamples ):
+        raise TypeError( "t must have length {0}".format( Nsamples + 1 ) )
 
-        if( t[-1] <= t[0] ):
-            raise ValueError( "final time is smaller or equal than initial time" )
+    if( t[-1] <= t[0] ):
+        raise ValueError( "final time is smaller or equal than initial time" )
 
-        ## add extra Haar sampling times to t and arr
-        t = ( t - t[0] ) / ( t[-1] - t[0] ) ## normalize time
-        deltaT = 1 / (2**N)
-        tnew = np.zeros( (2**N + Nsamples,) )
-        arrnew = np.zeros( (Ndims, tnew.size - 1) )
+    ## add extra Haar sampling times to t and arr
+    t = ( t - t[0] ) / ( t[-1] - t[0] ) ## normalize time
+    deltaT = 1 / (2**N)
+    tnew = np.zeros( (2**N + Nsamples,) )
+    arrnew = np.zeros( (Ndims, tnew.size - 1) )
 
-        oidx = 0 ## old array index
-        hidx = 1 ## haar sampling index
+    oidx = 0 ## old array index
+    hidx = 1 ## haar sampling index
 
-        for k in range( 0, tnew.size ):
-            # print( "t: {0}, th: {1}".format( t[oidx], deltaT*hidx ) )
-            if( oidx < Nsamples and t[oidx] < deltaT * hidx ): ## copy samples from original arrays
-                tnew[k] = t[oidx]
-                arrnew[:,k] = arr[:,oidx]
-                oidx += 1
-            else:                                              ## need to insert new haar sample
-                tnew[k] = deltaT * hidx
-                if( k < tnew.size - 1 ):                       ## tnew is one longer than arrnew
-                    arrnew[:,k] = arr[:,oidx-1]
-                hidx += 1
+    for k in range( 0, tnew.size ):
+        if( oidx < Nsamples and t[oidx] < deltaT * hidx ): ## copy samples from original arrays
+            tnew[k] = t[oidx]
+            arrnew[:,k] = arr[:,oidx]
+            oidx += 1
+        else:                                              ## need to insert new haar sample
+            tnew[k] = deltaT * hidx
+            if( k < tnew.size - 1 ):                       ## tnew is one longer than arrnew
+                arrnew[:,k] = arr[:,oidx-1]
+            hidx += 1
 
-        # print( "t_new: {0}".format( t_new ) )
-        # print( "d_new: {0}".format( d_new ) )
-        # print( "oidx: {0}".format( oidx ) )
+    ## compute Haar Wavelet coefficients
+    coeff = np.zeros( (Ndims,2**N) )
+    dtnew = np.diff( tnew )
 
-        ## compute Haar Wavelet coefficients
-        coeff = np.zeros( (Ndims,2**N) )
-        dtnew = np.diff( tnew )
+    coeff[:,0] = np.sum( arrnew * dtnew, axis=1 )
 
-        # for k in range( dtnew.size ):
-        #     coeff[:,0] += dtnew[k] * arrnew[:,k]
-        coeff[:,0] = np.sum( arrnew * dtnew, axis=1 )
+    cidx = 1 ## coeff index
+    for k in range( N ):
+        for j in range( 2**k ): ## TODO: this loop can be improved a bit
+            idx = 0
+            while( tnew[idx] < j / 2**k ):
+                idx += 1
 
-        cidx = 1 ## coeff index
-        for k in range( N ):
-            for j in range( 2**k ):
-                idx = 0
-                while( tnew[idx] < j / 2**k ):
-                    idx += 1
+            while( tnew[idx] < (j + 0.5) / 2**k ):
+                coeff[:,cidx] += dtnew[idx] * arrnew[:,idx]
+                idx += 1
 
-                while( tnew[idx] < (j + 0.5) / 2**k ):
-                    coeff[:,cidx] += dtnew[idx] * arrnew[:,idx]
-                    idx += 1
+            while( tnew[idx] < (j + 1) / 2**k ):
+                coeff[:,cidx] -= dtnew[idx] * arrnew[:,idx]
+                idx += 1
 
-                while( tnew[idx] < (j + 1) / 2**k ):
-                    coeff[:,cidx] -= dtnew[idx] * arrnew[:,idx]
-                    idx += 1
+            cidx += 1
 
-                cidx += 1
+    ## create matrix with Haar basis functions values at each sampling point
+    tmpp = np.zeros( (2**N,) )
+    tmpq = np.zeros( (2**N,) )
+    H = np.zeros( (2**N, 2**N) )
+    H[0,:] = np.ones( (2**N,) )
 
-        tmpp = np.zeros( (2**N,) )
-        tmpq = np.zeros( (2**N,) )
-        H = np.zeros( (2**N, 2**N) )
-        H[:,0] = np.ones( (2**N,) )
+    tmpq[1] = 1
+    for k in range( 1, N ):
+        tmpp[2**k:2**(k+1)] = k * np.ones( (2**k,) )
+        tmpq[2**k:2**(k+1)] = np.arange( 1, (2**k) + 1 )
 
-        tmpq[1] = 1
-        for k in range( 1, N ):
-            tmpp[2**k:2**(k+1)] = np.append( p, k * np.ones( (2**k,) ) )
-            tmpq[2**k:2**(k+1)] = np.append( q, np.arange( 1, (2**k) + 1 ) )
+    for k in range( 1, 2**N ):
+        P = tmpp[k]
+        Q = tmpq[k]
+        for j in range( int( 2**N * (Q-1) / 2**P ), int( 2**N * (Q-0.5) / 2**P ) ):
+            H[k,j] = 2**P
+        for j in range( int( 2**N * (Q-0.5) / 2**P ), int( 2**N * Q / 2**P ) ):
+            H[k,j] = -2**P
 
-        for k in range( 1, 2**N ):
-            P = tmpp[k]
-            Q = tmpq[k]
-            for j in range( int( 2**N * (Q-1) / 2**P ), int( 2**N * (Q-0.5) / 2**P ) ):
-                H[j,k] = 2**P
-            for j in range( int( 2**N * (Q-0.5) / 2**P ), int( 2**N * Q / 2**P ) ):
-                H[j,k] = -2**P
-
-        #print( H )
-
-        ###################
-        ###################
-
-        return np.dot(H, coeff)
+    return np.dot( coeff, H )
