@@ -177,7 +177,10 @@ class Problem:
 
         """
 
-        if ( type(cons) != types.FunctionType ):
+        if( self.Ncons == 0 ):
+            raise RuntimeError( "Cannot use nonlinear constraints when Ncons is zero" )
+
+        if( type(cons) != types.FunctionType ):
             raise ValueError( "Argument must be a function" )
 
         if( lb is None ):
@@ -393,7 +396,8 @@ class Problem:
                                            deltaT * self.vfield( st[:,k], u[:,k], grad=False ) )
 
                 ## inequality constraints
-                out[ iconsidx[:,k] ] = self.cons( st[:,k+1], grad=False )
+                if( self.Ncons > 0 ):
+                    out[ iconsidx[:,k] ] = self.cons( st[:,k+1], grad=False )
 
 
         def consg( out, s ):
@@ -412,7 +416,8 @@ class Problem:
                 out[ np.ix_( dconsidx[:,k+1], stidx[:,k+1] ) ] = np.identity( self.Nstates )
                 out[ np.ix_( dconsidx[:,k+1], uidx[:,k] ) ] = - deltaT * dyndu
 
-                out[ np.ix_( iconsidx[:,k], stidx[:,k+1] ) ] = self.cons( st[:,k+1] )[1]
+                if( self.Ncons > 0 ):
+                    out[ np.ix_( iconsidx[:,k], stidx[:,k+1] ) ] = self.cons( st[:,k+1] )[1]
 
 
         def consgpattern():
@@ -435,7 +440,8 @@ class Problem:
                 out[ np.ix_( dconsidx[:,k+1], stidx[:,k+1] ) ] = np.identity( self.Nstates )
                 out[ np.ix_( dconsidx[:,k+1], uidx[:,k] ) ] = self.vfielddupattern
 
-                out[ np.ix_( iconsidx[:,k], stidx[:,k+1] ) ] = self.consdxpattern
+                if( self.Ncons > 0 ):
+                    out[ np.ix_( iconsidx[:,k], stidx[:,k+1] ) ] = self.consdxpattern
 
             return out
 
@@ -446,11 +452,17 @@ class Problem:
                         encode( self.consstub, self.consinub ) )
         feuler.objFctn( objf )
         feuler.objGrad( objg, pattern=objgpattern() )
-        feuler.consFctn( consf,
-                         np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
-                                           np.tile( self.conslb, ( Nsamples, ) ) ) ),
-                         np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
-                                           np.tile( self.consub, ( Nsamples, ) ) ) ) )
+        if( self.Ncons > 0 ):
+            feuler.consFctn( consf,
+                             np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
+                                               np.tile( self.conslb, ( Nsamples, ) ) ) ),
+                             np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
+                                               np.tile( self.consub, ( Nsamples, ) ) ) ) )
+        else:
+            feuler.consFctn( consf,
+                             np.zeros( ( dconsidx.size, ) ),
+                             np.zeros( ( dconsidx.size, ) ) )
+
         feuler.consGrad( consg, pattern=consgpattern() )
 
         return ( feuler, solnDecode )

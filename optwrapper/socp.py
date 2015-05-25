@@ -1,7 +1,7 @@
 from __future__ import division
 import numpy as np
 import types
-from optwrapper import ocp
+from optwrapper import nlp, ocp
 
 class Problem( ocp.Problem ):
     """
@@ -48,6 +48,9 @@ class Problem( ocp.Problem ):
         if( len( self.icost ) != self.Nmodes ):
             raise ValueError( "icost must have Nmodes elements" )
 
+        if( dxpattern is None or dupattern is None ):
+            return
+
         tmpdx = list( dxpattern )
         for k in range( self.Nmodes ):
             tmpdx[k] = np.asfortranarray( tmpdx[k], dtype=np.int )
@@ -83,6 +86,9 @@ class Problem( ocp.Problem ):
 
         if( len( self.vfield ) != self.Nmodes ):
             raise ValueError( "vfield must have Nmodes elements" )
+
+        if( dxpattern is None or dupattern is None ):
+            return
 
         tmpdx = list( dxpattern )
         for k in range( self.Nmodes ):
@@ -194,6 +200,7 @@ class Problem( ocp.Problem ):
             st: state matrix with dimension (Nstates,Nsamples+1)
             u:  input matrix with dimension (Ninputs,Nsamples)
             t:  time vector with dimension (Nsamples+1,)
+
             """
 
             return decode( s ) + ( np.linspace( self.t0, self.tf, Nsamples + 1 ), )
@@ -227,7 +234,14 @@ class Problem( ocp.Problem ):
             for k in range( Nsamples ):
                 for idx in range( self.Nmodes ):
                     ( fx, dx, du ) = self.icost[idx]( st[:,k], u[:,k] )
-                    out[ stidx[:,k] ] += d[idx,k] * dx * deltaT
+                    try:
+                        out[ stidx[:,k] ] += d[idx,k] * dx * deltaT
+                    except:
+                        print( "idxs: k = {0}, idx = {1}".format( k, idx ) )
+                        print( "stidx: {0}".format( stidx[:,k] ) )
+                        print( "out dims: {0}".format( out.shape ) )
+                        print( "dx: {0}".format( dx ) )
+                        print( "d[idx,k]: {0}".format( d[idx,k] ) )
                     out[ uidx[:,k] ] += d[idx,k] * du * deltaT
                     out[ didx[idx,k] ] = fx * deltaT
 
@@ -276,7 +290,8 @@ class Problem( ocp.Problem ):
                 out[ dconsidx[:,k+1] ] = st[:,k+1] - st[:,k] - deltaT * fx
 
                 ## inequality constraints
-                out[ iconsidx[:,k] ] = self.cons( st[:,k+1], grad=False )
+                if( self.Ncons > 0 ):
+                    out[ iconsidx[:,k] ] = self.cons( st[:,k+1], grad=False )
 
 
         def consg( out, s ):
@@ -297,7 +312,8 @@ class Problem( ocp.Problem ):
                     out[ np.ix_( dconsidx[:,k+1], uidx[:,k] ) ] += - d[idx,k] * dyndu * deltaT
                     out[ np.ix_( dconsidx[:,k+1], didx[idx,k] ) ] = - fx * deltaT
 
-                out[ np.ix_( iconsidx[:,k], stidx[:,k+1] ) ] = self.cons( st[:,k+1] )[1]
+                if( self.Ncons > 0 ):
+                    out[ np.ix_( iconsidx[:,k], stidx[:,k+1] ) ] = self.cons( st[:,k+1] )[1]
 
 
         def consgpattern():
@@ -322,7 +338,8 @@ class Problem( ocp.Problem ):
                     out[ np.ix_( dconsidx[:,k+1], uidx[:,k] ) ] += self.vfielddupattern[idx]
                     out[ np.ix_( dconsidx[:,k+1], didx[idx,k] ) ] = np.ones( (self.Nstates,) )
 
-                out[ np.ix_( iconsidx[:,k], stidx[:,k+1] ) ] = self.consdxpattern
+                if( self.Ncons > 0 ):
+                    out[ np.ix_( iconsidx[:,k], stidx[:,k+1] ) ] = self.consdxpattern
 
             return out
 
@@ -349,11 +366,17 @@ class Problem( ocp.Problem ):
         feuler.consLinear( conslinA(), np.ones( (Nsamples,) ), np.ones( (Nsamples,) ) )
         feuler.objFctn( objf )
         feuler.objGrad( objg, pattern=objgpattern() )
-        feuler.consFctn( consf,
-                         np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
-                                           np.tile( self.conslb, ( Nsamples, ) ) ) ),
-                         np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
-                                           np.tile( self.consub, ( Nsamples, ) ) ) ) )
+        if( self.Ncons > 0 ):
+            feuler.consFctn( consf,
+                             np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
+                                               np.tile( self.conslb, ( Nsamples, ) ) ) ),
+                             np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
+                                               np.tile( self.consub, ( Nsamples, ) ) ) ) )
+        else:
+            feuler.consFctn( consf,
+                             np.zeros( ( dconsidx.size, ) ),
+                             np.zeros( ( dconsidx.size, ) ) )
+
         feuler.consGrad( consg, pattern=consgpattern() )
 
         return ( feuler, solnDecode )
@@ -455,13 +478,19 @@ def haarWaveletApprox( t, arr, N ):
     return np.dot( coeff, H )
 
 
-def pwmTransform( t, d ):
+def pwmTransform( t, u, d ):
     """
-    computes the pwm transformation of a uniformly sampled discrete input matrix
+    computes the PWM transformation of a uniformly sampled discrete input matrix
 
     Arguments:
     t: array of uniform time samples of dimension (Nsamples+1,)
-    d: array of discrete input samples of dimension (Ndims,Nsamples)
+    u: array of continuous input samples of dimension (Ninputs,Nsamples)
+    d: array of discrete input samples of dimension (Nmodes,Nsamples)
+
+    Returns:
+    tpwm: array of nonuniform PWM time samples
+    upwm: array of resampled continuous input using tpwm
+    dpwm: array with PWM transformation of discrete input
 
     """
 
@@ -471,6 +500,11 @@ def pwmTransform( t, d ):
     except:
         raise TypeError( "d must be a two-dimensional array" )
 
+    try:
+        Ninputs = u[:,0].size
+    except:
+        raise TypeError( "u must be a two-dimensional array" )
+
     if( t.size - 1 != Nsamples ):
         raise TypeError( "t must have length {0}".format( Nsamples + 1 ) )
 
@@ -478,7 +512,8 @@ def pwmTransform( t, d ):
         raise ValueError( "final time is smaller or equal than initial time" )
 
     tpwm = np.zeros( (Nmodes*Nsamples + 1,) )
-    dpwm = np.zeros( (Nmodes, Nmodes*Nsamples ) )
+    upwm = np.zeros( ( Ninputs, Nmodes*Nsamples ) )
+    dpwm = np.zeros( ( Nmodes, Nmodes*Nsamples ) )
 
     deltaT = (t[-1] - t[0]) / Nsamples
 
@@ -488,7 +523,8 @@ def pwmTransform( t, d ):
         for j in range( Nmodes ):
             if( d[j,k] > 0 ):
                 tpwm[pwmidx] = t[k] + deltaT * np.sum( d[:j+1,k] )
+                upwm[pwmidx] = u[k]
                 dpwm[j,pwmidx-1] = 1
                 pwmidx += 1
 
-    return ( tpwm[:pwmidx], dpwm[:,:pwmidx-1] )
+    return ( tpwm[:pwmidx], upwm[:,:pwmidx-1], dpwm[:,:pwmidx-1] )
