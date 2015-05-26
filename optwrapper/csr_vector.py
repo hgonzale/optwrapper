@@ -14,7 +14,9 @@ class csr_vector( csr_matrix ):
 
     def __getitem__( self, key ):
         print( "-- key: {0}".format( key ) )
-        if( type(key) == types.TupleType and len(key) == 2 ): ##############
+        return
+
+        if( isinstance( key, tuple ) and len(key) == 2 ):
             if( key[0] != 0 ):
                 raise ValueError( "csr_vectors only have one row" )
 

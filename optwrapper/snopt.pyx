@@ -100,6 +100,61 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
         # for k in range( lenG[0] ):
         #     print( ">>> G["+ str(k) +"]: " + str(G[k]) )
 
+cdef class sMatrix:
+    cdef doublereal *data
+    cdef integer *rptr
+    cdef integer *cidx
+    cdef integer nnz
+    cdef integer nrows
+    cdef integer ncols
+    cdef int data_alloc
+
+    def __init__( self, arg1 ):
+        self.data_alloc = False
+
+        if( isinstance( arg1, np.array ) ):
+            ( self.nrows, self.ncols ) = arg1.shape
+            ( rowarr, colarr ) = np.nonzero( arg1 )
+            self.nnz = colarr.size
+
+            self.data_alloc = True
+            self.data = <doublereal *> malloc( self.nnz * sizeof( doublereal ) )
+            self.rptr = <integer *> malloc( ( self.nrows + 1 ) * sizeof( integer ) )
+            self.cidx = <integer *> malloc( self.nnz * sizeof( integer ) )
+
+            ## copy cidx
+            memcpy( self.cidx, utils.getPtr( utils.convIntFortran( colarr ) ),
+                    self.nnz * sizeof( doublereal ) )
+            ## write rptr
+            rptr[0] = 0
+            for k in range( self.nrows ):
+                rptr[k+1] = rptr[k] + np.sum( rowarr == k )
+            ## zero data
+            memset( self.data, 0, self.nnz * sizeof( doublereal ) )
+
+        else:
+            raise NotImplementedError( "argument must be an array" )
+
+
+    cdef setDataPtr( self, void *ptr ):
+        if( self.data_alloc ):
+            free( self.data )
+            self.data_alloc = False
+
+        self.data = <doublereal *> ptr
+
+
+    def __setitem__( self, key, value ):
+        pass
+
+
+    def __getitem__( self, key ):
+        if( isinstance( key, tuple ) and len(key) == 2 ):
+            
+        else:
+            raise TypeError( "unknown type of key" )
+
+
 
 cdef class Soln( base.Soln ):
     cdef public np.ndarray xstate
