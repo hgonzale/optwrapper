@@ -150,7 +150,35 @@ cdef class sMatrix:
 
     def __getitem__( self, key ):
         if( isinstance( key, tuple ) and len(key) == 2 ):
-            
+            if( isinstance( key[0], int ) ):
+                if( key[0] >= self.nrows or key[0] < -self.nrows ):
+                    raise IndexError( "out of bounds" )
+                if( key[0] < 0 ):
+                    key[0] = self.nrows - key[0]
+                rowiter = key[0]
+            elif( isinstance( key[0], slice ) ):
+                rowiter = range( *key[0].indices( self.nrows ) )
+            elif( isinstance( key[0], np.array ) and key[0].ndims == 2 ):
+                ############ I'm here
+
+            if( isinstance( key[1], int ) ): ## (int,int)
+                if( key[1] >= self.ncols or key[1] < -self.ncols ):
+                    raise IndexError( "out of bounds" )
+                if( key[1] < 0 ):
+                    key[1] = self.ncols - key[1]
+                coliter = key[1]
+
+            elif( isinstance( key[1], slice ) ): ## (int,slice)
+                coliter = range( *key[1].indices( self.ncols ) )
+
+            ## return mesh
+            out = np.zeros( ( len(rowiter), len(coliter) ) )
+            for (i,row) in enumerate( rowiter ):
+                for k in range( self.rptr[row], self.rptr[row+1] ):
+                    for (j,col) in enumerate( coliter ):
+                        if( self.cidx[k] == col ):
+                            out[i,j] = data[k]
+
         else:
             raise TypeError( "unknown type of key" )
 
