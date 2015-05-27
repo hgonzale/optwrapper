@@ -1,6 +1,6 @@
 from libc.string cimport memcpy, memset
 from libc.stdlib cimport malloc, free
-cimport numpy as np
+cimport numpy as cnp
 import numpy as np
 from scipy.sparse import coo_matrix, csr_matrix
 
@@ -112,7 +112,7 @@ cdef class sMatrix:
     def __init__( self, arg1 ):
         self.data_alloc = False
 
-        if( isinstance( arg1, np.array ) ):
+        if( isinstance( arg1, np.ndarray ) ):
             ( self.nrows, self.ncols ) = arg1.shape
             ( rowarr, colarr ) = np.nonzero( arg1 )
             self.nnz = colarr.size
@@ -126,11 +126,13 @@ cdef class sMatrix:
             memcpy( self.cidx, utils.getPtr( utils.convIntFortran( colarr ) ),
                     self.nnz * sizeof( doublereal ) )
             ## write rptr
-            rptr[0] = 0
+            self.rptr[0] = 0
             for k in range( self.nrows ):
-                rptr[k+1] = rptr[k] + np.sum( rowarr == k )
+                self.rptr[k+1] = self.rptr[k] + np.sum( rowarr == k )
             ## zero data
-            memset( self.data, 0, self.nnz * sizeof( doublereal ) )
+            memcpy( self.data, utils.getPtr( utils.convFortran( arg1[rowarr,colarr].flatten() ) ),
+                    self.nnz * sizeof( doublereal ) )
+            # memset( self.data, 0, self.nnz * sizeof( doublereal ) )
 
         else:
             raise NotImplementedError( "argument must be an array" )
@@ -149,27 +151,47 @@ cdef class sMatrix:
 
 
     def __getitem__( self, key ):
-        if( isinstance( key, tuple ) and len(key) == 2 ):
-            if( isinstance( key[0], int ) ):
-                if( key[0] >= self.nrows or key[0] < -self.nrows ):
-                    raise IndexError( "out of bounds" )
-                if( key[0] < 0 ):
-                    key[0] = self.nrows - key[0]
-                rowiter = key[0]
-            elif( isinstance( key[0], slice ) ):
-                rowiter = range( *key[0].indices( self.nrows ) )
-            elif( isinstance( key[0], np.array ) and key[0].ndims == 2 ):
-                ############ I'm here
+        ## helper to deal with oob or negative indices
+        def sanitize_idx( val, limit ):
+            if( val >= limit or val < -limit ):
+                raise IndexError( "index {0} is out of bounds".format( val ) )
+            if( val < 0 ):
+                return ( limit + val )
+            return val
 
-            if( isinstance( key[1], int ) ): ## (int,int)
-                if( key[1] >= self.ncols or key[1] < -self.ncols ):
-                    raise IndexError( "out of bounds" )
-                if( key[1] < 0 ):
-                    key[1] = self.ncols - key[1]
-                coliter = key[1]
+        ## create a square array based on mesh indices
+        def create_mesh( rows, cols ):
+            if( isinstance( rows, int ) ):
+                rowiter = ( sanitize_idx( rows, self.nrows ), )
+            elif( isinstance( rows, slice ) ):
+                rowiter = range( *rows.indices( self.nrows ) )
+            else:
+                try:
+                    rows = np.asarray( rows, dtype=np.int_ )
+                except:
+                    raise TypeError( "unknown type of key" )
+                rows = np.squeeze( rows )
+                if( rows.ndim > 1 ):
+                    raise IndexError( "invalid index array" )
+                for k in range( rows.size ):
+                    rows[k] = sanitize_idx( rows[k], self.nrows )
+                rowiter = rows
 
-            elif( isinstance( key[1], slice ) ): ## (int,slice)
-                coliter = range( *key[1].indices( self.ncols ) )
+            if( isinstance( cols, int ) ):
+                coliter = ( sanitize_idx( cols, self.ncols ), )
+            elif( isinstance( cols, slice ) ):
+                coliter = range( *cols.indices( self.ncols ) )
+            else:
+                try:
+                    cols = np.asarray( cols, dtype=np.int_ )
+                except:
+                    raise TypeError( "unknown type of key" )
+                cols = np.squeeze( cols )
+                if( cols.ndim > 1 ):
+                    raise IndexError( "invalid index array" )
+                for k in range( cols.size ):
+                    cols[k] = sanitize_idx( cols[k], self.ncols )
+                coliter = cols
 
             ## return mesh
             out = np.zeros( ( len(rowiter), len(coliter) ) )
@@ -177,18 +199,26 @@ cdef class sMatrix:
                 for k in range( self.rptr[row], self.rptr[row+1] ):
                     for (j,col) in enumerate( coliter ):
                         if( self.cidx[k] == col ):
-                            out[i,j] = data[k]
+                            out[i,j] = self.data[k]
+                            break
 
+            return np.squeeze( out )
+
+        ## actual function
+        if( isinstance( key, tuple ) and len(key) == 2 ):
+            return create_mesh( key[0], key[1] )
+        elif( self.nrows == 1 ):
+            return create_mesh( 0, key )
         else:
             raise TypeError( "unknown type of key" )
 
 
 
 cdef class Soln( base.Soln ):
-    cdef public np.ndarray xstate
-    cdef public np.ndarray xmul
-    cdef public np.ndarray Fstate
-    cdef public np.ndarray Fmul
+    cdef public cnp.ndarray xstate
+    cdef public cnp.ndarray xmul
+    cdef public cnp.ndarray Fstate
+    cdef public cnp.ndarray Fmul
     cdef public int nS
 
     def __init__( self ):
