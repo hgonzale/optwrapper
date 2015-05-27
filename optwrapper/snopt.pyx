@@ -102,25 +102,39 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
 
 cdef class sMatrix:
     cdef doublereal *data
-    cdef integer *rptr
-    cdef integer *cidx
-    cdef integer nnz
-    cdef integer nrows
-    cdef integer ncols
+    cdef int *rptr
+    cdef int *cidx
+    cdef int nnz
+    cdef int nrows
+    cdef int ncols
     cdef int data_alloc
 
-    def __init__( self, arg1 ):
+    def __init__( self, arg1, arg2=None ):
         self.data_alloc = False
 
-        if( isinstance( arg1, np.ndarray ) ):
-            ( self.nrows, self.ncols ) = arg1.shape
-            ( rowarr, colarr ) = np.nonzero( arg1 )
-            self.nnz = colarr.size
+        if( arg2 is None ): ## arg1 is a sparse array with data
+            try:
+                arg1 = np.atleast_1d( np.asarray( arg1, dtype=np.float64 ) )
+            except:
+                raise NotImplementedError( "argument must be an array" )
+
+            if( arg1.ndim == 1 ):
+                self.nrows = 1
+                self.ncols = arg1.size
+                colarr = np.nonzero( arg1 )
+                self.nnz = colarr.size
+                rowarr = np.zeros( (self.nnz,) )
+            elif( arg1.ndim == 2 ):
+                ( self.nrows, self.ncols ) = arg1.shape
+                ( rowarr, colarr ) = np.nonzero( arg1 )
+                self.nnz = colarr.size
+            else:
+                raise ValueError( "argument can have at most two dimensions" )
 
             self.data_alloc = True
             self.data = <doublereal *> malloc( self.nnz * sizeof( doublereal ) )
-            self.rptr = <integer *> malloc( ( self.nrows + 1 ) * sizeof( integer ) )
-            self.cidx = <integer *> malloc( self.nnz * sizeof( integer ) )
+            self.rptr = <int *> malloc( ( self.nrows + 1 ) * sizeof( int ) )
+            self.cidx = <int *> malloc( self.nnz * sizeof( int ) )
 
             ## copy cidx
             memcpy( self.cidx, utils.getPtr( utils.convIntFortran( colarr ) ),
@@ -134,8 +148,14 @@ cdef class sMatrix:
                     self.nnz * sizeof( doublereal ) )
             # memset( self.data, 0, self.nnz * sizeof( doublereal ) )
 
-        else:
-            raise NotImplementedError( "argument must be an array" )
+        else: ## (arg1,arg2) are index arrays coming from np.nonzero()
+            ######### I'm here
+
+    def __dealloc__( self ):
+        if( data_alloc ):
+            free( self.data )
+        free( self.rptr )
+        free( self.cidx )
 
 
     cdef setDataPtr( self, void *ptr ):
@@ -146,11 +166,7 @@ cdef class sMatrix:
         self.data = <doublereal *> ptr
 
 
-    def __setitem__( self, key, value ):
-        pass
-
-
-    def __getitem__( self, key ):
+    cdef key_to_iter( self, key, limit ):
         ## helper to deal with oob or negative indices
         def sanitize_idx( val, limit ):
             if( val >= limit or val < -limit ):
@@ -159,41 +175,69 @@ cdef class sMatrix:
                 return ( limit + val )
             return val
 
+        ## actual function
+        if( isinstance( key, int ) ):
+            return ( sanitize_idx( key, limit ), )
+        elif( isinstance( key, slice ) ):
+            return range( *key.indices( limit ) )
+        else:
+            try:
+                key = np.asarray( key, dtype=np.int_ )
+            except:
+                raise TypeError( "unknown type of key" )
+            key = np.squeeze( key )
+            if( key.ndim > 1 ):
+                raise IndexError( "invalid key array" )
+            for k in range( key.size ):
+                key[k] = sanitize_idx( key[k], limit )
+            return key
+
+
+    def __setitem__( self, key, value ):
         ## create a square array based on mesh indices
-        def create_mesh( rows, cols ):
-            if( isinstance( rows, int ) ):
-                rowiter = ( sanitize_idx( rows, self.nrows ), )
-            elif( isinstance( rows, slice ) ):
-                rowiter = range( *rows.indices( self.nrows ) )
-            else:
-                try:
-                    rows = np.asarray( rows, dtype=np.int_ )
-                except:
-                    raise TypeError( "unknown type of key" )
-                rows = np.squeeze( rows )
-                if( rows.ndim > 1 ):
-                    raise IndexError( "invalid index array" )
-                for k in range( rows.size ):
-                    rows[k] = sanitize_idx( rows[k], self.nrows )
-                rowiter = rows
+        def set_data_vals( rowiter, coliter, value ):
+            for (i,row) in enumerate( rowiter ):
+                for k in range( self.rptr[row], self.rptr[row+1] ):
+                    for (j,col) in enumerate( coliter ):
+                        if( self.cidx[k] == col ):
+                            self.data[k] = value[i,j]
+                            break
 
-            if( isinstance( cols, int ) ):
-                coliter = ( sanitize_idx( cols, self.ncols ), )
-            elif( isinstance( cols, slice ) ):
-                coliter = range( *cols.indices( self.ncols ) )
-            else:
-                try:
-                    cols = np.asarray( cols, dtype=np.int_ )
-                except:
-                    raise TypeError( "unknown type of key" )
-                cols = np.squeeze( cols )
-                if( cols.ndim > 1 ):
-                    raise IndexError( "invalid index array" )
-                for k in range( cols.size ):
-                    cols[k] = sanitize_idx( cols[k], self.ncols )
-                coliter = cols
+        ## actual function
+        try:
+            value = np.asarray( value, dtype=np.float64 )
+        except:
+            raise TypeError( "unknown type of value" )
 
-            ## return mesh
+        if( isinstance( key, tuple ) and len(key) == 2 ):
+            value = np.atleast_2d( np.squeeze( value ) )
+            rowiter = self.key_to_iter( key[0], self.nrows )
+            coliter = self.key_to_iter( key[1], self.ncols )
+
+            if( ( len(rowiter), len(coliter) ) != value.shape ):
+                raise ValueError( "value does not have same dimensions as keys" )
+
+            set_data_vals( rowiter, coliter, value )
+
+        elif( self.nrows == 1 ):
+            value = np.atleast_1d( np.squeeze( value ) )
+            if( value.ndim != 1 ):
+                raise ValueError( "value must be one dimensional for a sparse vector" )
+
+            coliter = self.key_to_iter( key, self.ncols )
+
+            if( len(coliter) != value.size ):
+                raise ValueError( "value does not have same dimensions as keys" )
+
+            set_data_vals( 0, coliter, value )
+
+        else:
+            raise TypeError( "unknown type of key" )
+
+
+    def __getitem__( self, key ):
+        ## create a square array based on mesh indices
+        def create_mesh_array( rowiter, coliter ):
             out = np.zeros( ( len(rowiter), len(coliter) ) )
             for (i,row) in enumerate( rowiter ):
                 for k in range( self.rptr[row], self.rptr[row+1] ):
@@ -206,9 +250,15 @@ cdef class sMatrix:
 
         ## actual function
         if( isinstance( key, tuple ) and len(key) == 2 ):
-            return create_mesh( key[0], key[1] )
+            rowiter = self.key_to_iter( key[0], self.nrows )
+            coliter = self.key_to_iter( key[1], self.ncols )
+
+            return create_mesh_array( rowiter, coliter )
+
         elif( self.nrows == 1 ):
-            return create_mesh( 0, key )
+            coliter = self.key_to_iter( key, self.ncols )
+            return create_mesh_array( 0, coliter )
+
         else:
             raise TypeError( "unknown type of key" )
 
