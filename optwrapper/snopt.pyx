@@ -1,3 +1,6 @@
+# cython: boundscheck=False
+# cython: wraparound=False
+
 from libc.string cimport memcpy, memset
 from libc.stdlib cimport malloc, free
 cimport numpy as cnp
@@ -99,17 +102,46 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
         # for k in range( lenG[0] ):
         #     print( ">>> G["+ str(k) +"]: " + str(G[k]) )
 
+
+## helper to deal with oob or negative indices in sMatrix
+cdef integer sanitize_idx( integer val, integer limit ):
+    if( val >= limit or val < -limit ):
+        raise IndexError( "index {0} is out of bounds".format( val ) )
+    if( val < 0 ):
+        return ( limit + val )
+    return val
+
+## helper to create iterators out of heterogeneous data types in sMatrix
+cdef key_to_iter( key, integer limit ):
+    if( isinstance( key, int ) ):
+        return ( sanitize_idx( key, limit ), )
+    elif( isinstance( key, slice ) ):
+        return range( *key.indices( limit ) )
+    else:
+        try:
+            key = np.asarray( key, dtype=np.int_ )
+        except:
+            raise TypeError( "unknown type of key" )
+        key = np.squeeze( key )
+        if( key.ndim > 1 ):
+            raise IndexError( "invalid key array" )
+        for k in range( key.size ):
+            key[k] = sanitize_idx( key[k], limit )
+        return key
+
+
 cdef class sMatrix:
     cdef doublereal *data
     cdef integer *rptr
+    cdef integer *ridx
     cdef integer *cidx
-    cdef int nnz
-    cdef int nrows
-    cdef int ncols
+    cdef readonly integer nnz
+    cdef readonly integer nrows
+    cdef readonly integer ncols
     cdef int data_alloc
 
-    def __init__( self, arg1, arg2=None, dims=None ):
-        copy_data = False
+    def __cinit__( self, arg1, arg2=None, dims=None ):
+        cdef int copy_data = False
         self.data_alloc = False
 
         if( arg2 is None ): ## arg1 is an array with data
@@ -147,7 +179,6 @@ cdef class sMatrix:
                 raise TypeError( "arguments must be integer arrays" )
             if( arg1.ndim > 1 or arg2.ndim > 1 or arg1.size != arg2.size ):
                 raise ValueError( "arguments must be 1-dimensional with same length" )
-
             if( np.max( arg1 ) > dims[0] or np.max( arg2 ) > dims[1] ):
                 raise ValueError( "dims is not large enough to contain indices" )
 
@@ -160,9 +191,13 @@ cdef class sMatrix:
         self.data_alloc = True
         self.data = <doublereal *> malloc( self.nnz * sizeof( doublereal ) )
         self.rptr = <integer *> malloc( ( self.nrows + 1 ) * sizeof( integer ) )
+        self.ridx = <integer *> malloc( self.nnz * sizeof( integer ) )
         self.cidx = <integer *> malloc( self.nnz * sizeof( integer ) )
 
-        ## copy cidx
+        ## copy ridx and cidx
+        memcpy( self.ridx,
+                utils.getPtr( utils.convIntFortran( rowarr ) ),
+                self.nnz * sizeof( integer ) )
         memcpy( self.cidx,
                 utils.getPtr( utils.convIntFortran( colarr ) ),
                 self.nnz * sizeof( integer ) )
@@ -187,17 +222,22 @@ cdef class sMatrix:
 
         print( "rptr: [" ),
         for k in range( self.nrows+1 ):
-            print( str(self.rptr[k]) + " " ),
+            print( self.rptr[k] ),
+        print( "]" )
+
+        print( "ridx: [" ),
+        for k in range( self.nnz ):
+            print( self.ridx[k] ),
         print( "]" )
 
         print( "cidx: [" ),
         for k in range( self.nnz ):
-            print( str(self.cidx[k]) + " " ),
+            print( self.cidx[k] ),
         print( "]" )
 
         print( "data: [" ),
         for k in range( self.nnz ):
-            print( str(self.data[k]) + " " ),
+            print( self.data[k] ),
         print( "]" )
 
 
@@ -205,6 +245,7 @@ cdef class sMatrix:
         if( self.data_alloc ):
             free( self.data )
         free( self.rptr )
+        free( self.ridx )
         free( self.cidx )
 
 
@@ -216,102 +257,59 @@ cdef class sMatrix:
         self.data = <doublereal *> ptr
 
 
-    cdef key_to_iter( self, key, integer limit ):
-        ## helper to deal with oob or negative indices
-        def sanitize_idx( integer val, integer limit ):
-            if( val >= limit or val < -limit ):
-                raise IndexError( "index {0} is out of bounds".format( val ) )
-            if( val < 0 ):
-                return ( limit + val )
-            return val
-
-        ## actual function
-        if( isinstance( key, int ) ):
-            return ( sanitize_idx( key, limit ), )
-        elif( isinstance( key, slice ) ):
-            return range( *key.indices( limit ) )
-        else:
-            try:
-                key = np.asarray( key, dtype=np.int_ )
-            except:
-                raise TypeError( "unknown type of key" )
-            key = np.squeeze( key )
-            if( key.ndim > 1 ):
-                raise IndexError( "invalid key array" )
-            for k in range( key.size ):
-                key[k] = sanitize_idx( key[k], limit )
-            return key
+    cdef (integer*,integer*) getIdxPtrs( self ):
+        return ( self.ridx, self.cidx )
 
 
     def __setitem__( self, key, value ):
-        ## create a square array based on mesh indices
-        def set_data_vals( rowiter, coliter, value ):
-            for (i,row) in enumerate( rowiter ):
-                for k in range( self.rptr[row], self.rptr[row+1] ):
-                    for (j,col) in enumerate( coliter ):
-                        if( self.cidx[k] == col ):
-                            self.data[k] = value[i,j]
-                            break
-
-        ## actual function
         try:
-            value = np.asarray( value, dtype=np.float64 )
+            value = np.atleast_2d( np.asarray( value, dtype=np.float64 ) )
         except:
             raise TypeError( "unknown type of value" )
 
-        if( isinstance( key, tuple ) and len(key) == 2 ):
-            value = np.atleast_2d( np.squeeze( value ) )
-            rowiter = self.key_to_iter( key[0], self.nrows )
-            coliter = self.key_to_iter( key[1], self.ncols )
-
-            if( ( len(rowiter), len(coliter) ) != value.shape ):
-                raise ValueError( "value does not have same dimensions as keys" )
-
-            set_data_vals( rowiter, coliter, value )
-
+        if( self.nrows > 1 and isinstance( key, tuple ) and len(key) == 2 ):
+            rowiter = key_to_iter( key[0], self.nrows )
+            coliter = key_to_iter( key[1], self.ncols )
         elif( self.nrows == 1 ):
-            value = np.atleast_1d( np.squeeze( value ) )
-            if( value.ndim != 1 ):
-                raise ValueError( "value must be one dimensional for a sparse vector" )
-
-            coliter = self.key_to_iter( key, self.ncols )
-
-            if( len(coliter) != value.size ):
-                raise ValueError( "value does not have same dimensions as keys" )
-
-            set_data_vals( 0, coliter, value )
-
+            rowiter = (0,)
+            coliter = key_to_iter( key, self.ncols )
         else:
             raise TypeError( "unknown type of key" )
+
+        if( ( len(rowiter), len(coliter) ) != value.shape ):
+            raise ValueError( "value does not have same dimensions as keys" )
+
+        for (i,row) in enumerate( rowiter ):
+            for k in range( self.rptr[row], self.rptr[row+1] ):
+                for (j,col) in enumerate( coliter ):
+                    if( self.cidx[k] == col ):
+                        self.data[k] = value[i,j]
+                        break
+
 
 
     def __getitem__( self, key ):
-        ## create a square array based on mesh indices
-        def create_mesh_array( rowiter, coliter ):
-            out = np.zeros( ( len(rowiter), len(coliter) ) )
-            for (i,row) in enumerate( rowiter ):
-                for k in range( self.rptr[row], self.rptr[row+1] ):
-                    for (j,col) in enumerate( coliter ):
-                        if( self.cidx[k] == col ):
-                            out[i,j] = self.data[k]
-                            break
-
-            return np.squeeze( out )
-
-        ## actual function
-        if( isinstance( key, tuple ) and len(key) == 2 ):
-            rowiter = self.key_to_iter( key[0], self.nrows )
-            coliter = self.key_to_iter( key[1], self.ncols )
-
-            return create_mesh_array( rowiter, coliter )
-
+        if( self.nrows > 1 and isinstance( key, tuple ) and len(key) == 2 ):
+            rowiter = key_to_iter( key[0], self.nrows )
+            coliter = key_to_iter( key[1], self.ncols )
         elif( self.nrows == 1 ):
-            coliter = self.key_to_iter( key, self.ncols )
-            return create_mesh_array( 0, coliter )
-
+            rowiter = (0,)
+            coliter = key_to_iter( key, self.ncols )
         else:
             raise TypeError( "unknown type of key" )
 
+        out = np.zeros( ( len(rowiter), len(coliter) ) )
+        for (i,row) in enumerate( rowiter ):
+            for k in range( self.rptr[row], self.rptr[row+1] ):
+                for (j,col) in enumerate( coliter ):
+                    if( self.cidx[k] == col ):
+                        out[i,j] = self.data[k]
+                        break
+
+        if( self.nrows == 1 ):
+            out = np.squeeze( out )
+
+        return out
 
 
 cdef class Soln( base.Soln ):
@@ -515,17 +513,17 @@ cdef class Solver( base.Solver ):
             np.sum( prob.objmixedA != 0 ) > 0 ):
             ( prows, pcols ) = np.nonzero( prob.objmixedA ) ######### I'm here!
             ## Linear obj, in row 1
-            tmpiAfun = utils.convIntFortran( Asparse.row + 1 )
-            memcpy( &self.iAfun[tmpidx], utils.getPtr( tmpiAfun ),
-                    Asparse.data.size * sizeof( integer ) )
-            tmpjAvar = utils.convIntFortran( Asparse.col + 1 )
-            memcpy( &self.jAvar[tmpidx], utils.getPtr( tmpjAvar ),
-                    Asparse.data.size * sizeof( integer ) )
-            tmpA = utils.convFortran( Asparse.data )
-            memcpy( &self.A[tmpidx], utils.getPtr( tmpA ),
-                    Asparse.data.size * sizeof( doublereal ) )
+            # tmpiAfun = utils.convIntFortran( Asparse.row + 1 )
+            # memcpy( &self.iAfun[tmpidx], utils.getPtr( tmpiAfun ),
+            #         Asparse.data.size * sizeof( integer ) )
+            # tmpjAvar = utils.convIntFortran( Asparse.col + 1 )
+            # memcpy( &self.jAvar[tmpidx], utils.getPtr( tmpjAvar ),
+            #         Asparse.data.size * sizeof( integer ) )
+            # tmpA = utils.convFortran( Asparse.data )
+            # memcpy( &self.A[tmpidx], utils.getPtr( tmpA ),
+            #         Asparse.data.size * sizeof( doublereal ) )
 
-            tmpidx += Asparse.data.size
+            # tmpidx += Asparse.data.size
 
         if( prob.Nconslin > 0 ):
             tmpconslinlb = utils.convFortran( prob.conslinlb )
