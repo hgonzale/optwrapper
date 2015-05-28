@@ -2,7 +2,6 @@ from libc.string cimport memcpy, memset
 from libc.stdlib cimport malloc, free
 cimport numpy as cnp
 import numpy as np
-from scipy.sparse import coo_matrix, csr_matrix
 
 from .f2ch cimport *
 cimport filehandler as fh
@@ -102,22 +101,24 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
 
 cdef class sMatrix:
     cdef doublereal *data
-    cdef int *rptr
-    cdef int *cidx
+    cdef integer *rptr
+    cdef integer *cidx
     cdef int nnz
     cdef int nrows
     cdef int ncols
     cdef int data_alloc
 
-    def __init__( self, arg1, arg2=None ):
+    def __init__( self, arg1, arg2=None, dims=None ):
+        copy_data = False
         self.data_alloc = False
 
-        if( arg2 is None ): ## arg1 is a sparse array with data
+        if( arg2 is None ): ## arg1 is an array with data
             try:
                 arg1 = np.atleast_1d( np.asarray( arg1, dtype=np.float64 ) )
             except:
-                raise NotImplementedError( "argument must be an array" )
+                raise TypeError( "argument must be an array" )
 
+            copy_data = True
             if( arg1.ndim == 1 ):
                 self.nrows = 1
                 self.ncols = arg1.size
@@ -131,28 +132,77 @@ cdef class sMatrix:
             else:
                 raise ValueError( "argument can have at most two dimensions" )
 
-            self.data_alloc = True
-            self.data = <doublereal *> malloc( self.nnz * sizeof( doublereal ) )
-            self.rptr = <int *> malloc( ( self.nrows + 1 ) * sizeof( int ) )
-            self.cidx = <int *> malloc( self.nnz * sizeof( int ) )
-
-            ## copy cidx
-            memcpy( self.cidx, utils.getPtr( utils.convIntFortran( colarr ) ),
-                    self.nnz * sizeof( doublereal ) )
-            ## write rptr
-            self.rptr[0] = 0
-            for k in range( self.nrows ):
-                self.rptr[k+1] = self.rptr[k] + np.sum( rowarr == k )
-            ## zero data
-            memcpy( self.data, utils.getPtr( utils.convFortran( arg1[rowarr,colarr].flatten() ) ),
-                    self.nnz * sizeof( doublereal ) )
-            # memset( self.data, 0, self.nnz * sizeof( doublereal ) )
-
         else: ## (arg1,arg2) are index arrays coming from np.nonzero()
-            ######### I'm here
+            try:
+                dims = np.asarray( dims, dtype=np.int_ )
+            except:
+                raise ValueError( "dims must be an integer tuple" )
+            if( dims.ndim > 1 or dims.size != 2 ):
+                raise ValueError( "dims must have length 2" )
+
+            try:
+                arg1 = np.atleast_1d( np.asarray( arg1, dtype=np.int_ ) )
+                arg2 = np.atleast_1d( np.asarray( arg2, dtype=np.int_ ) )
+            except:
+                raise TypeError( "arguments must be integer arrays" )
+            if( arg1.ndim > 1 or arg2.ndim > 1 or arg1.size != arg2.size ):
+                raise ValueError( "arguments must be 1-dimensional with same length" )
+
+            if( np.max( arg1 ) > dims[0] or np.max( arg2 ) > dims[1] ):
+                raise ValueError( "dims is not large enough to contain indices" )
+
+            rowarr = arg1
+            colarr = arg2
+            self.nrows = dims[0]
+            self.ncols = dims[1]
+            self.nnz = colarr.size
+
+        self.data_alloc = True
+        self.data = <doublereal *> malloc( self.nnz * sizeof( doublereal ) )
+        self.rptr = <integer *> malloc( ( self.nrows + 1 ) * sizeof( integer ) )
+        self.cidx = <integer *> malloc( self.nnz * sizeof( integer ) )
+
+        ## copy cidx
+        memcpy( self.cidx,
+                utils.getPtr( utils.convIntFortran( colarr ) ),
+                self.nnz * sizeof( integer ) )
+        ## write rptr
+        self.rptr[0] = 0
+        for k in range( self.nrows ):
+            self.rptr[k+1] = self.rptr[k] + np.sum( rowarr == k )
+        ## zero data
+        if( copy_data ):
+            memcpy( self.data,
+                    utils.getPtr( utils.convFortran( arg1[rowarr,colarr].flatten() ) ),
+                    self.nnz * sizeof( doublereal ) )
+        else:
+            memset( self.data, 0, self.nnz * sizeof( doublereal ) )
+
+
+    def print_debug( self ):
+        print( "nrows: {0} - ncols: {1} - nnz: {2} - data_alloc: {3}".format( self.nrows,
+                                                                              self.ncols,
+                                                                              self.nnz,
+                                                                              self.data_alloc ) )
+
+        print( "rptr: [" ),
+        for k in range( self.nrows+1 ):
+            print( str(self.rptr[k]) + " " ),
+        print( "]" )
+
+        print( "cidx: [" ),
+        for k in range( self.nnz ):
+            print( str(self.cidx[k]) + " " ),
+        print( "]" )
+
+        print( "data: [" ),
+        for k in range( self.nnz ):
+            print( str(self.data[k]) + " " ),
+        print( "]" )
+
 
     def __dealloc__( self ):
-        if( data_alloc ):
+        if( self.data_alloc ):
             free( self.data )
         free( self.rptr )
         free( self.cidx )
@@ -166,9 +216,9 @@ cdef class sMatrix:
         self.data = <doublereal *> ptr
 
 
-    cdef key_to_iter( self, key, limit ):
+    cdef key_to_iter( self, key, integer limit ):
         ## helper to deal with oob or negative indices
-        def sanitize_idx( val, limit ):
+        def sanitize_idx( integer val, integer limit ):
             if( val >= limit or val < -limit ):
                 raise IndexError( "index {0} is out of bounds".format( val ) )
             if( val < 0 ):
@@ -445,27 +495,25 @@ cdef class Solver( base.Solver ):
         ## First row of G belongs to objg
         ## These are Fortran indices, must start from 1!
         if( lenobjg > 0 ):
-            if( isinstance( prob, nlp.SparseProblem ) and not prob.objgpattern is None ):
-                objgpatsparse = coo_matrix( prob.objgpattern )
-                ## Linear obj, in row 1
-                tmpobjGrows = utils.convIntFortran( objgpatsparse.row + 1 )
-                tmpobjGcols = utils.convIntFortran( objgpatsparse.col + 1 )
+            if( isinstance( prob, nlp.SparseProblem ) and prob.objgpattern is not None ):
+                objgpattern = prob.objgpattern
             else:
-                tmpobjGrows = utils.convIntFortran( np.ones( (prob.N,) ) )
-                tmpobjGcols = utils.convIntFortran( np.arange( 1, 1 + prob.N ) )
+                objgpattern = np.ones( ( 1, prob.N ) )
+            ( prows, pcols ) = np.nonzero( objgpattern ) ## what if objgpattern is all zeros?
+            ## Linear obj, in row 1
+            tmpobjGrows = utils.convIntFortran( prows + 1 )
+            tmpobjGcols = utils.convIntFortran( pcols + 1 )
 
-            objGsparse = csr_vector( ( np.ones( ( tmpobjGrows.size, ) ),
-                                       ( tmpobjGrows - 1,
-                                         tmpobjGcols - 1 ) ) )
+            objGsparse = sMatrix( objgpattern )
             memcpy( &self.iGfun[0], utils.getPtr( tmpobjGrows ),
                     lenobjg * sizeof( integer ) )
             memcpy( &self.jGvar[0], utils.getPtr( tmpobjGcols ),
                     lenobjg * sizeof( integer ) )
 
         tmpidx = 0
-        if( not prob.objmixedA is None and
-            ( prob.objmixedA != 0 ).sum() > 0 ):
-            Asparse = coo_matrix( prob.objmixedA )
+        if( prob.objmixedA is not None and
+            np.sum( prob.objmixedA != 0 ) > 0 ):
+            ( prows, pcols ) = np.nonzero( prob.objmixedA ) ######### I'm here!
             ## Linear obj, in row 1
             tmpiAfun = utils.convIntFortran( Asparse.row + 1 )
             memcpy( &self.iAfun[tmpidx], utils.getPtr( tmpiAfun ),
