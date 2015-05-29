@@ -12,7 +12,6 @@ cimport snopth as snopt
 cimport utils
 cimport base
 import nlp
-from .csr_vector import *
 
 ## SNOPT's option strings
 cdef char* STR_NONDERIVATIVE_LINESEARCH = "Nonderivative linesearch"
@@ -60,48 +59,6 @@ cdef tuple statusInfo = ( "Finished successfully", ## 0
                           "Errors while reading the Specs file", ## 130
                           "System error" ) ## 140
 
-## The function usrfun should be a static method in snopt.Solver,
-## but it appears that Cython doesn't support static cdef methods yet.
-## Instead, this is a reasonable hack.
-cdef object extprob ## Pointer to prob
-cdef object objGsparse
-cdef object consGsparse
-cdef int lenobjg
-cdef int lenconsg
-
-cdef int usrfun( integer *status, integer *n, doublereal *x,
-                 integer *needF, integer *nF, doublereal *f,
-                 integer *needG, integer *lenG, doublereal *G,
-                 char *cu, integer *lencu,
-                 integer *iu, integer *leniu,
-                 doublereal *ru, integer *lenru ):
-    ## Dual variables are at rw[ iw[329] ] onward, pg.25
-
-    if( status[0] >= 2 ): ## Final call, do nothing
-        return 0
-
-    xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
-    # print( ">>> xarr: " + str( xarr ) )
-
-    if( needF[0] > 0 ):
-        farr = utils.wrap1dPtr( f, nF[0], utils.doublereal_type )
-        extprob.objf( farr[0:1], xarr )
-        if( extprob.Ncons > 0 ):
-            extprob.consf( farr[1+extprob.Nconslin:], xarr )
-        # print( ">>> farr: " + str( farr ) )
-
-    if( needG[0] > 0 ):
-        if( lenobjg > 0 ):
-            objGsparse.data = utils.wrap1dPtr( &G[0], lenobjg, utils.doublereal_type )
-            extprob.objg( objGsparse, xarr )
-            # print( ">>> objGsparse: " + str( objGsparse.toarray() ) )
-        if( extprob.Ncons > 0 and lenconsg > 0 ):
-            consGsparse.data = utils.wrap1dPtr( &G[lenobjg], lenconsg, utils.doublereal_type )
-            extprob.consg( consGsparse, xarr )
-        #     print( ">>> consGsparse: " + str( consGsparse.toarray() ) )
-        # for k in range( lenG[0] ):
-        #     print( ">>> G["+ str(k) +"]: " + str(G[k]) )
-
 
 ## helper to deal with oob or negative indices in sMatrix
 cdef integer sanitize_idx( integer val, integer limit ):
@@ -110,6 +67,7 @@ cdef integer sanitize_idx( integer val, integer limit ):
     if( val < 0 ):
         return ( limit + val )
     return val
+
 
 ## helper to create iterators out of heterogeneous data types in sMatrix
 cdef key_to_iter( key, integer limit ):
@@ -140,8 +98,7 @@ cdef class sMatrix:
     cdef readonly integer ncols
     cdef int data_alloc
 
-    def __cinit__( self, arg1, arg2=None, dims=None ):
-        cdef int copy_data = False
+    def __cinit__( self, arg1, arg2=None, tuple dims=None, int copy_data=False ):
         self.data_alloc = False
 
         if( arg2 is None ): ## arg1 is an array with data
@@ -150,7 +107,6 @@ cdef class sMatrix:
             except:
                 raise TypeError( "argument must be an array" )
 
-            copy_data = True
             if( arg1.ndim == 1 ):
                 self.nrows = 1
                 self.ncols = arg1.size
@@ -165,6 +121,7 @@ cdef class sMatrix:
                 raise ValueError( "argument can have at most two dimensions" )
 
         else: ## (arg1,arg2) are index arrays coming from np.nonzero()
+            copy_data = False
             try:
                 dims = np.asarray( dims, dtype=np.int_ )
             except:
@@ -249,7 +206,7 @@ cdef class sMatrix:
         free( self.cidx )
 
 
-    cdef setDataPtr( self, void *ptr ):
+    cdef void setDataPtr( self, void *ptr ):
         if( self.data_alloc ):
             free( self.data )
             self.data_alloc = False
@@ -257,8 +214,18 @@ cdef class sMatrix:
         self.data = <doublereal *> ptr
 
 
-    cdef (integer*,integer*) getIdxPtrs( self ):
-        return ( self.ridx, self.cidx )
+    cdef void copyFortranIdxs( self, integer* ridx, integer* cidx,
+                               integer roffset=0, integer coffset=0 ):
+        memcpy( ridx, self.ridx, self.nnz * sizeof( integer ) )
+        memcpy( cidx, self.cidx, self.nnz * sizeof( integer ) )
+
+        for k in range( self.nnz ):
+            ridx[k] += roffset + 1
+            cidx[k] += coffset + 1
+
+
+    cdef void copyData( self, doublereal* data ):
+        memcpy( data, self.data, self.nnz * sizeof( doublereal ) )
 
 
     def __setitem__( self, key, value ):
@@ -287,7 +254,6 @@ cdef class sMatrix:
                         break
 
 
-
     def __getitem__( self, key ):
         if( self.nrows > 1 and isinstance( key, tuple ) and len(key) == 2 ):
             rowiter = key_to_iter( key[0], self.nrows )
@@ -312,6 +278,10 @@ cdef class sMatrix:
         return out
 
 
+    def __str__( self ):
+        return str( self[:,:] )
+
+
 cdef class Soln( base.Soln ):
     cdef public cnp.ndarray xstate
     cdef public cnp.ndarray xmul
@@ -334,6 +304,45 @@ cdef class Soln( base.Soln ):
             return "Invalid value"
         else:
             return statusInfo[ int( self.retval / 10 ) ]
+
+
+## helper static function usrfun used to evaluate user defined functions in Solver.prob
+cdef object extprob
+cdef sMatrix objGsparse
+cdef sMatrix consGsparse
+
+cdef int usrfun( integer *status, integer *n, doublereal *x,
+                 integer *needF, integer *nF, doublereal *f,
+                 integer *needG, integer *lenG, doublereal *G,
+                 char *cu, integer *lencu,
+                 integer *iu, integer *leniu,
+                 doublereal *ru, integer *lenru ):
+    ## Dual variables are at rw[ iw[329] ] onward, pg.25
+
+    if( status[0] >= 2 ): ## Final call, do nothing
+        return 0
+
+    xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
+    # print( ">>> xarr: " + str( xarr ) )
+
+    if( needF[0] > 0 ):
+        farr = utils.wrap1dPtr( f, nF[0], utils.doublereal_type )
+        extprob.objf( farr[0:1], xarr )
+        if( extprob.Ncons > 0 ):
+            extprob.consf( farr[1+extprob.Nconslin:], xarr )
+        # print( ">>> farr: " + str( farr ) )
+
+    if( needG[0] > 0 ):
+        if( objGsparse.nnz > 0 ):
+            objGsparse.setDataPtr( &G[0] )
+            extprob.objg( objGsparse, xarr )
+            # print( ">>> objGsparse: " + str( objGsparse ) )
+        if( extprob.Ncons > 0 and consGsparse.nnz > 0 ):
+            consGsparse.setDataPtr( &G[objGsparse.nnz] )
+            extprob.consg( consGsparse, xarr )
+        #     print( ">>> consGsparse: " + str( consGsparse ) )
+        # for k in range( lenG[0] ):
+        #     print( ">>> G["+ str(k) +"]: " + str(G[k]) )
 
 
 cdef class Solver( base.Solver ):
@@ -423,11 +432,11 @@ cdef class Solver( base.Solver ):
 
     def setupProblem( self, prob ):
         cdef int tmpidx
+        cdef sMatrix Asparse
+
         global extprob
         global objGsparse
         global consGsparse
-        global lenobjg
-        global lenconsg
 
         if( not isinstance( prob, nlp.Problem ) ):
             raise TypeError( "Argument 'prob' must be of type 'nlp.Problem'" )
@@ -442,13 +451,19 @@ cdef class Solver( base.Solver ):
         self.nF[0] = 1 + prob.Nconslin + prob.Ncons
 
         ## Set lenA
-        self.lenA[0] = 0
+        tmplist = () ############## I'm here
+        if( prob.objmixedA is not None ):
+            tmplist += prob.objmixedA
+        else:
+            tmplist += np.zeros( ( 1, prob.N ) )
         if( prob.Nconslin > 0 ):
-            self.lenA[0] += ( prob.conslinA != 0 ).sum()
-        if( not prob.objmixedA is None ):
-            self.lenA[0] += ( prob.objmixedA != 0 ).sum()
-        if( not prob.consmixedA is None ):
-            self.lenA[0] += ( prob.consmixedA != 0 ).sum()
+            tmplist += prob.conslinA
+        if( prob.consmixedA is not None ):
+            tmplist += prob.consmixedA
+        else:
+            tmplist += np.zeros( ( prob.Ncons, prob.N ) )
+        Asparse = sMatrix( np.vstack( tmplist ), copy_data=True )
+        self.lenA[0] = Asparse.nnz
 
         if( self.lenA[0] > 0 ):
             self.neA[0] = self.lenA[0]
@@ -457,17 +472,17 @@ cdef class Solver( base.Solver ):
             self.neA[0] = 0
 
         ## Set lenG
-        if( isinstance( prob, nlp.SparseProblem ) and not prob.objgpattern is None ):
-            lenobjg = ( prob.objgpattern != 0 ).sum()
+        if( isinstance( prob, nlp.SparseProblem ) and prob.objgpattern is not None ):
+            objGsparse = sMatrix( prob.objpattern )
         else:
-            lenobjg = prob.N
+            objGsparse = sMatrix( np.ones( 1, prob.N ) )
 
-        if( isinstance( prob, nlp.SparseProblem ) and not prob.consgpattern is None ):
-            lenconsg = ( prob.consgpattern != 0 ).sum()
+        if( isinstance( prob, nlp.SparseProblem ) and prob.consgpattern is not None ):
+            consGsparse = sMatrix( prob.consgpattern )
         else:
-            lenconsg = prob.Ncons * prob.N
+            consGsparse = sMatrix( np.ones( prob.Ncons, prob.N ) )
 
-        self.lenG[0] = lenobjg + lenconsg
+        self.lenG[0] = objGsparse.nnz + consGsparse.nnz
         self.neG[0] = self.lenG[0]
 
         ## I'm guessing the definition of m in pgs. 74,76
@@ -479,119 +494,34 @@ cdef class Solver( base.Solver ):
             self.deallocate()
             self.allocate()
 
-        tmplb = utils.convFortran( prob.lb )
-        memcpy( self.xlow, utils.getPtr( tmplb ),
+        memcpy( self.xlow, utils.getPtr( utils.convFortran( prob.lb ) ),
+                prob.N * sizeof( doublereal ) )
+        memcpy( self.xupp, utils.getPtr( utils.convFortran( prob.ub ) ),
                 prob.N * sizeof( doublereal ) )
 
-        tmpub = utils.convFortran( prob.ub )
-        memcpy( self.xupp, utils.getPtr( tmpub ),
-                prob.N * sizeof( doublereal ) )
+        ## First row of G belongs to objg
+        objGsparse.copyFortranIdxs( &self.iGfun[0], &self.jGvar[0] )
+        consGsparse.copyFortranIdxs( &self.iGfun[objGsparse.nnz], &self.jGvar[objGsparse.nnz],
+                                     roffset = 1 + prob.Nconslin )
+        Asparse.copyFortranIdxs( &self.iAfun[0], &self.jAvar[0] )
+        Asparse.copyData( &self.A[0] )
 
         self.Flow[0] = -np.inf
         self.Fupp[0] = np.inf
 
-        ## First row of G belongs to objg
-        ## These are Fortran indices, must start from 1!
-        if( lenobjg > 0 ):
-            if( isinstance( prob, nlp.SparseProblem ) and prob.objgpattern is not None ):
-                objgpattern = prob.objgpattern
-            else:
-                objgpattern = np.ones( ( 1, prob.N ) )
-            ( prows, pcols ) = np.nonzero( objgpattern ) ## what if objgpattern is all zeros?
-            ## Linear obj, in row 1
-            tmpobjGrows = utils.convIntFortran( prows + 1 )
-            tmpobjGcols = utils.convIntFortran( pcols + 1 )
+        memcpy( &self.Flow[1],
+                utils.getPtr( utils.convFortran( prob.conslinlb ) ),
+                prob.Nconslin * sizeof( doublereal ) )
+        memcpy( &self.Fupp[1],
+                utils.getPtr( utils.convFortran( prob.conslinub ) ),
+                prob.Nconslin * sizeof( doublereal ) )
 
-            objGsparse = sMatrix( objgpattern )
-            memcpy( &self.iGfun[0], utils.getPtr( tmpobjGrows ),
-                    lenobjg * sizeof( integer ) )
-            memcpy( &self.jGvar[0], utils.getPtr( tmpobjGcols ),
-                    lenobjg * sizeof( integer ) )
-
-        tmpidx = 0
-        if( prob.objmixedA is not None and
-            np.sum( prob.objmixedA != 0 ) > 0 ):
-            ( prows, pcols ) = np.nonzero( prob.objmixedA ) ######### I'm here!
-            ## Linear obj, in row 1
-            # tmpiAfun = utils.convIntFortran( Asparse.row + 1 )
-            # memcpy( &self.iAfun[tmpidx], utils.getPtr( tmpiAfun ),
-            #         Asparse.data.size * sizeof( integer ) )
-            # tmpjAvar = utils.convIntFortran( Asparse.col + 1 )
-            # memcpy( &self.jAvar[tmpidx], utils.getPtr( tmpjAvar ),
-            #         Asparse.data.size * sizeof( integer ) )
-            # tmpA = utils.convFortran( Asparse.data )
-            # memcpy( &self.A[tmpidx], utils.getPtr( tmpA ),
-            #         Asparse.data.size * sizeof( doublereal ) )
-
-            # tmpidx += Asparse.data.size
-
-        if( prob.Nconslin > 0 ):
-            tmpconslinlb = utils.convFortran( prob.conslinlb )
-            memcpy( &self.Flow[1], utils.getPtr( tmpconslinlb ),
-                    prob.Nconslin * sizeof( doublereal ) )
-            tmpconslinub = utils.convFortran( prob.conslinub )
-            memcpy( &self.Fupp[1], utils.getPtr( tmpconslinub ),
-                    prob.Nconslin * sizeof( doublereal ) )
-
-            Asparse = coo_matrix( prob.conslinA )
-            ## Linear cons come below objective, in rows 2 to (1 + prob.Nconslin)
-            tmpiAfun = utils.convIntFortran( Asparse.row + 2 )
-            memcpy( &self.iAfun[tmpidx], utils.getPtr( tmpiAfun ),
-                    Asparse.data.size * sizeof( integer ) )
-            tmpjAvar = utils.convIntFortran( Asparse.col + 1 )
-            memcpy( &self.jAvar[tmpidx], utils.getPtr( tmpjAvar ),
-                    Asparse.data.size * sizeof( integer ) )
-            tmpA = utils.convFortran( Asparse.data )
-            memcpy( &self.A[tmpidx], utils.getPtr( tmpA ),
-                    Asparse.data.size * sizeof( doublereal ) )
-
-            tmpidx += Asparse.data.size
-
-        if( not prob.consmixedA is None and
-            ( prob.consmixedA != 0 ).sum() > 0 ):
-            Asparse = coo_matrix( prob.consmixedA )
-            ## Linear cons, in rows (2 + prob.Nconslin) to (2 + prob.Nconslin + prob.Ncons)
-            tmpiAfun = utils.convIntFortran( Asparse.row + 2 + prob.Nconslin )
-            memcpy( &self.iAfun[tmpidx], utils.getPtr( tmpiAfun ),
-                    Asparse.data.size * sizeof( integer ) )
-            tmpjAvar = utils.convIntFortran( Asparse.col + 1 )
-            memcpy( &self.jAvar[tmpidx], utils.getPtr( tmpjAvar ),
-                    Asparse.data.size * sizeof( integer ) )
-            tmpA = utils.convFortran( Asparse.data )
-            memcpy( &self.A[tmpidx], utils.getPtr( tmpA ),
-                    Asparse.data.size * sizeof( doublereal ) )
-
-        if( prob.Ncons > 0 ):
-            tmpconslb = utils.convFortran( prob.conslb )
-            memcpy( &self.Flow[1+prob.Nconslin], utils.getPtr( tmpconslb ),
-                    prob.Ncons * sizeof( doublereal ) )
-            tmpconsub = utils.convFortran( prob.consub )
-            memcpy( &self.Fupp[1+prob.Nconslin], utils.getPtr( tmpconsub ),
-                    prob.Ncons * sizeof( doublereal ) )
-
-            if( lenconsg > 0 ):
-                if( isinstance( prob, nlp.SparseProblem ) and not prob.consgpattern is None ):
-                    consgpatsparse = coo_matrix( prob.consgpattern )
-                    ## Cons, in rows (2 + prob.Nconslin) to (2 + prob.Nconslin + prob.Ncons)
-                    tmpconsGrows = utils.convIntFortran( consgpatsparse.row + 2 + prob.Nconslin )
-                    tmpconsGcols = utils.convIntFortran( consgpatsparse.col + 1 )
-                else:
-                    tmpconsGrows = np.array( [] )
-                    for k in range( prob.Ncons ):
-                        tmpconsGrows = np.r_[ tmpconsGrows,
-                                              np.ones( (prob.N,) ) + 1 + prob.Nconslin + k ]
-                    tmpconsGrows = utils.convIntFortran( tmpconsGrows )
-                    tmpconsGcols = utils.convIntFortran(
-                        np.tile( np.arange( 1, 1 + prob.N ), ( prob.Ncons, ) ) )
-
-                consGsparse = csr_matrix( ( np.ones( ( tmpconsGrows.size, ) ),
-                                            ( tmpconsGrows - 2 - prob.Nconslin,
-                                              tmpconsGcols - 1 ) ) )
-
-                memcpy( &self.iGfun[lenobjg], utils.getPtr( tmpconsGrows ),
-                        lenconsg * sizeof( integer ) )
-                memcpy( &self.jGvar[lenobjg], utils.getPtr( tmpconsGcols ),
-                        lenconsg * sizeof( integer ) )
+        memcpy( &self.Flow[1 + prob.Nconslin],
+                utils.getPtr( utils.convFortran( prob.conslb ) ),
+                prob.Ncons * sizeof( doublereal ) )
+        memcpy( &self.Fupp[1 + prob.Nconslin],
+                utils.getPtr( utils.convFortran( prob.consub ) ),
+                prob.Ncons * sizeof( doublereal ) )
 
         memset( self.xstate, 0, self.prob.N * sizeof( integer ) )
         memset( self.Fstate, 0, self.nF[0] * sizeof( integer ) )
@@ -768,6 +698,7 @@ cdef class Solver( base.Solver ):
 
         self.Start[0] = 2
         return True
+
 
     def solve( self ):
         cdef integer nS[1]
