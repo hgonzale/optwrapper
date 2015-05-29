@@ -1,7 +1,10 @@
+# cython: boundscheck=False
+# cython: wraparound=False
+
 from libc.string cimport memcpy, memset
 from libc.math cimport sqrt
 from libc.stdlib cimport malloc, free
-cimport numpy as np
+cimport numpy as cnp
 import numpy as np
 
 from .f2ch cimport *      ## tydefs from f2c.h
@@ -52,8 +55,9 @@ cdef int funobj( integer* mode, integer* n,
     # print( ">>> x: " + str(xarr) )
 
     ## we *have* to zero'd out all the pointers since npsol assumes
-    ## objf/g sets all the elements in the array, which is not true in
-    ## sparse problems or problems with only mixed-linear entries.
+    ## objf/g sets all the elements in the array
+    ## this assumption is not true in sparse problems or problems
+    ## with mixed-linear entries.
     if( mode[0] != 1 ):
         f[0] = 0.0
         farr = utils.wrap1dPtr( f, 1, utils.doublereal_type )
@@ -80,8 +84,9 @@ cdef int funcon( integer* mode, integer* ncnln,
     # print( ">>> x: " + str(xarr) )
 
     ## we *have* to zero'd out all the pointers since npsol assumes
-    ## consf/g sets all the elements in the array, which is not true
-    ## in sparse problems or problems with only mixed-linear entries.
+    ## consf/g sets all the elements in the array
+    ## this assumption is not true in sparse problems or problems
+    ## with mixed-linear entries.
     if( mode[0] != 1 ):
         memset( c, 0, ncnln[0] * sizeof( doublereal ) )
         carr = utils.wrap1dPtr( c, ncnln[0], utils.doublereal_type )
@@ -100,9 +105,9 @@ cdef int funcon( integer* mode, integer* ncnln,
 
 
 cdef class Soln( base.Soln ):
-    cdef public np.ndarray istate
-    cdef public np.ndarray clamda
-    cdef public np.ndarray R
+    cdef public cnp.ndarray istate
+    cdef public cnp.ndarray clamda
+    cdef public cnp.ndarray R
     cdef public int Niters
 
     def __init__( self ):
@@ -215,28 +220,26 @@ cdef class Solver( base.Solver ):
             self.allocate()
 
         ## Copy information from prob to NPSOL's working arrays
-        tmplb = utils.convFortran( prob.lb )
-        memcpy( &self.bl[0], utils.getPtr( tmplb ),
+        memcpy( &self.bl[0], utils.getPtr( utils.convFortran( prob.lb ) ),
                 prob.N * sizeof( doublereal ) )
-        tmpub = utils.convFortran( prob.ub )
-        memcpy( &self.bu[0], utils.getPtr( tmpub ),
+        memcpy( &self.bu[0], utils.getPtr( utils.convFortran( prob.ub ) ),
                 prob.N * sizeof( doublereal ) )
         if( prob.Nconslin > 0 ):
-            tmpconslinlb = utils.convFortran( prob.conslinlb )
-            memcpy( &self.bl[prob.N], utils.getPtr( tmpconslinlb ),
+            memcpy( &self.bl[prob.N],
+                    utils.getPtr( utils.convFortran( prob.conslinlb ) ),
                     prob.Nconslin * sizeof( doublereal ) )
-            tmpconslinub = utils.convFortran( prob.conslinub )
-            memcpy( &self.bu[prob.N], utils.getPtr( tmpconslinub ),
+            memcpy( &self.bu[prob.N],
+                    utils.getPtr( utils.convFortran( prob.conslinub ) ),
                     prob.Nconslin * sizeof( doublereal ) )
-            tmpconslinA = utils.convFortran( prob.conslinA )
-            memcpy( self.A, utils.getPtr( tmpconslinA ),
+            memcpy( &self.A[0],
+                    utils.getPtr( utils.convFortran( prob.conslinA ) ),
                     self.ldA[0] * prob.N * sizeof( doublereal ) )
         if( prob.Ncons > 0 ):
-            tmpconslb = utils.convFortran( prob.conslb )
-            memcpy( &self.bl[prob.N+prob.Nconslin], utils.getPtr( tmpconslb ),
+            memcpy( &self.bl[prob.N+prob.Nconslin],
+                    utils.getPtr( utils.convFortran( prob.conslb ) ),
                     prob.Ncons * sizeof( doublereal ) )
-            tmpconsub = utils.convFortran( prob.consub )
-            memcpy( &self.bu[prob.N+prob.Nconslin], utils.getPtr( tmpconsub ),
+            memcpy( &self.bu[prob.N+prob.Nconslin],
+                    utils.getPtr( utils.convFortran( prob.consub ) ),
                     prob.Ncons * sizeof( doublereal ) )
 
 
@@ -306,14 +309,15 @@ cdef class Solver( base.Solver ):
         if( not isinstance( self.prob.soln, Soln ) ):
             return False
 
-        tmpistate = utils.convIntFortran( self.prob.soln.istate )
-        memcpy( self.istate, utils.getPtr( tmpistate ), self.nctotl * sizeof( integer ) )
-
-        tmpclamda = utils.convFortran( self.prob.soln.clamda )
-        memcpy( self.clamda, utils.getPtr( tmpclamda ), self.nctotl * sizeof( doublereal ) )
-
-        tmpR = utils.convFortran( self.prob.soln.R )
-        memcpy( self.R, utils.getPtr( tmpR ), self.prob.N * self.prob.N * sizeof( doublereal ) )
+        memcpy( self.istate,
+                utils.getPtr( utils.convIntFortran( self.prob.soln.istate ) ),
+                self.nctotl * sizeof( integer ) )
+        memcpy( self.clamda,
+                utils.getPtr( utils.convFortran( self.prob.soln.clamda ) ),
+                self.nctotl * sizeof( doublereal ) )
+        memcpy( self.R,
+                utils.getPtr( utils.convFortran( self.prob.soln.R ) ),
+                self.prob.N * self.prob.N * sizeof( doublereal ) )
 
         self.warm_start = True
         return True

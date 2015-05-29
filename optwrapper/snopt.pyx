@@ -450,38 +450,35 @@ cdef class Solver( base.Solver ):
         ## Set nF
         self.nF[0] = 1 + prob.Nconslin + prob.Ncons
 
-        ## Set lenA
-        tmplist = () ############## I'm here
+        ## Create Asparse, set lenA
         if( prob.objmixedA is not None ):
-            tmplist += prob.objmixedA
+            tmplist = ( prob.objmixedA, )
         else:
-            tmplist += np.zeros( ( 1, prob.N ) )
+            tmplist = ( np.zeros( ( 1, prob.N ) ), )
         if( prob.Nconslin > 0 ):
-            tmplist += prob.conslinA
+            tmplist += ( prob.conslinA, )
         if( prob.consmixedA is not None ):
-            tmplist += prob.consmixedA
+            tmplist += ( prob.consmixedA, )
         else:
-            tmplist += np.zeros( ( prob.Ncons, prob.N ) )
+            tmplist += ( np.zeros( ( prob.Ncons, prob.N ) ), )
         Asparse = sMatrix( np.vstack( tmplist ), copy_data=True )
         self.lenA[0] = Asparse.nnz
-
         if( self.lenA[0] > 0 ):
             self.neA[0] = self.lenA[0]
         else: ## Minimum allowed values, pg. 16
             self.lenA[0] = 1
             self.neA[0] = 0
 
-        ## Set lenG
+        ## Create objGsparse and consGsparse, set lenG
         if( isinstance( prob, nlp.SparseProblem ) and prob.objgpattern is not None ):
             objGsparse = sMatrix( prob.objpattern )
         else:
-            objGsparse = sMatrix( np.ones( 1, prob.N ) )
+            objGsparse = sMatrix( np.ones( ( 1, prob.N ) ) )
 
         if( isinstance( prob, nlp.SparseProblem ) and prob.consgpattern is not None ):
             consGsparse = sMatrix( prob.consgpattern )
         else:
-            consGsparse = sMatrix( np.ones( prob.Ncons, prob.N ) )
-
+            consGsparse = sMatrix( np.ones( ( prob.Ncons, prob.N ) ) )
         self.lenG[0] = objGsparse.nnz + consGsparse.nnz
         self.neG[0] = self.lenG[0]
 
@@ -494,28 +491,36 @@ cdef class Solver( base.Solver ):
             self.deallocate()
             self.allocate()
 
+        ## copy box constraints limits
         memcpy( self.xlow, utils.getPtr( utils.convFortran( prob.lb ) ),
                 prob.N * sizeof( doublereal ) )
         memcpy( self.xupp, utils.getPtr( utils.convFortran( prob.ub ) ),
                 prob.N * sizeof( doublereal ) )
 
-        ## First row of G belongs to objg
+        ## copy index data of G
+        ## row 0 of G belongs to objg
         objGsparse.copyFortranIdxs( &self.iGfun[0], &self.jGvar[0] )
+        ## rows 1:(1 + prob.Nconslin) of G are empty, these are pure linear constraints
+        ## rows (1 + prob.Nconslin):(1 + prob.Nconslin + prob.Ncons) of G belong to consg
         consGsparse.copyFortranIdxs( &self.iGfun[objGsparse.nnz], &self.jGvar[objGsparse.nnz],
                                      roffset = 1 + prob.Nconslin )
+        ## copy index data of A
         Asparse.copyFortranIdxs( &self.iAfun[0], &self.jAvar[0] )
+        ## copy matrix data of A
         Asparse.copyData( &self.A[0] )
 
+        ## copy general constraints limits
+        ## objective function knows no limits (https://i.imgur.com/UuQbJ.gif)
         self.Flow[0] = -np.inf
         self.Fupp[0] = np.inf
-
+        ## linear constraints limits
         memcpy( &self.Flow[1],
                 utils.getPtr( utils.convFortran( prob.conslinlb ) ),
                 prob.Nconslin * sizeof( doublereal ) )
         memcpy( &self.Fupp[1],
                 utils.getPtr( utils.convFortran( prob.conslinub ) ),
                 prob.Nconslin * sizeof( doublereal ) )
-
+        ## nonlinear constraints limits
         memcpy( &self.Flow[1 + prob.Nconslin],
                 utils.getPtr( utils.convFortran( prob.conslb ) ),
                 prob.Ncons * sizeof( doublereal ) )
@@ -523,6 +528,7 @@ cdef class Solver( base.Solver ):
                 utils.getPtr( utils.convFortran( prob.consub ) ),
                 prob.Ncons * sizeof( doublereal ) )
 
+        ## initialize other vectors with zeros
         memset( self.xstate, 0, self.prob.N * sizeof( integer ) )
         memset( self.Fstate, 0, self.nF[0] * sizeof( integer ) )
         memset( self.Fmul, 0, self.nF[0] * sizeof( doublereal ) )
@@ -571,7 +577,7 @@ cdef class Solver( base.Solver ):
         return True
 
 
-    cdef mustAllocate( self, N, nF, lenA, lenG ):
+    cdef int mustAllocate( self, integer N, integer nF, integer lenA, integer lenG ):
         if( not self.mem_alloc ):
             return True
 
@@ -690,11 +696,10 @@ cdef class Solver( base.Solver ):
         if( not isinstance( self.prob.soln, Soln ) ):
             return False
 
-        tmpxstate = utils.convIntFortran( self.prob.soln.xstate )
-        memcpy( self.xstate, utils.getPtr( tmpxstate ), self.prob.N * sizeof( integer ) )
-
-        tmpFstate = utils.convIntFortran( self.prob.soln.Fstate )
-        memcpy( self.Fstate, utils.getPtr( tmpFstate ), self.nF[0] * sizeof( integer ) )
+        memcpy( self.xstate, utils.getPtr( utils.convIntFortran( self.prob.soln.xstate ) ),
+                self.prob.N * sizeof( integer ) )
+        memcpy( self.Fstate, utils.getPtr( utils.convIntFortran( self.prob.soln.Fstate ) ),
+                self.nF[0] * sizeof( integer ) )
 
         self.Start[0] = 2
         return True

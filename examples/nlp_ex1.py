@@ -14,8 +14,8 @@ def consf( out, x ):
     out[1] = (x[0] - 2)*(x[0] - 2) + x[1]*x[1]
 
 def consg( out, x ):
-    out[0] = [ -1, 8*x[1] ]
-    out[1] = [ 2*(x[0]-2), 2*x[1] ]
+    out[0,:] = [ -1, 8*x[1] ]
+    out[1,:] = [ 2*(x[0]-2), 2*x[1] ]
 
 prob = nlp.Problem( N=2, Ncons=2 )
 prob.initPoint( [1.0, -2.0] )
