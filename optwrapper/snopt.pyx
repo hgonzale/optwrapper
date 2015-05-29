@@ -77,12 +77,11 @@ cdef key_to_iter( key, integer limit ):
         return range( *key.indices( limit ) )
     else:
         try:
-            key = np.asarray( key, dtype=np.int_ )
+            key = np.atleast_1d( np.squeeze( np.asarray( key, dtype=np.int_ ) ) )
         except:
             raise TypeError( "unknown type of key" )
-        key = np.squeeze( key )
         if( key.ndim > 1 ):
-            raise IndexError( "invalid key array" )
+            raise IndexError( "key array must have 1 dimension" )
         for k in range( key.size ):
             key[k] = sanitize_idx( key[k], limit )
         return key
@@ -96,6 +95,7 @@ cdef class sMatrix:
     cdef readonly integer nnz
     cdef readonly integer nrows
     cdef readonly integer ncols
+    cdef readonly tuple shape
     cdef int data_alloc
 
     def __cinit__( self, arg1, arg2=None, tuple dims=None, int copy_data=False ):
@@ -110,7 +110,7 @@ cdef class sMatrix:
             if( arg1.ndim == 1 ):
                 self.nrows = 1
                 self.ncols = arg1.size
-                colarr = np.nonzero( arg1 )
+                ( colarr, ) = np.nonzero( arg1 )
                 self.nnz = colarr.size
                 rowarr = np.zeros( (self.nnz,) )
             elif( arg1.ndim == 2 ):
@@ -150,6 +150,8 @@ cdef class sMatrix:
         self.rptr = <integer *> malloc( ( self.nrows + 1 ) * sizeof( integer ) )
         self.ridx = <integer *> malloc( self.nnz * sizeof( integer ) )
         self.cidx = <integer *> malloc( self.nnz * sizeof( integer ) )
+
+        self.shape = ( self.nrows, self.ncols )
 
         ## copy ridx and cidx
         memcpy( self.ridx,
@@ -273,7 +275,7 @@ cdef class sMatrix:
                         break
 
         if( self.nrows == 1 ):
-            out = np.squeeze( out )
+            out = np.squeeze( out, axis=0 )
 
         return out
 
@@ -376,9 +378,9 @@ cdef class Solver( base.Solver ):
 
     cdef int warm_start
     cdef int mem_alloc
-    cdef int mem_size[4]
+    cdef integer mem_size[4]
     cdef int mem_alloc_ws
-    cdef int mem_size_ws[3]
+    cdef integer mem_size_ws[3]
 
     cdef float default_tol
     cdef float default_fctn_prec
@@ -393,8 +395,8 @@ cdef class Solver( base.Solver ):
 
         self.mem_alloc = False
         self.mem_alloc_ws = False
-        memset( self.mem_size, 0, 4 * sizeof( int ) ) ## Set mem_size to zero
-        memset( self.mem_size_ws, 0, 3 * sizeof( int ) ) ## Set mem_size_ws to zero
+        memset( self.mem_size, 0, 4 * sizeof( integer ) ) ## Set mem_size to zero
+        memset( self.mem_size_ws, 0, 3 * sizeof( integer ) ) ## Set mem_size_ws to zero
         self.default_tol = np.sqrt( np.spacing(1) ) ## "Difference interval", pg. 71
         self.default_fctn_prec = np.power( np.spacing(1), 2.0/3.0 ) ## pg. 72, there is a typo there
         self.default_feas_tol = 1.0e-6 ## pg. 76
@@ -431,7 +433,6 @@ cdef class Solver( base.Solver ):
 
 
     def setupProblem( self, prob ):
-        cdef int tmpidx
         cdef sMatrix Asparse
 
         global extprob
@@ -439,7 +440,7 @@ cdef class Solver( base.Solver ):
         global consGsparse
 
         if( not isinstance( prob, nlp.Problem ) ):
-            raise TypeError( "Argument 'prob' must be of type 'nlp.Problem'" )
+            raise TypeError( "Argument prob must be of type nlp.Problem" )
 
         self.prob = prob ## Save a copy of prob's pointer
         extprob = prob ## Save another (global) copy of prob's pointer to use in usrfun
@@ -471,7 +472,7 @@ cdef class Solver( base.Solver ):
 
         ## Create objGsparse and consGsparse, set lenG
         if( isinstance( prob, nlp.SparseProblem ) and prob.objgpattern is not None ):
-            objGsparse = sMatrix( prob.objpattern )
+            objGsparse = sMatrix( prob.objgpattern )
         else:
             objGsparse = sMatrix( np.ones( ( 1, prob.N ) ) )
 
@@ -514,19 +515,21 @@ cdef class Solver( base.Solver ):
         self.Flow[0] = -np.inf
         self.Fupp[0] = np.inf
         ## linear constraints limits
-        memcpy( &self.Flow[1],
-                utils.getPtr( utils.convFortran( prob.conslinlb ) ),
-                prob.Nconslin * sizeof( doublereal ) )
-        memcpy( &self.Fupp[1],
-                utils.getPtr( utils.convFortran( prob.conslinub ) ),
-                prob.Nconslin * sizeof( doublereal ) )
+        if( prob.Nconslin > 0 ):
+            memcpy( &self.Flow[1],
+                    utils.getPtr( utils.convFortran( prob.conslinlb ) ),
+                    prob.Nconslin * sizeof( doublereal ) )
+            memcpy( &self.Fupp[1],
+                    utils.getPtr( utils.convFortran( prob.conslinub ) ),
+                    prob.Nconslin * sizeof( doublereal ) )
         ## nonlinear constraints limits
-        memcpy( &self.Flow[1 + prob.Nconslin],
-                utils.getPtr( utils.convFortran( prob.conslb ) ),
-                prob.Ncons * sizeof( doublereal ) )
-        memcpy( &self.Fupp[1 + prob.Nconslin],
-                utils.getPtr( utils.convFortran( prob.consub ) ),
-                prob.Ncons * sizeof( doublereal ) )
+        if( prob.Ncons > 0 ):
+            memcpy( &self.Flow[1 + prob.Nconslin],
+                    utils.getPtr( utils.convFortran( prob.conslb ) ),
+                    prob.Ncons * sizeof( doublereal ) )
+            memcpy( &self.Fupp[1 + prob.Nconslin],
+                    utils.getPtr( utils.convFortran( prob.consub ) ),
+                    prob.Ncons * sizeof( doublereal ) )
 
         ## initialize other vectors with zeros
         memset( self.xstate, 0, self.prob.N * sizeof( integer ) )
@@ -534,7 +537,7 @@ cdef class Solver( base.Solver ):
         memset( self.Fmul, 0, self.nF[0] * sizeof( doublereal ) )
 
 
-    cdef allocate( self ):
+    cdef int allocate( self ):
         if( self.mem_alloc ):
             return False
 
@@ -590,14 +593,14 @@ cdef class Solver( base.Solver ):
         return False
 
 
-    cdef setMemSize( self, N, nF, lenA, lenG ):
+    cdef void setMemSize( self, integer N, integer nF, integer lenA, integer lenG ):
         self.mem_size[0] = N
         self.mem_size[1] = nF
         self.mem_size[2] = lenA
         self.mem_size[3] = lenG
 
 
-    cdef deallocate( self ):
+    cdef int deallocate( self ):
         if( not self.mem_alloc ):
             return False
 
@@ -622,7 +625,7 @@ cdef class Solver( base.Solver ):
         return True
 
 
-    cdef allocateWS( self ):
+    cdef int allocateWS( self ):
         if( self.mem_alloc_ws ):
             return False
 
@@ -641,7 +644,7 @@ cdef class Solver( base.Solver ):
         return True
 
 
-    cdef mustAllocateWS( self, lencw, leniw, lenrw ):
+    cdef int mustAllocateWS( self, integer lencw, integer leniw, integer lenrw ):
         if( not self.mem_alloc_ws ):
             return True
 
@@ -653,13 +656,13 @@ cdef class Solver( base.Solver ):
         return False
 
 
-    cdef setMemSizeWS( self, lencw, leniw, lenrw ):
+    cdef void setMemSizeWS( self, integer lencw, integer leniw, integer lenrw ):
         self.mem_size_ws[0] = lencw
         self.mem_size_ws[1] = leniw
         self.mem_size_ws[2] = lenrw
 
 
-    cdef deallocateWS( self ):
+    cdef int deallocateWS( self ):
         if( not self.mem_alloc_ws ):
             return False
 
@@ -672,7 +675,7 @@ cdef class Solver( base.Solver ):
         return True
 
 
-    cdef debugMem( self ):
+    cdef void debugMem( self ):
         print( ">>> Memory allocated for data: " +
                str( self.mem_size[0] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
                     self.mem_size[1] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +

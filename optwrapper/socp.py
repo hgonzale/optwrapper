@@ -178,7 +178,7 @@ class Problem( ocp.Problem ):
 
         def decode( s ):
             """
-            optimization vector -> ( state, input )
+            optimization vector -> ( state, continuous input, discrete input )
 
             """
 
@@ -198,7 +198,8 @@ class Problem( ocp.Problem ):
 
             Returns:
             st: state matrix with dimension (Nstates,Nsamples+1)
-            u:  input matrix with dimension (Ninputs,Nsamples)
+            u:  continuous input matrix with dimension (Ninputs,Nsamples)
+            d:  discrete input matrix with dimension (Nmodes,Nsamples)
             t:  time vector with dimension (Nsamples+1,)
 
             """
@@ -234,14 +235,7 @@ class Problem( ocp.Problem ):
             for k in range( Nsamples ):
                 for idx in range( self.Nmodes ):
                     ( fx, dx, du ) = self.icost[idx]( st[:,k], u[:,k] )
-                    try:
-                        out[ stidx[:,k] ] += d[idx,k] * dx * deltaT
-                    except:
-                        print( "idxs: k = {0}, idx = {1}".format( k, idx ) )
-                        print( "stidx: {0}".format( stidx[:,k] ) )
-                        print( "out dims: {0}".format( out.shape ) )
-                        print( "dx: {0}".format( dx ) )
-                        print( "d[idx,k]: {0}".format( d[idx,k] ) )
+                    out[ stidx[:,k] ] += d[idx,k] * dx * deltaT
                     out[ uidx[:,k] ] += d[idx,k] * du * deltaT
                     out[ didx[idx,k] ] = fx * deltaT
 
@@ -310,7 +304,7 @@ class Problem( ocp.Problem ):
                     ( fx, dyndx, dyndu ) = self.vfield[idx]( st[:,k], u[:,k] )
                     out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] += - d[idx,k] * dyndx * deltaT
                     out[ np.ix_( dconsidx[:,k+1], uidx[:,k] ) ] += - d[idx,k] * dyndu * deltaT
-                    out[ np.ix_( dconsidx[:,k+1], didx[idx,k] ) ] = - fx * deltaT
+                    out[ dconsidx[:,k+1], didx[idx,k] ] = - fx[:,np.newaxis] * deltaT
 
                 if( self.Ncons > 0 ):
                     out[ np.ix_( iconsidx[:,k], stidx[:,k+1] ) ] = self.cons( st[:,k+1] )[1]
@@ -511,7 +505,7 @@ def pwmTransform( t, u, d ):
     if( t[-1] <= t[0] ):
         raise ValueError( "final time is smaller or equal than initial time" )
 
-    tpwm = np.zeros( (Nmodes*Nsamples + 1,) )
+    tpwm = np.zeros( ( Nmodes*Nsamples + 1, ) )
     upwm = np.zeros( ( Ninputs, Nmodes*Nsamples ) )
     dpwm = np.zeros( ( Nmodes, Nmodes*Nsamples ) )
 
@@ -523,7 +517,7 @@ def pwmTransform( t, u, d ):
         for j in range( Nmodes ):
             if( d[j,k] > 0 ):
                 tpwm[pwmidx] = t[k] + deltaT * np.sum( d[:j+1,k] )
-                upwm[pwmidx] = u[k]
+                upwm[:,pwmidx-1] = u[:,k]
                 dpwm[j,pwmidx-1] = 1
                 pwmidx += 1
 

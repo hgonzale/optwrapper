@@ -57,7 +57,7 @@ prob.consBoxInput( -10 * np.ones( prob.Ninputs ),
 # nlpprob.checkGrad( h=1e-6, etol=1e-4, point=None, debug=True )
 
 solver = snopt.Solver( nlpprob )
-solver.debug = False
+solver.debug = True
 solver.printOpts[ "summaryFile" ] = "debugs.txt"
 solver.printOpts[ "printFile" ] = "debugp.txt"
 solver.printOpts[ "printLevel" ] = 10

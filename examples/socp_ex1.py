@@ -68,7 +68,7 @@ prob.consBoxInput( -20 * np.ones( (prob.Ninputs,) ), 20 * np.ones( (prob.Ninputs
 ( nlpprob, solndecode ) = prob.discForwardEuler( Nsamples = 30 )
 
 solver = snopt.Solver( nlpprob )
-solver.debug = False
+solver.debug = True
 solver.printOpts[ "summaryFile" ] = "debugs.txt"
 solver.printOpts[ "printFile" ] = "debugp.txt"
 solver.printOpts[ "printLevel" ] = 10
@@ -80,8 +80,15 @@ print( "Value: " + str( nlpprob.soln.value ) )
 print( "Retval: " + str( nlpprob.soln.retval ) )
 
 ( st, u, d, time ) = solndecode( nlpprob.soln.final )
+print( "Optimal state:\n" + str( st ) )
+print( "Optimal continuous input:\n" + str( u ) )
+print( "Optimal relaxed discrete input:\n" + str( d ) )
 
 Npwm = 5
+thaar = np.linspace( time[0], time[-1], 2**Npwm + 1 )
 uhaar = socp.haarWaveletApprox( time, u, Npwm )
 dhaar = socp.haarWaveletApprox( time, d, Npwm )
-( tpwm, upwm, dpwm ) = socp.pwmTransform( time, uhaar, dhaar )
+( tpwm, upwm, dpwm ) = socp.pwmTransform( thaar, uhaar, dhaar )
+print( "PWM time samples:\n:" + str( tpwm ) )
+print( "Optimal continuous input:\n" + str( upwm ) )
+print( "Optimal pure discrete input:\n" + str( dpwm ) )
