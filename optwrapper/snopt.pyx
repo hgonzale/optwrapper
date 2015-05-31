@@ -221,7 +221,7 @@ cdef class sMatrix:
         memcpy( ridx, self.ridx, self.nnz * sizeof( integer ) )
         memcpy( cidx, self.cidx, self.nnz * sizeof( integer ) )
 
-        for k in range( self.nnz ):
+        for k in range( self.nnz ): ## have to add one because Fortran
             ridx[k] += roffset + 1
             cidx[k] += coffset + 1
 
@@ -232,7 +232,7 @@ cdef class sMatrix:
 
     def __setitem__( self, key, value ):
         try:
-            value = np.atleast_2d( np.asarray( value, dtype=np.float64 ) )
+            value = np.asarray( value, dtype=np.float64 )
         except:
             raise TypeError( "unknown type of value" )
 
@@ -245,15 +245,37 @@ cdef class sMatrix:
         else:
             raise TypeError( "unknown type of key" )
 
-        if( ( len(rowiter), len(coliter) ) != value.shape ):
-            raise ValueError( "value does not have same dimensions as keys" )
-
-        for (i,row) in enumerate( rowiter ):
+        if( len(rowiter) == 1 ):
+            if( value.ndim > 1 and value.shape[0] == 1 ):
+                value = np.squeeze( value, axis=0 )
+            if( len(coliter) != value.size ):
+                raise ValueError( "value does not have same dimensions as key" )
+            row = list( rowiter )[0]
             for k in range( self.rptr[row], self.rptr[row+1] ):
                 for (j,col) in enumerate( coliter ):
                     if( self.cidx[k] == col ):
-                        self.data[k] = value[i,j]
+                        self.data[k] = value[j]
                         break
+        elif( len(coliter) == 1 ):
+            if( value.ndim > 1 and value.shape[1] == 1 ):
+                value = np.squeeze( value, axis=1 )
+            if( len(rowiter) != value.size ):
+                raise ValueError( "value does not have same dimensions as key" )
+            col = list( coliter )[0]
+            for (i,row) in enumerate( rowiter ):
+                for k in range( self.rptr[row], self.rptr[row+1] ):
+                    if( self.cidx[k] == col ):
+                        self.data[k] = value[i]
+                        break
+        else:
+            if( ( len(rowiter), len(coliter) ) != value.shape ):
+                raise ValueError( "value does not have same dimensions as keys" )
+            for (i,row) in enumerate( rowiter ):
+                for k in range( self.rptr[row], self.rptr[row+1] ):
+                    for (j,col) in enumerate( coliter ):
+                        if( self.cidx[k] == col ):
+                            self.data[k] = value[i,j]
+                            break
 
 
     def __getitem__( self, key ):
@@ -266,16 +288,30 @@ cdef class sMatrix:
         else:
             raise TypeError( "unknown type of key" )
 
-        out = np.zeros( ( len(rowiter), len(coliter) ) )
-        for (i,row) in enumerate( rowiter ):
+        if( len(rowiter) == 1 ):
+            out = np.zeros( ( len(coliter), ) )
+            row = list( rowiter )[0]
             for k in range( self.rptr[row], self.rptr[row+1] ):
                 for (j,col) in enumerate( coliter ):
                     if( self.cidx[k] == col ):
-                        out[i,j] = self.data[k]
+                        out[j] = self.data[k]
                         break
-
-        if( self.nrows == 1 ):
-            out = np.squeeze( out, axis=0 )
+        elif( len(coliter) == 1 ):
+            out = np.zeros( ( len(rowiter), ) )
+            col = list( coliter )[0]
+            for (i,row) in enumerate( rowiter ):
+                for k in range( self.rptr[row], self.rptr[row+1] ):
+                    if( self.cidx[k] == col ):
+                        out[i] = self.data[k]
+                        break
+        else:
+            out = np.zeros( ( len(rowiter), len(coliter) ) )
+            for (i,row) in enumerate( rowiter ):
+                for k in range( self.rptr[row], self.rptr[row+1] ):
+                    for (j,col) in enumerate( coliter ):
+                        if( self.cidx[k] == col ):
+                            out[i,j] = self.data[k]
+                            break
 
         return out
 
