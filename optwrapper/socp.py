@@ -304,7 +304,7 @@ class Problem( ocp.Problem ):
                     ( fx, dyndx, dyndu ) = self.vfield[idx]( st[:,k], u[:,k] )
                     out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] += - d[idx,k] * dyndx * deltaT
                     out[ np.ix_( dconsidx[:,k+1], uidx[:,k] ) ] += - d[idx,k] * dyndu * deltaT
-                    out[ dconsidx[:,k+1], didx[idx,k] ] = - fx[:,np.newaxis] * deltaT
+                    out[ dconsidx[:,k+1], didx[idx,k] ] = - fx * deltaT
 
                 if( self.Ncons > 0 ):
                     out[ np.ix_( iconsidx[:,k], stidx[:,k+1] ) ] = self.cons( st[:,k+1] )[1]
