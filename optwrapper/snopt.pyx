@@ -232,7 +232,7 @@ cdef class sMatrix:
 
     def __setitem__( self, key, value ):
         try:
-            value = np.asarray( value, dtype=np.float64 )
+            value = np.atleast_1d( np.asarray( value, dtype=np.float64 ) )
         except:
             raise TypeError( "unknown type of value" )
 
