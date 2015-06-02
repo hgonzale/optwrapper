@@ -294,7 +294,7 @@ class Problem( ocp.Problem ):
 
             """
 
-            ( st, u, d ) =  decode( s )
+            ( st, u, d ) = decode( s )
 
             out[ np.ix_( dconsidx[:,0], stidx[:,0] ) ] = np.identity( self.Nstates )
             for k in range( Nsamples ):
