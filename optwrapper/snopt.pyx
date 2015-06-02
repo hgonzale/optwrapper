@@ -60,30 +60,21 @@ cdef tuple statusInfo = ( "Finished successfully", ## 0
                           "System error" ) ## 140
 
 
-## helper to deal with oob or negative indices in sMatrix
-cdef integer sanitize_idx( integer val, integer limit ):
-    if( val >= limit or val < -limit ):
-        raise IndexError( "index {0} is out of bounds".format( val ) )
-    if( val < 0 ):
-        return ( limit + val )
-    return val
-
-
-## helper to create iterators out of heterogeneous data types in sMatrix
-cdef key_to_iter( key, integer limit ):
-    if( isinstance( key, int ) ):
-        return ( sanitize_idx( key, limit ), )
-    elif( isinstance( key, slice ) ):
-        return range( *key.indices( limit ) )
+## sMatrix helper to create arrays with valid indices out of keys with heterogeneous data types
+cdef cnp.ndarray key_to_array( object key, integer limit ):
+    if( isinstance( key, slice ) ):
+        return np.arange( *key.indices( limit ), dtype=np.int_ )
     else:
         try:
-            key = np.atleast_1d( np.squeeze( np.asarray( key, dtype=np.int_ ) ) )
+            key = np.asarray( key, dtype=np.int_ )
         except:
-            raise TypeError( "unknown type of key" )
-        if( key.ndim > 1 ):
-            raise IndexError( "key array must have 1 dimension" )
-        for k in range( key.size ):
-            key[k] = sanitize_idx( key[k], limit )
+            raise TypeError( "key cannot be converted to an integer array" )
+        ## http://docs.scipy.org/doc/numpy/reference/arrays.nditer.html#modifying-array-values
+        for val in np.nditer( key, op_flags=[ "readwrite" ] ):
+            if( val >= limit or val < -limit ):
+                raise IndexError( "index {0} is out of bounds, limit is {1}".format( val, limit ) )
+            if( val < 0 ):
+                val[...] = limit + val
         return key
 
 
@@ -98,54 +89,21 @@ cdef class sMatrix:
     cdef readonly tuple shape
     cdef int data_alloc
 
-    def __cinit__( self, arg1, arg2=None, tuple dims=None, int copy_data=False ):
-        self.data_alloc = False
-
-        if( arg2 is None ): ## arg1 is an array with data
-            try:
-                arg1 = np.atleast_1d( np.asarray( arg1, dtype=np.float64 ) )
-            except:
-                raise TypeError( "argument must be an array" )
-
-            if( arg1.ndim == 1 ):
-                self.nrows = 1
-                self.ncols = arg1.size
-                ( colarr, ) = np.nonzero( arg1 )
-                self.nnz = colarr.size
-                rowarr = np.zeros( (self.nnz,) )
-            elif( arg1.ndim == 2 ):
-                ( self.nrows, self.ncols ) = arg1.shape
-                ( rowarr, colarr ) = np.nonzero( arg1 )
-                self.nnz = colarr.size
-            else:
-                raise ValueError( "argument can have at most two dimensions" )
-
-        else: ## (arg1,arg2) are index arrays coming from np.nonzero()
-            copy_data = False
-            try:
-                dims = np.asarray( dims, dtype=np.int_ )
-            except:
-                raise ValueError( "dims must be an integer tuple" )
-            if( dims.ndim > 1 or dims.size != 2 ):
-                raise ValueError( "dims must have length 2" )
-
-            try:
-                arg1 = np.atleast_1d( np.asarray( arg1, dtype=np.int_ ) )
-                arg2 = np.atleast_1d( np.asarray( arg2, dtype=np.int_ ) )
-            except:
-                raise TypeError( "arguments must be integer arrays" )
-            if( arg1.ndim > 1 or arg2.ndim > 1 or arg1.size != arg2.size ):
-                raise ValueError( "arguments must be 1-dimensional with same length" )
-            if( np.max( arg1 ) > dims[0] or np.max( arg2 ) > dims[1] ):
-                raise ValueError( "dims is not large enough to contain indices" )
-
-            rowarr = arg1
-            colarr = arg2
-            self.nrows = dims[0]
-            self.ncols = dims[1]
-            self.nnz = colarr.size
-
+    def __cinit__( self, arr, int copy_data=False ):
         self.data_alloc = True
+
+        try:
+            arr = np.atleast_2d( np.asarray( arr, dtype=np.float64 ) )
+        except:
+            raise TypeError( "argument must be an array" )
+
+        if( arr.ndim > 2 ):
+            raise ValueError( "argument can have at most two dimensions" )
+
+        ( self.nrows, self.ncols ) = arr.shape
+        ( rowarr, colarr ) = np.nonzero( arr )
+        self.nnz = colarr.size
+
         self.data = <doublereal *> malloc( self.nnz * sizeof( doublereal ) )
         self.rptr = <integer *> malloc( ( self.nrows + 1 ) * sizeof( integer ) )
         self.ridx = <integer *> malloc( self.nnz * sizeof( integer ) )
@@ -167,13 +125,19 @@ cdef class sMatrix:
         ## zero data
         if( copy_data ):
             memcpy( self.data,
-                    utils.getPtr( utils.convFortran( arg1[rowarr,colarr].flatten() ) ),
+                    utils.getPtr( utils.convFortran( arr[rowarr,colarr].flatten() ) ),
                     self.nnz * sizeof( doublereal ) )
         else:
             memset( self.data, 0, self.nnz * sizeof( doublereal ) )
 
 
     def print_debug( self ):
+        """
+        print internal C arrays containing representation data of this sparse matrix, which
+        cannot be accessed using Python
+
+        """
+
         print( "nrows: {0} - ncols: {1} - nnz: {2} - data_alloc: {3}".format( self.nrows,
                                                                               self.ncols,
                                                                               self.nnz,
@@ -230,88 +194,89 @@ cdef class sMatrix:
         memcpy( data, self.data, self.nnz * sizeof( doublereal ) )
 
 
+    cdef doublereal get_elem_at( self, integer row, integer col ):
+        for k in range( self.rptr[row], self.rptr[row+1] ):
+            if( self.cidx[k] == col ):
+                return self.data[k]
+        return 0
+
+
+    cdef int set_elem_at( self, integer row, integer col, doublereal val ):
+        for k in range( self.rptr[row], self.rptr[row+1] ):
+            if( self.cidx[k] == col ):
+                self.data[k] = val
+                return True
+        return False
+
+
+    cdef cnp.broadcast key_to_bcast( self, object key ):
+        if( self.nrows > 1 ):
+            if( isinstance( key, tuple ) and len(key) == 2 ):
+                rowiter = key_to_array( key[0], self.nrows )
+                coliter = key_to_array( key[1], self.ncols )
+                if( ( isinstance( key[0], slice ) and isinstance( key[1], slice ) ) or
+                    ( isinstance( key[0], slice ) and coliter.size > 1 ) or
+                    ( isinstance( key[1], slice ) and rowiter.size > 1 ) ): ## slices form meshes
+                    ( rowiter, coliter ) = np.ix_( rowiter, coliter )
+            else:
+                rowiter = key_to_array( key, self.nrows )
+                coliter = key_to_array( slice( None, None, None ), self.ncols )
+                if( rowiter.size > 1 ):  ## slices form meshes
+                    ( rowiter, coliter ) = np.ix_( rowiter, coliter )
+
+        elif( self.nrows == 1 ):
+            rowiter = np.array( 0 )
+            coliter = key_to_array( key, self.ncols )
+        else:
+            raise TypeError( "key cannot be applied to this sMatrix" )
+
+        ## here is where all the magic happens to figure out new dimensions
+        return np.broadcast( rowiter, coliter )
+
+
     def __setitem__( self, key, value ):
         try:
-            value = np.atleast_1d( np.asarray( value, dtype=np.float64 ) )
+            value = np.asarray( value, dtype=np.float64 )
         except:
-            raise TypeError( "unknown type of value" )
+            raise TypeError( "value cannot be converted into a float array" )
 
-        if( self.nrows > 1 and isinstance( key, tuple ) and len(key) == 2 ):
-            rowiter = key_to_iter( key[0], self.nrows )
-            coliter = key_to_iter( key[1], self.ncols )
-        elif( self.nrows == 1 ):
-            rowiter = (0,)
-            coliter = key_to_iter( key, self.ncols )
-        else:
-            raise TypeError( "unknown type of key" )
+        bcast = self.key_to_bcast( key )
+        origshape = value.shape
 
-        if( len(rowiter) == 1 ):
-            if( value.ndim > 1 and value.shape[0] == 1 ):
-                value = np.squeeze( value, axis=0 )
-            if( len(coliter) != value.size ):
-                raise ValueError( "value does not have same dimensions as key" )
-            row = list( rowiter )[0]
-            for k in range( self.rptr[row], self.rptr[row+1] ):
-                for (j,col) in enumerate( coliter ):
-                    if( self.cidx[k] == col ):
-                        self.data[k] = value[j]
-                        break
-        elif( len(coliter) == 1 ):
-            if( value.ndim > 1 and value.shape[1] == 1 ):
-                value = np.squeeze( value, axis=1 )
-            if( len(rowiter) != value.size ):
-                raise ValueError( "value does not have same dimensions as key" )
-            col = list( coliter )[0]
-            for (i,row) in enumerate( rowiter ):
-                for k in range( self.rptr[row], self.rptr[row+1] ):
-                    if( self.cidx[k] == col ):
-                        self.data[k] = value[i]
-                        break
-        else:
-            if( ( len(rowiter), len(coliter) ) != value.shape ):
-                raise ValueError( "value does not have same dimensions as keys" )
-            for (i,row) in enumerate( rowiter ):
-                for k in range( self.rptr[row], self.rptr[row+1] ):
-                    for (j,col) in enumerate( coliter ):
-                        if( self.cidx[k] == col ):
-                            self.data[k] = value[i,j]
-                            break
+        ## this algorithm follow the rules listed here:
+        ## http://docs.scipy.org/doc/numpy/reference/ufuncs.html#broadcasting
+
+        ## shave extra dimensions we can't deal with
+        while( len( bcast.shape ) < len( value.shape ) ):
+            if( value.shape[0] > 1 ):
+                raise ValueError( "could not broadcast value array from shape " +
+                                  "{0} into shape {1}".format( origshape, bcast.shape ) )
+            value = np.squeeze( value, axis=0 )
+
+        ## add size 1 dimensions to the left
+        while( len( bcast.shape ) > len( value.shape ) ):
+            value = value[np.newaxis]
+
+        ## now try to match different dimensions
+        for k in range( len( value.shape ) ):
+            if( bcast.shape[-k-1] != value.shape[-k-1] ):
+                if( value.shape[-k-1] != 1 ):
+                    raise ValueError( "could not broadcast value array from shape " +
+                                      "{0} into shape {1}".format( origshape, bcast.shape ) )
+                value = np.tile( value, (bcast.shape[-k-1],) + (1,) * k )
+
+        ## finally set values, assuming (!) bcast is C-ordered
+        for ( (row,col), val ) in zip( bcast, np.nditer( value, order='C' ) ):
+            self.set_elem_at( row, col, val )
 
 
     def __getitem__( self, key ):
-        if( self.nrows > 1 and isinstance( key, tuple ) and len(key) == 2 ):
-            rowiter = key_to_iter( key[0], self.nrows )
-            coliter = key_to_iter( key[1], self.ncols )
-        elif( self.nrows == 1 ):
-            rowiter = (0,)
-            coliter = key_to_iter( key, self.ncols )
-        else:
-            raise TypeError( "unknown type of key" )
+        bcast = self.key_to_bcast( key )
 
-        if( len(rowiter) == 1 ):
-            out = np.zeros( ( len(coliter), ) )
-            row = list( rowiter )[0]
-            for k in range( self.rptr[row], self.rptr[row+1] ):
-                for (j,col) in enumerate( coliter ):
-                    if( self.cidx[k] == col ):
-                        out[j] = self.data[k]
-                        break
-        elif( len(coliter) == 1 ):
-            out = np.zeros( ( len(rowiter), ) )
-            col = list( coliter )[0]
-            for (i,row) in enumerate( rowiter ):
-                for k in range( self.rptr[row], self.rptr[row+1] ):
-                    if( self.cidx[k] == col ):
-                        out[i] = self.data[k]
-                        break
-        else:
-            out = np.zeros( ( len(rowiter), len(coliter) ) )
-            for (i,row) in enumerate( rowiter ):
-                for k in range( self.rptr[row], self.rptr[row+1] ):
-                    for (j,col) in enumerate( coliter ):
-                        if( self.cidx[k] == col ):
-                            out[i,j] = self.data[k]
-                            break
+        ## cool trick copied from
+        ## http://docs.scipy.org/doc/numpy/reference/generated/numpy.broadcast.html
+        out = np.empty( bcast.shape )
+        out.flat = [ self.get_elem_at( row, col ) for (row,col) in bcast ]
 
         return out
 
@@ -355,32 +320,26 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
                  char *cu, integer *lencu,
                  integer *iu, integer *leniu,
                  doublereal *ru, integer *lenru ):
-    ## Dual variables are at rw[ iw[329] ] onward, pg.25
+    ## FYI: Dual variables are at rw[ iw[329] ] onward, pg.25
 
     if( status[0] >= 2 ): ## Final call, do nothing
         return 0
 
     xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
-    # print( ">>> xarr: " + str( xarr ) )
 
     if( needF[0] > 0 ):
         farr = utils.wrap1dPtr( f, nF[0], utils.doublereal_type )
         extprob.objf( farr[0:1], xarr )
         if( extprob.Ncons > 0 ):
             extprob.consf( farr[1+extprob.Nconslin:], xarr )
-        # print( ">>> farr: " + str( farr ) )
 
     if( needG[0] > 0 ):
         if( objGsparse.nnz > 0 ):
             objGsparse.setDataPtr( &G[0] )
             extprob.objg( objGsparse, xarr )
-            # print( ">>> objGsparse: " + str( objGsparse ) )
         if( extprob.Ncons > 0 and consGsparse.nnz > 0 ):
             consGsparse.setDataPtr( &G[objGsparse.nnz] )
             extprob.consg( consGsparse, xarr )
-        #     print( ">>> consGsparse: " + str( consGsparse ) )
-        # for k in range( lenG[0] ):
-        #     print( ">>> G["+ str(k) +"]: " + str(G[k]) )
 
 
 cdef class Solver( base.Solver ):
