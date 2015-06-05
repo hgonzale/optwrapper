@@ -323,21 +323,24 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
                  doublereal *ru, integer *lenru ):
     ## FYI: Dual variables are at rw[ iw[329] ] onward, pg.25
 
-    if( status[0] == 1 ): ## first call, zero out memory
-        memset( f, 0, nF[0] * sizeof( doublereal ) )
-        memset( G, 0, lenG[0] * sizeof( doublereal ) )
-    elif( status[0] >= 2 ): ## Final call, do nothing
+    if( status[0] >= 2 ): ## Final call, do nothing
         return 0
 
     xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
 
     if( needF[0] > 0 ):
+        ## we zero out all arrays in case the user does not modify all the values,
+        ## e.g., in sparse problems.
+        memset( f, 0, nF[0] * sizeof( doublereal ) )
         farr = utils.wrap1dPtr( f, nF[0], utils.doublereal_type )
         extprob.objf( farr[0:1], xarr )
         if( extprob.Ncons > 0 ):
             extprob.consf( farr[1+extprob.Nconslin:], xarr )
 
     if( needG[0] > 0 ):
+        ## we zero out all arrays in case the user does not modify all the values,
+        ## e.g., in sparse problems.
+        memset( G, 0, lenG[0] * sizeof( doublereal ) )
         if( objGsparse.nnz > 0 ):
             objGsparse.setDataPtr( &G[0] )
             extprob.objg( objGsparse, xarr )
