@@ -6,7 +6,7 @@
       character*(*) name
       integer inform
 
-      open( iunit, iostat=inform, file=name, status='replace' )
+      open( UNIT=iunit, IOSTAT=inform, FILE=name, STATUS="replace" )
 
       end
 
@@ -16,6 +16,6 @@
       implicit none
       integer iunit
 
-      close( iunit )
+      close( UNIT=iunit )
 
       end

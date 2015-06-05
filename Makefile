@@ -1,11 +1,8 @@
-F2C = f2c
-F2COPTS = -a -A
 INSTALL_MANIFEST = install_manifest.txt
 
 modules = utils base npsol snopt
-f2ced = filehandler
 
-all: $(f2ced:%=optwrapper/%.c)
+all:
 	python setup.py build
 
 install: all
@@ -25,8 +22,5 @@ clean:
 
 test:
 	@cd ${HOME}; $(foreach module,$(modules),python -c "from optwrapper.$(module) import *; print('$(module) works fine.')";)
-
-%.c: %.f
-	$(F2C) $(F2COPTS) -d$(dir $<) $<
 
 .PHONY: all clean test install uninstall

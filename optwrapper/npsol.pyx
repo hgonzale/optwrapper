@@ -2,14 +2,14 @@
 # cython: wraparound=False
 
 from libc.string cimport memcpy, memset
-from libc.math cimport sqrt
 from libc.stdlib cimport malloc, free
 cimport numpy as cnp
 import numpy as np
+import os
 
 from .f2ch cimport *      ## tydefs from f2c.h
-cimport filehandler as fh
 cimport npsolh as npsol  ## import every function exposed in npsol.h
+# cimport filehandler as fh
 cimport utils
 cimport base
 import nlp
@@ -52,27 +52,22 @@ cdef int funobj( integer* mode, integer* n,
                  doublereal* x, doublereal* f, doublereal* g,
                  integer* nstate ):
     xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
-    # print( ">>> x: " + str(xarr) )
 
-    ## we *have* to zero'd out all the pointers since npsol assumes
-    ## objf/g sets all the elements in the array
-    ## this assumption is not true in sparse problems or problems
-    ## with mixed-linear entries.
+    ## we zero out all arrays in case the user does not modify all the values,
+    ## e.g., in sparse problems.
     if( mode[0] != 1 ):
         f[0] = 0.0
         farr = utils.wrap1dPtr( f, 1, utils.doublereal_type )
         extprob.objf( farr, xarr )
-        if( not extprob.objmixedA is None ):
+        if( extprob.objmixedA is not None ):
             farr += extprob.objmixedA.dot( xarr )
-        # print( ">>> f: " + str(farr) )
 
-    if( mode[0] > 0 ):
+    if( mode[0] != 0 ):
         memset( g, 0, n[0] * sizeof( doublereal ) )
         garr = utils.wrap1dPtr( g, n[0], utils.doublereal_type )
         extprob.objg( garr, xarr )
-        if( not extprob.objmixedA is None ):
+        if( extprob.objmixedA is not None ):
             garr += extprob.objmixedA
-        # print( ">>> g: " + str(garr) )
 
 
 ## pg. 18, Section 7.2
@@ -81,27 +76,22 @@ cdef int funcon( integer* mode, integer* ncnln,
                  doublereal* x, doublereal* c, doublereal* cJac,
                  integer* nstate ):
     xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
-    # print( ">>> x: " + str(xarr) )
 
-    ## we *have* to zero'd out all the pointers since npsol assumes
-    ## consf/g sets all the elements in the array
-    ## this assumption is not true in sparse problems or problems
-    ## with mixed-linear entries.
+    ## we zero out all arrays in case the user does not modify all the values,
+    ## e.g., in sparse problems.
     if( mode[0] != 1 ):
         memset( c, 0, ncnln[0] * sizeof( doublereal ) )
         carr = utils.wrap1dPtr( c, ncnln[0], utils.doublereal_type )
         extprob.consf( carr, xarr )
-        if( not extprob.consmixedA is None ):
+        if( extprob.consmixedA is not None ):
             carr += extprob.consmixedA.dot( xarr )
-        # print( ">>> c: " + str(carr) )
 
     if( mode[0] > 0 ):
         memset( cJac, 0, ncnln[0] * n[0] * sizeof( doublereal ) )
         cJacarr = utils.wrap2dPtr( cJac, ncnln[0], n[0], utils.doublereal_type )
         extprob.consg( cJacarr, xarr )
-        if( not extprob.consmixedA is None ):
+        if( extprob.consmixedA is not None ):
             cJacarr += extprob.consmixedA
-        # print( ">>> cJac: " + str(cJacarr) )
 
 
 cdef class Soln( base.Soln ):
@@ -159,7 +149,7 @@ cdef class Solver( base.Solver ):
 
         self.mem_alloc = False
         self.mem_size[0] = self.mem_size[1] = self.mem_size[2] = 0
-        self.default_tol = sqrt( np.spacing(1) ) ## pg. 24
+        self.default_tol = np.sqrt( np.spacing(1) ) ## pg. 24
         self.default_fctn_prec = np.power( np.spacing(1), 0.9 ) ## pg. 24
         self.prob = None
 
@@ -462,21 +452,21 @@ cdef class Solver( base.Solver ):
         ## Handle debug files
         if( self.printOpts[ "printFile" ] == "" ):
             printFileUnit[0] = 0
-        else:
-            fh.openfile_( printFileUnit, printFile, inform_out,
-                          len( self.printOpts[ "printFile" ] ) )
-            if( inform_out[0] != 0 ):
-                raise IOError( "Could not open file " + self.printOpts[ "printFile" ] )
+        # else:
+        #     fh.openfile_( printFileUnit, printFile, inform_out,
+        #                   len( self.printOpts[ "printFile" ] ) )
+        #     if( inform_out[0] != 0 ):
+        #         raise IOError( "Could not open file " + self.printOpts[ "printFile" ] )
 
         if( self.printOpts[ "summaryFile" ] == "stdout" ):
             summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
         elif( self.printOpts[ "summaryFile" ] == "" ):
             summaryFileUnit[0] = 0 ## Disable, pg. 6
-        else:
-            fh.openfile_( summaryFileUnit, summaryFile, inform_out,
-                          len( self.printOpts[ "summaryFile" ] ) )
-            if( inform_out[0] != 0 ):
-                raise IOError( "Could not open file " + self.printOpts[ "summaryFile" ] )
+        # else:
+        #     fh.openfile_( summaryFileUnit, summaryFile, inform_out,
+        #                   len( self.printOpts[ "summaryFile" ] ) )
+        #     if( inform_out[0] != 0 ):
+        #         raise IOError( "Could not open file " + self.printOpts[ "summaryFile" ] )
 
         npsol.npopti_( STR_PRINT_FILE, printFileUnit, len( STR_PRINT_FILE ) )
         npsol.npopti_( STR_SUMMARY_FILE, summaryFileUnit, len( STR_SUMMARY_FILE ) )
@@ -534,12 +524,15 @@ cdef class Solver( base.Solver ):
                       objf_val, self.objg_val, self.R, self.x,
                       self.iw, self.leniw, self.w, self.lenw )
 
-        ## Politely close files
+        ## Try to rename fortran print and summary files
         if( self.printOpts[ "printFile" ] != "" ):
-            fh.closefile_( printFileUnit )
+            # fh.closefile_( printFileUnit )
+            os.rename( "fort." + str( printFileUnit[0] ), self.printOpts[ "printFile" ] )
 
-        if( self.printOpts[ "summaryFile" ] != "" ):
-            fh.closefile_( summaryFileUnit )
+        if( self.printOpts[ "summaryFile" ] != "" and
+            self.printOpts[ "summaryFile" ] != "stdout" ):
+            # fh.closefile_( summaryFileUnit )
+            os.rename( "fort." + str( summaryFileUnit[0] ), self.printOpts[ "summaryFile" ] )
 
         ## Save result to prob
         self.prob.soln = Soln()

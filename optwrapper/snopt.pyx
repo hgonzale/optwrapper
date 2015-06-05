@@ -5,59 +5,13 @@ from libc.string cimport memcpy, memset
 from libc.stdlib cimport malloc, free
 cimport numpy as cnp
 import numpy as np
+import os
 
 from .f2ch cimport *
-cimport filehandler as fh
 cimport snopth as snopt
 cimport utils
 cimport base
 import nlp
-
-## SNOPT's option strings
-cdef char* STR_NONDERIVATIVE_LINESEARCH = "Nonderivative linesearch"
-cdef char* STR_DIFFERENCE_INTERVAL = "Difference interval"
-cdef char* STR_FUNCTION_PRECISION = "Function precision"
-cdef char* STR_MAJOR_FEASIBILITY_TOLERANCE = "Major feasibility tolerance"
-cdef char* STR_MINOR_FEASIBILITY_TOLERANCE = "Minor feasibility tolerance"
-cdef char* STR_HESSIAN_FULL_MEMORY = "Hessian full memory"
-cdef char* STR_HESSIAN_UPDATES = "Hessian updates"
-cdef char* STR_INFINITE_BOUND = "Infinite bound"
-cdef char* STR_ITERATIONS_LIMIT = "Iterations limit"
-cdef char* STR_MAJOR_ITERATIONS_LIMIT = "Major iterations limit"
-cdef char* STR_MINOR_ITERATIONS_LIMIT = "Minor iterations limit"
-cdef char* STR_LINESEARCH_TOLERANCE = "Linesearch tolerance"
-cdef char* STR_MAJOR_OPTIMALITY_TOLERANCE = "Major optimality tolerance"
-cdef char* STR_MAJOR_PRINT_LEVEL = "Major print level"
-cdef char* STR_MINOR_PRINT_LEVEL = "Minor print level"
-cdef char* STR_PIVOT_TOLERANCE = "Pivot tolerance"
-cdef char* STR_QPSOLVER_CHOLESKY = "QPSolver Cholesky"
-cdef char* STR_QPSOLVER_CG = "QPSolver CG"
-cdef char* STR_QPSOLVER_QN = "QPSolver QN"
-cdef char* STR_SCALE_OPTION = "Scale option"
-cdef char* STR_SCALE_PRINT = "Scale print"
-cdef char* STR_SOLUTION_NO = "Solution No"
-cdef char* STR_SUPPRESS_PARAMETERS = "Suppress parameters"
-cdef char* STR_TOTAL_CHARACTER_WORKSPACE = "Total character workspace"
-cdef char* STR_TOTAL_INTEGER_WORKSPACE = "Total integer workspace"
-cdef char* STR_TOTAL_REAL_WORKSPACE = "Total real workspace"
-cdef char* STR_VERIFY_LEVEL = "Verify level"
-cdef char* STR_VIOLATION_LIMIT = "Violation limit"
-
-cdef tuple statusInfo = ( "Finished successfully", ## 0
-                          "The problem appears to be infeasible", ## 10
-                          "The problem appears to be unbounded", ## 20
-                          "Resource limit error", ## 30
-                          "Terminated after numerical difficulties", ## 40
-                          "Error in the user-supplied functions", ## 50
-                          "Undefined user-supplied functions", ## 60
-                          "User requested termination", ## 70
-                          "Insufficient storage allocated", ## 80
-                          "Input arguments out of range", ## 90
-                          "SNOPT auxiliary routine finished successfully", ## 100
-                          "Errors while processing MPS data", ## 110
-                          "Errors while estimating Jacobian structure", ## 120
-                          "Errors while reading the Specs file", ## 130
-                          "System error" ) ## 140
 
 
 ## sMatrix helper to create arrays with valid indices out of keys with heterogeneous data types
@@ -282,7 +236,7 @@ cdef class sMatrix:
 
 
     def __str__( self ):
-        return str( self[:,:] )
+        return str( self[:] )
 
 
 cdef class Soln( base.Soln ):
@@ -309,6 +263,53 @@ cdef class Soln( base.Soln ):
             return statusInfo[ int( self.retval / 10 ) ]
 
 
+## SNOPT's option strings
+cdef char* STR_NONDERIVATIVE_LINESEARCH = "Nonderivative linesearch"
+cdef char* STR_DIFFERENCE_INTERVAL = "Difference interval"
+cdef char* STR_FUNCTION_PRECISION = "Function precision"
+cdef char* STR_MAJOR_FEASIBILITY_TOLERANCE = "Major feasibility tolerance"
+cdef char* STR_MINOR_FEASIBILITY_TOLERANCE = "Minor feasibility tolerance"
+cdef char* STR_HESSIAN_FULL_MEMORY = "Hessian full memory"
+cdef char* STR_HESSIAN_UPDATES = "Hessian updates"
+cdef char* STR_INFINITE_BOUND = "Infinite bound"
+cdef char* STR_ITERATIONS_LIMIT = "Iterations limit"
+cdef char* STR_MAJOR_ITERATIONS_LIMIT = "Major iterations limit"
+cdef char* STR_MINOR_ITERATIONS_LIMIT = "Minor iterations limit"
+cdef char* STR_LINESEARCH_TOLERANCE = "Linesearch tolerance"
+cdef char* STR_MAJOR_OPTIMALITY_TOLERANCE = "Major optimality tolerance"
+cdef char* STR_MAJOR_PRINT_LEVEL = "Major print level"
+cdef char* STR_MINOR_PRINT_LEVEL = "Minor print level"
+cdef char* STR_PIVOT_TOLERANCE = "Pivot tolerance"
+cdef char* STR_QPSOLVER_CHOLESKY = "QPSolver Cholesky"
+cdef char* STR_QPSOLVER_CG = "QPSolver CG"
+cdef char* STR_QPSOLVER_QN = "QPSolver QN"
+cdef char* STR_SCALE_OPTION = "Scale option"
+cdef char* STR_SCALE_PRINT = "Scale print"
+cdef char* STR_SOLUTION_NO = "Solution No"
+cdef char* STR_SUPPRESS_PARAMETERS = "Suppress parameters"
+cdef char* STR_TOTAL_CHARACTER_WORKSPACE = "Total character workspace"
+cdef char* STR_TOTAL_INTEGER_WORKSPACE = "Total integer workspace"
+cdef char* STR_TOTAL_REAL_WORKSPACE = "Total real workspace"
+cdef char* STR_VERIFY_LEVEL = "Verify level"
+cdef char* STR_VIOLATION_LIMIT = "Violation limit"
+
+cdef tuple statusInfo = ( "Finished successfully", ## 0
+                          "The problem appears to be infeasible", ## 10
+                          "The problem appears to be unbounded", ## 20
+                          "Resource limit error", ## 30
+                          "Terminated after numerical difficulties", ## 40
+                          "Error in the user-supplied functions", ## 50
+                          "Undefined user-supplied functions", ## 60
+                          "User requested termination", ## 70
+                          "Insufficient storage allocated", ## 80
+                          "Input arguments out of range", ## 90
+                          "SNOPT auxiliary routine finished successfully", ## 100
+                          "Errors while processing MPS data", ## 110
+                          "Errors while estimating Jacobian structure", ## 120
+                          "Errors while reading the Specs file", ## 130
+                          "System error" ) ## 140
+
+
 ## helper static function usrfun used to evaluate user defined functions in Solver.prob
 cdef object extprob
 cdef sMatrix objGsparse
@@ -322,7 +323,10 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
                  doublereal *ru, integer *lenru ):
     ## FYI: Dual variables are at rw[ iw[329] ] onward, pg.25
 
-    if( status[0] >= 2 ): ## Final call, do nothing
+    if( status[0] == 1 ): ## first call, zero out memory
+        memset( f, 0, nF[0] * sizeof( doublereal ) )
+        memset( G, 0, lenG[0] * sizeof( doublereal ) )
+    elif( status[0] >= 2 ): ## Final call, do nothing
         return 0
 
     xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
@@ -726,9 +730,9 @@ cdef class Solver( base.Solver ):
         cdef char *probname = "optwrapp" ## Must have 8 characters
         cdef char *xnames = "dummy"
         cdef char *Fnames = "dummy"
-        cdef bytes printFileTmp = self.printOpts[ "printFile" ].encode() ## temp container
+        cdef bytes printFileTmp = self.printOpts[ "printFile" ].encode( "latin_1" )
         cdef char* printFile = printFileTmp
-        cdef bytes summaryFileTmp = self.printOpts[ "summaryFile" ].encode() ## temp container
+        cdef bytes summaryFileTmp = self.printOpts[ "summaryFile" ].encode( "latin_1" )
         cdef char* summaryFile = summaryFileTmp
         cdef integer* summaryFileUnit = [ 89 ] ## Hardcoded since nobody cares
         cdef integer* printFileUnit = [ 90 ] ## Hardcoded since nobody cares
@@ -758,21 +762,21 @@ cdef class Solver( base.Solver ):
         ## Handle debug files
         if( self.printOpts[ "printFile" ] == "" ):
             printFileUnit[0] = 0
-        else:
-            fh.openfile_( printFileUnit, printFile, inform_out,
-                          len( self.printOpts[ "printFile" ] ) )
-            if( inform_out[0] != 0 ):
-                raise IOError( "Could not open file " + self.printOpts[ "printFile" ] )
+        # else:
+        #     fh.openfile_( printFileUnit, printFile, inform_out,
+        #                   len( self.printOpts[ "printFile" ] ) )
+        #     if( inform_out[0] != 0 ):
+        #         raise IOError( "Could not open file " + self.printOpts[ "printFile" ] )
 
         if( self.printOpts[ "summaryFile" ] == "stdout" ):
             summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
         elif( self.printOpts[ "summaryFile" ] == "" ):
             summaryFileUnit[0] = 0 ## Disable, pg. 6
-        else:
-            fh.openfile_( summaryFileUnit, summaryFile, inform_out,
-                          len( self.printOpts[ "summaryFile" ] ) )
-            if( inform_out[0] != 0 ):
-                raise IOError( "Could not open file " + self.printOpts[ "summaryFile" ] )
+        # else:
+        #     fh.openfile_( summaryFileUnit, summaryFile, inform_out,
+        #                   len( self.printOpts[ "summaryFile" ] ) )
+        #     if( inform_out[0] != 0 ):
+        #         raise IOError( "Could not open file " + self.printOpts[ "summaryFile" ] )
 
         ## Initialize
         snopt.sninit_( printFileUnit, summaryFileUnit,
@@ -1017,13 +1021,13 @@ cdef class Solver( base.Solver ):
         ## Reset warm start
         self.Start[0] = 0
 
-        ## Politely close files
+        ## Try to rename fortran print and summary files
         if( self.printOpts[ "printFile" ] != "" ):
-            fh.closefile_( printFileUnit )
+            os.rename( "fort." + str( printFileUnit[0] ), self.printOpts[ "printFile" ] )
 
         if( self.printOpts[ "summaryFile" ] != "" and
             self.printOpts[ "summaryFile" ] != "stdout" ):
-            fh.closefile_( summaryFileUnit )
+            os.rename( "fort." + str( summaryFileUnit[0] ), self.printOpts[ "summaryFile" ] )
 
         ## Save result to prob
         self.prob.soln = Soln()
