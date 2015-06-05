@@ -57,7 +57,7 @@ class Problem( ocp.Problem ):
             if( tmpdx[k].shape != ( self.Nstates, ) ):
                 raise ValueError( "Each dxpattern must have size (" +
                                   str(self.Nstates) + ",)." )
-        self.dxpattern = tuple( tmpdx )
+        self.icostdxpattern = tuple( tmpdx )
 
         tmpdu = list( dupattern )
         for k in range( self.Nmodes ):
@@ -65,7 +65,7 @@ class Problem( ocp.Problem ):
             if( tmpdu[k].shape != ( self.Ninputs, ) ):
                 raise ValueError( "Each dupattern must have size (" +
                                   str(self.Ninputs) + ",)." )
-        self.dupattern = tuple( tmpdu )
+        self.icostdupattern = tuple( tmpdu )
 
 
     def vectorField( self, vfield, dxpattern=None, dupattern=None ):
@@ -97,7 +97,7 @@ class Problem( ocp.Problem ):
                 raise ValueError( "Each dxpattern must have size (" +
                                   str(self.Nstates) + "," + str(self.Nstates) + ")." )
 
-            self.dxpattern = tuple( tmpdx )
+        self.vfielddxpattern = tuple( tmpdx )
 
         tmpdu = list( dupattern )
         for k in range( self.Nmodes ):
@@ -105,7 +105,7 @@ class Problem( ocp.Problem ):
             if( tmpdu[k].shape != ( self.Nstates, self.Ninputs ) ):
                 raise ValueError( "Each dupattern must have size (" +
                                   str(self.Nstates) + "," + str(self.Ninputs) + ")." )
-        self.dupattern = tuple( tmpdu )
+        self.vfielddupattern = tuple( tmpdu )
 
 
     def discForwardEuler( self, Nsamples ):
@@ -318,7 +318,7 @@ class Problem( ocp.Problem ):
 
             if( self.vfielddxpattern is None or
                 self.vfielddupattern is None or
-                self.consdxpattern is None ):
+                ( self.Ncons > 0 and self.consdxpattern is None ) ):
                 return None
 
             out = np.zeros( ( feuler.Ncons, feuler.N ), dtype=np.int )
@@ -330,7 +330,7 @@ class Problem( ocp.Problem ):
                 for idx in range( self.Nmodes ):
                     out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] += self.vfielddxpattern[idx]
                     out[ np.ix_( dconsidx[:,k+1], uidx[:,k] ) ] += self.vfielddupattern[idx]
-                    out[ np.ix_( dconsidx[:,k+1], didx[idx,k] ) ] = np.ones( (self.Nstates,) )
+                    out[ dconsidx[:,k+1], didx[idx,k] ] = np.ones( (self.Nstates,) )
 
                 if( self.Ncons > 0 ):
                     out[ np.ix_( iconsidx[:,k], stidx[:,k+1] ) ] = self.consdxpattern

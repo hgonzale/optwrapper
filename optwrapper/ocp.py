@@ -428,7 +428,7 @@ class Problem:
 
             if( self.vfielddxpattern is None or
                 self.vfielddupattern is None or
-                self.consdxpattern is None ):
+                ( self.Ncons > 0 and self.consdxpattern is None ) ):
                 return None
 
             out = np.zeros( ( feuler.Ncons, feuler.N ), dtype=np.int )
