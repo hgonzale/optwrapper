@@ -1026,7 +1026,7 @@ cdef class Solver( base.Solver ):
             try:
                 os.rename( "fort.{0}".format( printFileUnit[0] ),
                            self.printOpts[ "printFile" ] )
-            except FileNotFoundError:
+            except:
                 pass
 
         if( self.printOpts[ "summaryFile" ] != "" and
@@ -1034,7 +1034,7 @@ cdef class Solver( base.Solver ):
             try:
                 os.rename( "fort.{0}".format( summaryFileUnit[0] ),
                            self.printOpts[ "summaryFile" ] )
-            except FileNotFoundError:
+            except:
                 pass
 
         ## Reset warm start
