@@ -6,16 +6,18 @@ class Problem:
     General nonlinear programming optimization problem.
     Requires a nonlinear objective function and its gradient.
     Accepts box, linear, and nonlinear constraints.
+
     """
 
     def __init__( self, N, Ncons=0, Nconslin=0 ):
         """
-        Arguments:
-        N         number of optimization variables (required).
-        Nconslin  number of linear constraints (default: 0).
-        Ncons     number of constraints (default: 0).
+        nonlinear programming optimization problem
 
-        prob = optProblem( N=2, Ncons=2, Nconslin=3 )
+        Arguments:
+        N:        number of optimization variables.
+        Nconslin: number of linear constraints (default: 0).
+        Ncons:    number of constraints (default: 0).
+
         """
 
         try:
@@ -42,7 +44,7 @@ class Problem:
         if( self.Ncons < 0 ):
             raise ValueError( "Ncons must be positive" )
 
-        self.init = np.zeros( self.N )
+        self.init = np.zeros( (self.N,) )
         self.lb = None
         self.ub = None
         self.objf = None
@@ -61,14 +63,13 @@ class Problem:
 
     def initPoint( self, init ):
         """
-        Sets initial value for optimization variable.
+        sets initial value for optimization variable.
 
         Arguments:
-        init  initial condition, must be a one-dimensional array of size N
-              (default: vector of zeros).
+        init: array of size (N,) as initial condition. (default: array of zeros).
 
-        prob.initCond( [ 1.0, 1.0 ] )
         """
+
         self.init = np.asfortranarray( init )
 
         if( self.init.shape != ( self.N, ) ):
@@ -77,33 +78,33 @@ class Problem:
 
     def consBox( self, lb, ub ):
         """
-        Defines box constraints.
+        sets box constraints.
 
         Arguments:
-        lb  lower bounds, one-dimensional array of size N.
-        ub  upper bounds, one-dimensional array of size N.
+        lb: lower bounds, array of size (N,).
+        ub: upper bounds, array of size (N,).
 
-        prob.consBox( [-1,-2], [1,2] )
         """
+
         self.lb = np.asfortranarray( lb )
         self.ub = np.asfortranarray( ub )
 
         if( self.lb.shape != ( self.N, ) or
             self.ub.shape != ( self.N, ) ):
-            raise ValueError( "Bound must have size (" + str(self.N) + ",)." )
+            raise ValueError( "Both arrays must have size (" + str(self.N) + ",)." )
 
 
     def consLinear( self, A, lb=None, ub=None ):
         """
-        Defines linear constraints.
+        sets linear constraints.
 
         Arguments:
-        A   linear constraint matrix, two-dimensional array of size (Nconslin,N).
-        lb  lower bounds, one-dimensional array of size Nconslin.
-        ub  upper bounds, one-dimensional array of size Nconslin.
+        A:  linear constraint matrix, array of size (Nconslin,N).
+        lb: lower bounds, array of size (Nconslin,). (default: -inf).
+        ub: upper bounds, array of size (Nconslin,). (default: zeros).
 
-        prob.consLinear( [[1,-1],[1,1]], [-1,-2], [1,2] )
         """
+
         self.conslinA = np.asfortranarray( A )
 
         if( self.conslinA.shape != ( self.Nconslin, self.N ) ):
@@ -111,10 +112,10 @@ class Problem:
                               + "," + str(self.N) + ")." )
 
         if( lb is None ):
-            lb = -np.inf * np.ones( self.Nconslin )
+            lb = -np.inf * np.ones( (self.Nconslin,) )
 
         if( ub is None ):
-            ub = np.zeros( self.Nconslin )
+            ub = np.zeros( (self.Nconslin,) )
 
         self.conslinlb = np.asfortranarray( lb )
         self.conslinub = np.asfortranarray( ub )
@@ -126,21 +127,24 @@ class Problem:
 
     def objFctn( self, objf, A=None ):
         """
-        Set objective function.
+        sets objective function of the form: objf(x) + A.dot(x).
 
         Arguments:
-        objf  objective function, must return a scalar.
+        objf: objective function receiving an output array of size (1,) and an optimization vector
+              of size (N,), e.g.:
 
-        def objf(x):
-            return x[1]
-        prob.objFctn( objf )
+              def objf( out, x ):
+                  out[0] = x.dot(x)
+
+        A:    array of size (N,) for linear terms in the objective.
+
         """
         if( type(objf) != types.FunctionType ):
             raise ValueError( "Argument must be a function" )
 
         self.objf = objf
 
-        if( not A is None ):
+        if( A is not None ):
             self.objmixedA = np.asfortranarray( A )
 
             if( self.objmixedA.shape != ( self.N, ) ):
@@ -149,15 +153,17 @@ class Problem:
 
     def objGrad( self, objg ):
         """
-        Set objective gradient.
+        sets objective gradient of the form: objg(x) + A, where A is defined in objFctn.
 
         Arguments:
-        objg  gradient function, must return a one-dimensional array of size N.
+        objg: objective gradient receiving an output array of size (N,) and an optimization
+              vector of size (N,), e.g.:
 
-        def objg(x):
-            return np.array( [2,-1] )
-        prob.objGrad( objg )
+              def objg( out, x ):
+                  out[:] = 2 * x
+
         """
+
         if( type(objg) != types.FunctionType ):
             raise ValueError( "Argument must be a function" )
 
@@ -166,29 +172,30 @@ class Problem:
 
     def consFctn( self, consf, lb=None, ub=None, A=None ):
         """
-        Set nonlinear constraints function.
+        sets constraint function of the form: consf(x) + A.dot(x).
 
         Arguments:
-        consf  constraint function, must return a one-dimensional array of
-               size Ncons.
-        lb     lower bounds, one-dimensional array of size Ncons (default: vector
-               of -inf).
-        ub     upper bounds, one-dimensional array of size Ncons (default: vector
-               of zeros).
+        consf: constraint function receiving an output array of size (Ncons,) and an optimization
+               vector of size (N,), e.g.:
 
-        def consf(x):
-            return np.array( [ x[0] - x[1],
-                               x[0] + x[1] ] )
-        prob.consFctn( consf )
+               def objf( out, x ):
+                   for k in range( Ncons ):
+                       out[k] = k * x.dot(x)
+
+        A:    array of size (Ncons,N) for linear terms in the objective.
+        lb:   lower bounds, array of size (Ncons,). (default: -inf).
+        ub:   upper bounds, array of size (Ncons,). (default: zeros).
+
         """
+
         if( type(consf) != types.FunctionType ):
             raise ValueError( "Argument must be a function" )
 
         if( lb is None ):
-            lb = -np.inf * np.ones( self.Ncons )
+            lb = -np.inf * np.ones( (self.Ncons,) )
 
         if( ub is None ):
-            ub = np.zeros( self.Ncons )
+            ub = np.zeros( (self.Ncons,) )
 
         self.consf = consf
         self.conslb = np.asfortranarray( lb )
@@ -198,27 +205,28 @@ class Problem:
             self.consub.shape != ( self.Ncons, ) ):
             raise ValueError( "Bound must have size (" + str(self.Ncons) + ",)." )
 
-        if( not A is None ):
+        if( A is not None ):
             self.consmixedA = np.asfortranarray( A )
 
             if( self.consmixedA.shape != ( self.Ncons, self.N ) ):
                 raise ValueError( "Argument 'A' must have size ("
                                   + str(self.Ncons) + "," + str(self.N) + ")." )
 
+
     def consGrad( self, consg ):
         """
-        Set nonlinear constraints gradient.
+        sets constraint gradient of the form: consg(x) + A, where A is defined in consFctn.
 
         Arguments:
-        consg  constraint gradient, must return a two-dimensional array of
-               size (Ncons,N), where entry [i,j] is the derivative of i-th
-               constraint w.r.t. the j-th variables.
+        consg: constraint gradient receiving an output array of size (Ncons,N) and an optimization
+               vector of size (N,), e.g.:
 
-        def consg(x):
-            return np.array( [ [ 2*x[0], 8*x[1] ],
-                               [ 2*(x[0]-2), 2*x[1] ] ] )
-        prob.consGrad( consg )
+               def consg( out, x ):
+                   for k in range( Ncons ):
+                       out[k,:] = 2 * k * x
+
         """
+
         if( type(consg) != types.FunctionType ):
             raise ValueError( "Argument must be a function" )
 
@@ -227,20 +235,20 @@ class Problem:
 
     def checkGrad( self, h=1e-5, etol=1e-4, point=None, debug=False ):
         """
-        Checks if user-defined gradients are correct using finite
-        differences.
+        checks if user-defined gradients are correct using central finite differences.
 
         Arguments:
-        h      optimization variable variation step size (default: 1e-5).
-        etol   error tolerance (default: 1e-4).
-        point  evaluation point one-dimensional array of size N (default:
-               initial condition).
-        debug  boolean to enable extra debug information (default: False).
+        h:     optimization vector variation size. (default: 1e-5).
+        etol:  error tolerance. (default: 1e-4).
+        point: evaluation point, array of size (N,). (default: initial condition).
+        debug: boolean to enable extra debug information. (default: False).
 
-        isCorrect = prob.checkGrad( h=1e-6, etol=1e-5, point, debug=False )
+        Returns:
+        isCorrect: boolean, True if numerical and user-defined gradients match within error margin.
+
         """
-        if( self.objf is None or
-            self.objg is None ):
+
+        if( self.objf is None or self.objg is None ):
             raise StandardError( "Objective must be set before gradients are checked." )
         if( self.Ncons > 0 and
             ( self.consf is None or self.consg is None ) ):
@@ -253,147 +261,59 @@ class Problem:
             if( point.shape != ( self.N, ) ):
                 raise ValueError( "Argument 'point' must have size (" + str(self.N) + ",)." )
 
-        usrgrad = np.zeros( [ self.Ncons + 1, self.N ] )
-        numgrad = np.zeros( [ self.Ncons + 1, self.N ] )
+        usrgrad = np.zeros( ( self.Ncons + 1, self.N ) )
+        numgrad = np.zeros( ( self.Ncons + 1, self.N ) )
 
-        fph = np.zeros( self.Ncons + 1 )
-        fmh = np.zeros( self.Ncons + 1 )
-        for k in range( 0, self.N ):
-            hvec = np.zeros( self.N )
+        fph = np.zeros( (self.Ncons + 1,) )
+        fmh = np.zeros( (self.Ncons + 1,) )
+        for k in range( self.N ):
+            hvec = np.zeros( (self.N,) )
             hvec[k] = h
 
             self.objf( fph[0:1], point + hvec )
             self.objf( fmh[0:1], point - hvec )
-            self.consf( fph[1:], point + hvec )
-            self.consf( fmh[1:], point - hvec )
+            if( self.Ncons > 0 ):
+                self.consf( fph[1:], point + hvec )
+                self.consf( fmh[1:], point - hvec )
 
-            if( np.any( np.isnan( fph ) ) or np.any( np.isnan( fmh ) ) or
-                np.any( np.isinf( fph ) ) or np.any( np.isinf( fmh ) ) ):
-                raise ValueError( "Function returned NaN or inf at iteration " + str(k) )
+            if( not np.all( np.isfinite( fph ) ) or
+                not np.all( np.isfinite( fmh ) ) ):
+                raise ValueError( "non-finite value inf at iteration {0}".format( k ) )
 
-            delta = ( fph - fmh ) / 2.0 / h
-            numgrad[:,k] = delta
+            numgrad[:,k] = ( fph - fmh ) / 2.0 / h
 
         self.objg( usrgrad[0,:], point )
-        self.consg( usrgrad[1:,:], point )
-        if( np.any( np.isnan( usrgrad ) ) or
-            np.any( np.isinf( usrgrad ) ) ):
-            raise ValueError( "Gradient returned NaN or inf." )
+        if( self.Ncons > 0 ):
+            self.consg( usrgrad[1:,:], point )
+        if( not np.all( np.isfinite( usrgrad ) ) ):
+            raise ValueError( "gradient returned non-finite value" )
 
         errgrad = abs( usrgrad - numgrad )
         if( errgrad.max() < etol ):
             if( debug ):
-                print( "Numerical gradient check passed. Max error was: " + str( errgrad.max() ) )
-            return( True, errgrad.max(), errgrad )
+                print( ">>> Numerical gradient check passed. " +
+                       "Max error: {0}".format( errgrad.max() ) )
+            return True
         else:
             if( debug ):
-                idx = np.unravel_index( np.argmax(err), err.shape )
+                print( ">>> Numerical gradient check failed. " +
+                       "Max error: {0}".format( errgrad.max() ) )
+
+                idx = np.unravel_index( np.argmax(errgrad), errgrad.shape )
                 if( idx[0] == 0 ):
-                    print( "Objective gradient incorrect in element=("
-                           + str(idx[1]) + ")" )
+                    print( ">>> Max error achieved at element {0} of objg()".format( idx[1] ) )
                 else:
-                    print( "Constraint gradient incorrect in element=( "
-                           + str(idx[0]-1) + "," + str(idx[1]) + ")" )
-            return( False, errgrad.max(), errgrad )
-
-
-    def check( self, debug=False ):
-        """
-        General checks required before solver is executed.
-
-        Arguments:
-        debug  boolean to enable extra debug information (default: False).
-
-        isCorrect = prob.check()
-        """
-
-        if( self.lb is None or
-            self.ub is None or
-            np.any( self.lb > self.ub ) ):
-            if( debug ):
-                print( "Box constraints not set or lower bound larger than upper bound." )
+                    print( ">>> Max error achieved at element ({0},{1})".format( idx[0]-1,idx[1] ) +
+                           " of consg()" )
             return False
-
-        if( np.any( self.lb > self.init ) or
-            np.any( self.init > self.ub ) ):
-            if( debug ):
-                print( "Initial condition not set or violates box constraints." )
-            return False
-
-        if( self.objf is None or
-            np.any( np.isnan( self.objf( self.init ) ) ) or
-            np.any( np.isinf( self.objf( self.init ) ) ) ):
-            if( debug ):
-                print( "Objective function not set or return NaN/inf for initial condition." )
-            return False
-
-        if( self.objf( self.init ).shape != (1,) ):
-            if( debug ):
-                print( "Objective function must return a scalar array." )
-            return False
-
-        if( self.objg is None or
-            np.any( np.isnan( self.objg( self.init ) ) ) or
-            np.any( np.isinf( self.objg( self.init ) ) ) ):
-            if( debug ):
-                print( "Objective gradient not set or return NaN/inf for initial condition." )
-            return False
-
-        if( self.objg( self.init ).shape != ( self.N, ) ):
-            if( debug ):
-                print( "Objective gradient must return array of size (" + str(self.N) + ",)." )
-            return False
-
-        if( Nconslin > 0 ):
-            if( self.conslinlb is None or
-                self.conslinub is None or
-                np.any( self.conslinlb > self.conslinub ) ):
-                if( debug ):
-                    print( "Linear constraint bounds not set or lower bound larger than upper bound." )
-                return False
-
-        if( Ncons > 0 ):
-            if( self.conslb is None or
-                self.consub is None or
-                np.any( self.conslb > self.consub ) ):
-                if( debug ):
-                    print( "Constraint bounds not set or lower bound larger than upper bound." )
-                return False
-
-            if( self.consf is None or
-                np.any( np.isnan( self.consf( self.init ) ) ) or
-                np.any( np.isinf( self.consf( self.init ) ) ) ):
-                if( debug ):
-                    print( "Constraint function not set or return NaN/inf for initial condition." )
-                return False
-
-            if( self.consf( self.init ).shape != ( self.Ncons, ) ):
-                if( debug ):
-                    print( "Constraint function must return array of size (" + str(self.Ncons) + ",)." )
-                return False
-
-            if( self.consg is None or
-                np.any( np.isnan( self.consg( self.init ) ) ) or
-                np.any( np.isinf( self.consg( self.init ) ) ) ):
-                if( debug ):
-                    print( "Constraint gradient not set or return NaN/inf for initial condition." )
-                return False
-
-            if( self.consg( self.init ).shape != ( self.Ncons, self.N ) ):
-                if( debug ):
-                    print( "Constraint gradient must return array of size ("
-                           + str(self.Ncons) + "," + str(self.N) + ")." )
-                return False
-
-        return True
-
 
 
 class SparseProblem( Problem ):
     """
-    General nonlinear programming optimization problem.
+    General nonlinear programming optimization problem with sparse gradient matrices.
     Requires a nonlinear objective function and its gradient.
     Accepts box, linear, and nonlinear constraints.
+
     """
 
     def __init__( self, N, Ncons=0, Nconslin=0 ):
@@ -405,18 +325,23 @@ class SparseProblem( Problem ):
 
     def objGrad( self, objg, pattern=None ):
         """
-        Set objective gradient.
+        sets objective gradient of the form: objg(x) + A, where A is defined in objFctn.
 
         Arguments:
-        objg  gradient function, must return a one-dimensional array of size N.
+        objg: objective gradient receiving an output array of size (N,) and an optimization
+              vector of size (N,), e.g.:
 
-        def objg(x):
-            return np.array( [2,-1] )
-        prob.objGrad( objg )
+              def objg( out, x ):
+                  out[:] = 2 * x
+
+        pattern: array of size (N,) whose zero entries mark constant zero entries in the output
+                 of objg()
+
         """
+
         Problem.objGrad( self, objg )
 
-        if( not pattern is None ):
+        if( pattern is not None ):
             self.objgpattern = np.asfortranarray( pattern, dtype=np.int )
 
             if( self.objgpattern.shape != ( self.N, ) ):
@@ -425,21 +350,24 @@ class SparseProblem( Problem ):
 
     def consGrad( self, consg, pattern=None ):
         """
-        Set nonlinear constraints gradient.
+        sets constraint gradient of the form: consg(x) + A, where A is defined in consFctn.
 
         Arguments:
-        consg  constraint gradient, must return a two-dimensional array of
-               size (Ncons,N), where entry [i,j] is the derivative of i-th
-               constraint w.r.t. the j-th variables.
+        consg: constraint gradient receiving an output array of size (Ncons,N) and an optimization
+               vector of size (N,), e.g.:
 
-        def consg(x):
-            return np.array( [ [ 2*x[0], 8*x[1] ],
-                               [ 2*(x[0]-2), 2*x[1] ] ] )
-        prob.consGrad( consg )
+               def consg( out, x ):
+                   for k in range( Ncons ):
+                       out[k,:] = 2 * k * x
+
+        pattern: array of size (Ncons,N) whose zero entries mark constant zero entries in the output
+                 of consg()
+
         """
+
         Problem.consGrad( self, consg )
 
-        if( not pattern is None ):
+        if( pattern is not None ):
             self.consgpattern = np.asfortranarray( pattern, dtype=np.int )
 
             if( self.consgpattern.shape != ( self.Ncons, self.N ) ):
@@ -447,6 +375,53 @@ class SparseProblem( Problem ):
                                   + "," + str(self.N) + ")." )
 
 
-    def checkPatterns( self ):
-        ## TODO
-        pass
+    def checkPattern( self, Ntries=100, debug=False ):
+        """
+        checks if sparse patterns cover all nonzero entries in user defined gradients by
+        evaluating objg() and consg() at random points drawn from a Gaussian distribution.
+
+        Arguments:
+        Ntries: number of random tries. (default: 100).
+        debug:  boolean to enable extra debug information. (default: False).
+
+        Returns:
+        isCorrect: boolean, True if pattern covers all nonzero entries in the gradients.
+
+        """
+
+        if( self.objg is None or self.objgpattern is None ):
+            raise StandardError( "objective gradient and pattern must be set before check" )
+        if( self.Ncons > 0 and
+            ( self.consg is None or self.consgpattern is None ) ):
+            raise StandardError( "constraint gradient and pattern must be set before check" )
+
+        usrgrad = np.zeros( (self.Ncons + 1, self.N) )
+        if( self.Ncons > 0 ):
+            pattern = np.vstack( (self.objgpattern, self.consgpattern ) )
+        else:
+            pattern = self.objgpattern
+
+        for k in range( Ntries ):
+            point = np.random.randn( self.N )
+
+            self.objg( usrgrad[0,:], point )
+            if( self.Ncons > 0 ):
+                self.consg( usrgrad[1:,:], point )
+
+            err = np.zeros( (self.Ncons + 1, self.N) )
+            err[ pattern == 0 ] = usrgrad[ pattern == 0 ]
+            if( np.any( err ) ):
+                if( debug ):
+                    idx = np.unravel_index( np.argmax( np.abs(err) ), err.shape )
+                    if( idx[0] == 0 ):
+                        print( ">>> Pattern check failed. Found wrong nonzero value in " +
+                               "objg() at element {0}".format( idx[1] ) )
+                    else:
+                        print( ">>> Pattern check failed. Found wrong nonzero value in " +
+                               "consg() at element ({0},{1})".format( idx[0]-1, idx[1] ) )
+                return False
+
+        if( debug ):
+            print( ">>> Pattern check passed" )
+
+        return True

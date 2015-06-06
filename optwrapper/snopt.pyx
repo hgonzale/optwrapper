@@ -1021,16 +1021,24 @@ cdef class Solver( base.Solver ):
                        len( probname ), len( xnames ), len( Fnames ),
                        self.lencw[0]*8, self.lencw[0]*8 )
 
-        ## Reset warm start
-        self.Start[0] = 0
-
         ## Try to rename fortran print and summary files
         if( self.printOpts[ "printFile" ] != "" ):
-            os.rename( "fort." + str( printFileUnit[0] ), self.printOpts[ "printFile" ] )
+            try:
+                os.rename( "fort.{0}".format( printFileUnit[0] ),
+                           self.printOpts[ "printFile" ] )
+            except FileNotFoundError:
+                pass
 
         if( self.printOpts[ "summaryFile" ] != "" and
             self.printOpts[ "summaryFile" ] != "stdout" ):
-            os.rename( "fort." + str( summaryFileUnit[0] ), self.printOpts[ "summaryFile" ] )
+            try:
+                os.rename( "fort.{0}".format( summaryFileUnit[0] ),
+                           self.printOpts[ "summaryFile" ] )
+            except FileNotFoundError:
+                pass
+
+        ## Reset warm start
+        self.Start[0] = 0
 
         ## Save result to prob
         self.prob.soln = Soln()

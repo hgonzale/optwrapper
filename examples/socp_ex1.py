@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 from optwrapper import nlp, socp, snopt, npsol
 
 A = np.array( [ [1.0979, -.0105, .0167 ], [-.0105, 1.0481, .0825], [.0167, .0825, 1.1540] ] )
@@ -66,7 +67,9 @@ prob.consBoxState( -1 * np.ones( (prob.Nstates,) ), 2 * np.ones( (prob.Nstates,)
 prob.consBoxInput( -20 * np.ones( (prob.Ninputs,) ), 20 * np.ones( (prob.Ninputs,) ) )
 
 ( nlpprob, solndecode ) = prob.discForwardEuler( Nsamples = 30 )
-nlpprob.checkGrad( h=1e-6, etol=1e-4, point=None, debug=True )
+
+if( not nlpprob.checkGrad( debug=True ) ):
+    sys.exit( "Gradient check failed." )
 
 solver = snopt.Solver( nlpprob )
 solver.debug = True

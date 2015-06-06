@@ -249,7 +249,7 @@ class Problem:
         Nsamples: number of discrete time samples
 
         Returns:
-        feuler: nlp.SparseProblem instance
+        feuler:     nlp.SparseProblem instance
         solnDecode: function to decode final nonlinear programming vector
 
         """
