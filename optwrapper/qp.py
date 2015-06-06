@@ -51,7 +51,7 @@ class Problem:
         sets initial value for optimization variables.
 
         Arguments:
-        init: initial condition, must be an array of size (N,) (default: zeros).
+        init: initial condition, must be an array of size (N,). (default: zeros).
 
         """
 
@@ -63,11 +63,11 @@ class Problem:
 
     def consBox( self, lb, ub ):
         """
-        sets box constraints
+        sets box constraints.
 
         Arguments:
-        lb: lower bounds, array of size (N,)
-        ub: upper bounds, array of size (N,)
+        lb: lower bounds, array of size (N,).
+        ub: upper bounds, array of size (N,).
 
         """
 
@@ -81,12 +81,12 @@ class Problem:
 
     def consLinear( self, A, lb=None, ub=None ):
         """
-        sets linear constraints
+        sets linear constraints.
 
         Arguments:
         A:  linear constraint matrix, array of size (Nconslin,N).
-        lb: lower bounds, array of size (Nconslin,). (default: -inf)
-        ub: upper bounds, array of size (Nconslin,). (default: zeros)
+        lb: lower bounds, array of size (Nconslin,). (default: -inf).
+        ub: upper bounds, array of size (Nconslin,). (default: zeros).
 
         """
 
@@ -112,7 +112,7 @@ class Problem:
 
     def objFctn( self, Q=None, L=None ):
         """
-        sets objective function of the form: 0.5 * x.dot(Q).dot(x) + L.dot(x)
+        sets objective function of the form: 0.5 * x.dot(Q).dot(x) + L.dot(x).
 
         Arguments:
         Q: array of size (N,N) for quadratic terms in the objective. (default: identity)

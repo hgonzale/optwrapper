@@ -7,7 +7,7 @@ cimport numpy as cnp
 import numpy as np
 import os
 
-from .f2ch cimport *
+from .typedefs cimport *  ## typedefs from f2c.h
 cimport snopth as snopt
 cimport utils
 cimport base
@@ -765,21 +765,11 @@ cdef class Solver( base.Solver ):
         ## Handle debug files
         if( self.printOpts[ "printFile" ] == "" ):
             printFileUnit[0] = 0
-        # else:
-        #     fh.openfile_( printFileUnit, printFile, inform_out,
-        #                   len( self.printOpts[ "printFile" ] ) )
-        #     if( inform_out[0] != 0 ):
-        #         raise IOError( "Could not open file " + self.printOpts[ "printFile" ] )
 
         if( self.printOpts[ "summaryFile" ] == "stdout" ):
             summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
         elif( self.printOpts[ "summaryFile" ] == "" ):
             summaryFileUnit[0] = 0 ## Disable, pg. 6
-        # else:
-        #     fh.openfile_( summaryFileUnit, summaryFile, inform_out,
-        #                   len( self.printOpts[ "summaryFile" ] ) )
-        #     if( inform_out[0] != 0 ):
-        #         raise IOError( "Could not open file " + self.printOpts[ "summaryFile" ] )
 
         ## Initialize
         snopt.sninit_( printFileUnit, summaryFileUnit,

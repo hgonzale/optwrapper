@@ -7,9 +7,8 @@ cimport numpy as cnp
 import numpy as np
 import os
 
-from .f2ch cimport *      ## tydefs from f2c.h
-cimport npsolh as npsol  ## import every function exposed in npsol.h
-# cimport filehandler as fh
+from .typedefs cimport *  ## typedefs from f2c.h
+cimport npsolh as npsol   ## import every function exposed in npsol.h
 cimport utils
 cimport base
 import nlp
@@ -313,111 +312,10 @@ cdef class Solver( base.Solver ):
         return True
 
 
-    def checkPrintOpts( self ):
-        """
-        Check if dictionary self.printOpts is valid.
-
-        Optional entries:
-        printFile        filename for debug information (default: "")
-        printLevel       verbosity level for major iterations (0-None, 1, 5, 10, 20, or 30-Full)
-        minorPrintLevel  verbosity level for minor iterations (0-None, 1, 5, 10, 20, or 30-Full)
-        """
-        if( not super().checkPrintOpts() ):
-            return False
-
-        ## printLevel and minorPrintLevel
-        if( not utils.isInt( self.printOpts[ "printLevel" ] ) or
-            not utils.isInt( self.printOpts[ "minorPrintLevel" ] ) ):
-            print( "printOpts['printLevel'] and printOpts['minorPrintLevel'] must be integers" )
-            return False
-        if( self.printOpts[ "printFile" ] == "" and
-            self.printOpts[ "printLevel" ] > 0 ):
-            print( "Debug information is ignored whenever printOpts['printFile'] is empty " +
-                   "and printOpts['printLevel'] > 0" )
-
-        return True
-
-
-    def checkSolveOpts( self ):
-        """
-        Check if dictionary self.solveOpts is valid.
-
-        Optional entries:
-        infValue        Value above which is considered infinity (default: 1e20)
-        iterLimit       Maximum number of iterations (default: max{50,3*(N+Nconslin)+10*Ncons})
-        minorIterLimit  Maximum number of minor iterations (default: max{50,3*(N+Nconslin)+10*Ncons})
-        lineSearchTol   Line search tolerance parameter (default: 0.9)
-        """
-        if( not super().checkSolveOpts() ):
-            return False
-
-        ## infValue
-        if( not utils.isFloat( self.solveOpts[ "infValue" ] ) ):
-            print( "solveOpts['infValue'] must be float" )
-            return False
-        if( self.solveOpts[ "infValue" ] < 0 ):
-            print( "solveOpts['infValue'] must be positive" )
-            return False
-        elif( self.solveOpts[ "infValue" ] > 1e20 ):
-            print( "Values for solveOpts['infValue'] above 1e20 are ignored" )
-            return False
-
-        ## lineSearchTol
-        if( not utils.isFloat( self.solveOpts[ "lineSearchTol" ] ) ):
-            print( "solveOpts['lineSearchTol'] must be float" )
-            return False
-        if( self.solveOpts[ "lineSearchTol" ] < 0 or
-            self.solveOpts[ "lineSearchTol" ] >= 1 ):
-            print( "solveOpts['lineSearchTol'] must belong to the interval [0,1)" )
-            return False
-
-        ## iterLimit
-        if( not utils.isInt( self.solveOpts[ "iterLimit" ] ) ):
-            print( "solveOpts['iterLimit'] must be integer" )
-            return False
-        if( self.solveOpts[ "iterLimit" ] < self.default_iter_limit ):
-            print( "Values for solveOpts['iterLimit'] below "
-                   + str( self.default_iter_limit ) + " are ignored" )
-
-        ## minorIterLimit
-        if( not utils.isInt( self.solveOpts[ "minorIterLimit" ] ) ):
-            print( "solveOpts['minorIterLimit'] must be integer" )
-            return False
-        if( self.solveOpts[ "minorIterLimit" ] < self.default_iter_limit ):
-            print( "Values for solveOpts['minorIterLimit'] below "
-                   + str( self.default_iter_limit ) + " are ignored" )
-
-        ## fctnPrecision
-        if( not utils.isFloat( self.solveOpts[ "fctnPrecision" ] ) ):
-            print( "solveOpts['fctnPrecision'] must be float" )
-            return False
-        if( self.solveOpts[ "fctnPrecision" ] < self.default_fctn_prec ):
-            print( "Values for solveOpts['fctnPrecision'] below "
-                   + str( self.default_fctn_prec ) + " are ignored" )
-
-        ## feasibilityTol
-        if( not utils.isFloat( self.solveOpts[ "feasibilityTol" ] ) ):
-            print( "solveOpts['feasibilityTol'] must be float" )
-            return False
-        if( self.solveOpts[ "feasibilityTol" ] < self.default_tol ):
-            print( "Values for solveOpts['feasiblityTol'] below "
-                   + str( self.default_tol ) + " are ignored" )
-
-        ## optimalityTol
-        if( not utils.isFloat( self.solveOpts[ "optimalityTol" ] ) ):
-            print( "solveOpts['optimalityTol'] must be float" )
-            return False
-        if( self.solveOpts[ "optimalityTol" ] < np.power( self.default_fctn_prec, 0.8 ) ):
-            print( "Values for solveOpts['optimalityTol'] below "
-                   + str( np.power( self.default_fctn_prec, 0.8 ) ) + " are ignored" )
-
-        return True
-
-
     def solve( self ):
-        cdef bytes printFileTmp = self.printOpts[ "printFile" ].encode() ## temp container
+        cdef bytes printFileTmp = self.printOpts[ "printFile" ].encode( "latin_1" )
         cdef char* printFile = printFileTmp
-        cdef bytes summaryFileTmp = self.printOpts[ "summaryFile" ].encode() ## temp container
+        cdef bytes summaryFileTmp = self.printOpts[ "summaryFile" ].encode( "latin_1" )
         cdef char* summaryFile = summaryFileTmp
         cdef integer* summaryFileUnit = [ 89 ] ## Hardcoded since nobody cares
         cdef integer* printFileUnit = [ 90 ] ## Hardcoded since nobody cares
@@ -452,21 +350,11 @@ cdef class Solver( base.Solver ):
         ## Handle debug files
         if( self.printOpts[ "printFile" ] == "" ):
             printFileUnit[0] = 0
-        # else:
-        #     fh.openfile_( printFileUnit, printFile, inform_out,
-        #                   len( self.printOpts[ "printFile" ] ) )
-        #     if( inform_out[0] != 0 ):
-        #         raise IOError( "Could not open file " + self.printOpts[ "printFile" ] )
 
         if( self.printOpts[ "summaryFile" ] == "stdout" ):
             summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
         elif( self.printOpts[ "summaryFile" ] == "" ):
             summaryFileUnit[0] = 0 ## Disable, pg. 6
-        # else:
-        #     fh.openfile_( summaryFileUnit, summaryFile, inform_out,
-        #                   len( self.printOpts[ "summaryFile" ] ) )
-        #     if( inform_out[0] != 0 ):
-        #         raise IOError( "Could not open file " + self.printOpts[ "summaryFile" ] )
 
         npsol.npopti_( STR_PRINT_FILE, printFileUnit, len( STR_PRINT_FILE ) )
         npsol.npopti_( STR_SUMMARY_FILE, summaryFileUnit, len( STR_SUMMARY_FILE ) )
@@ -526,13 +414,19 @@ cdef class Solver( base.Solver ):
 
         ## Try to rename fortran print and summary files
         if( self.printOpts[ "printFile" ] != "" ):
-            # fh.closefile_( printFileUnit )
-            os.rename( "fort." + str( printFileUnit[0] ), self.printOpts[ "printFile" ] )
+            try:
+                os.rename( "fort.{0}".format( printFileUnit[0] ),
+                           self.printOpts[ "printFile" ] )
+            except:
+                pass
 
         if( self.printOpts[ "summaryFile" ] != "" and
             self.printOpts[ "summaryFile" ] != "stdout" ):
-            # fh.closefile_( summaryFileUnit )
-            os.rename( "fort." + str( summaryFileUnit[0] ), self.printOpts[ "summaryFile" ] )
+            try:
+                os.rename( "fort.{0}".format( summaryFileUnit[0] ),
+                           self.printOpts[ "summaryFile" ] )
+            except:
+                pass
 
         ## Save result to prob
         self.prob.soln = Soln()
