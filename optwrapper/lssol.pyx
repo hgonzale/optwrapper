@@ -40,7 +40,7 @@ cdef class Soln( base.Soln ):
         if( self.retval < 0 or self.retval >= 7 ):
             return "Invalid return value"
         else:
-            return self.statusInfo[ self.retval ]
+            return statusInfo[ self.retval ]
 
 cdef enum prob_t:
     fp, lp, qp1, qp2, qp3, qp4, ls1, ls2, ls3, ls4

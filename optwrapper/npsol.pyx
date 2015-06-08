@@ -96,7 +96,7 @@ cdef class Soln( base.Soln ):
         elif( self.retval >= 10 ):
             return "Invalid return value"
         else:
-            return self.statusInfo[ self.retval ]
+            return statusInfo[ self.retval ]
 
 
 cdef class Solver( base.Solver ):
@@ -149,6 +149,7 @@ cdef class Solver( base.Solver ):
         self.solveOpts[ "iterLimit" ] = None
         self.solveOpts[ "lineSearchTol" ] = None
         self.solveOpts[ "minorIterLimit" ] = None
+        self.solveOpts[ "optimalityTol" ] = None
         self.solveOpts[ "stepLimit" ] = None
         self.solveOpts[ "verifyLevel" ] = None
 
