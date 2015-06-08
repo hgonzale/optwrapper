@@ -13,22 +13,6 @@ cimport utils
 cimport base
 import nlp
 
-## NPSOL's option strings
-cdef char* STR_NOLIST = "Nolist"
-cdef char* STR_PRINT_FILE = "Print file"
-cdef char* STR_SUMMARY_FILE = "Summary file"
-cdef char* STR_PRINT_LEVEL = "Print level"
-cdef char* STR_MINOR_PRINT_LEVEL = "Minor print level"
-cdef char* STR_INFINITE_BOUND_SIZE = "Infinite bound size"
-cdef char* STR_ITERATION_LIMIT = "Iteration limit"
-cdef char* STR_MINOR_ITERATION_LIMIT = "Minor iteration limit"
-cdef char* STR_LINE_SEARCH_TOLERANCE = "Line search tolerance"
-cdef char* STR_FEASIBILITY_TOLERANCE = "Feasibility tolerance"
-cdef char* STR_OPTIMALITY_TOLERANCE = "Optimality tolerance"
-cdef char* STR_FUNCTION_PRECISION = "Function precision"
-cdef char* STR_VERIFY_LEVEL = "Verify level"
-cdef char* STR_WARM_START = "Warm start"
-
 
 ## The functions funobj and funcon should be static methods in npsol.Solver,
 ## but it appears that Cython doesn't support static cdef methods yet.
@@ -87,23 +71,23 @@ cdef class Soln( base.Soln ):
     cdef public cnp.ndarray clamda
     cdef public cnp.ndarray R
     cdef public int Niters
-    cdef tuple statusInfo = ( "Optimality conditions satisfied", ## 0
-                              "Optimality conditions satisfied, but sequence has not converged", ## 1
-                              "Linear constraints could not be satisfied", ## 2
-                              "Nonlinear constraints could not be satisfied", ## 3
-                              "Iteration limit reached", ## 4
-                              "N/A",
-                              "Optimality conditions not satisfied, no improvement can be made", ## 6
-                              "Derivatives appear to be incorrect", ## 7
-                              "N/A",
-                              "Invalid input parameter" ) ## 9
-
 
     def __init__( self ):
         super().__init__()
         self.retval = 100
 
     def getStatus( self ):
+        cdef tuple statusInfo = ( "Optimality conditions satisfied", ## 0
+                                  "Optimality conditions satisfied, but sequence has not converged", ## 1
+                                  "Linear constraints could not be satisfied", ## 2
+                                  "Nonlinear constraints could not be satisfied", ## 3
+                                  "Iteration limit reached", ## 4
+                                  "N/A",
+                                  "Optimality conditions not satisfied, no improvement can be made", ## 6
+                                  "Derivatives appear to be incorrect", ## 7
+                                  "N/A",
+                                  "Invalid input parameter" ) ## 9
+
         if( self.retval == 100 ):
             return "Return information is not defined yet"
 
@@ -135,9 +119,6 @@ cdef class Solver( base.Solver ):
     cdef doublereal *R
 
     cdef int nctotl
-    cdef int default_iter_limit
-    cdef float default_tol
-    cdef float default_fctn_prec
     cdef int warm_start
     cdef int mem_alloc
     cdef int mem_size[3] ## { N, Nconslin, Ncons }
@@ -148,26 +129,28 @@ cdef class Solver( base.Solver ):
 
         self.mem_alloc = False
         self.mem_size[0] = self.mem_size[1] = self.mem_size[2] = 0
-        self.default_tol = np.sqrt( np.spacing(1) ) ## pg. 24
-        self.default_fctn_prec = np.power( np.spacing(1), 0.9 ) ## pg. 24
         self.prob = None
 
         if( prob ):
             self.setupProblem( prob )
 
         ## Set print options
-        self.printOpts[ "summaryFile" ] = "stdout"
-        self.printOpts[ "printLevel" ] = 0
-        self.printOpts[ "minorPrintLevel" ] = 0
+        self.printOpts[ "summaryFile" ] = None
+        self.printOpts[ "printLevel" ] = None
+        self.printOpts[ "minorPrintLevel" ] = None
         ## Set solve options
-        self.solveOpts[ "infValue" ] = 1e20
-        self.solveOpts[ "iterLimit" ] = self.default_iter_limit ## defined in setupProblem
-        self.solveOpts[ "minorIterLimit" ] = self.default_iter_limit ## defined in setupProblem
-        self.solveOpts[ "lineSearchTol" ] = 0.9
-        self.solveOpts[ "fctnPrecision" ] = 0 ## Invalid value
-        self.solveOpts[ "feasibilityTol" ] = 0 ## Invalid value
-        self.solveOpts[ "optimalityTol" ] = 0 ## Invalid value
-        self.solveOpts[ "verifyGrad" ] = False
+        self.solveOpts[ "centralDiffInterval" ] = None
+        self.solveOpts[ "crashTol" ] = None
+        self.solveOpts[ "diffInterval" ] = None
+        self.solveOpts[ "feasibilityTol" ] = None
+        self.solveOpts[ "fctnPrecision" ] = None
+        self.solveOpts[ "infBoundSize" ] = None
+        self.solveOpts[ "infStepSize" ] = None
+        self.solveOpts[ "iterLimit" ] = None
+        self.solveOpts[ "lineSearchTol" ] = None
+        self.solveOpts[ "minorIterLimit" ] = None
+        self.solveOpts[ "stepLimit" ] = None
+        self.solveOpts[ "verifyLevel" ] = None
 
 
     def setupProblem( self, prob ):
@@ -197,7 +180,6 @@ cdef class Solver( base.Solver ):
         self.lenw[0] = ( 2 * prob.N * prob.N + prob.N * prob.Nconslin
                          + 2 * prob.N * prob.Ncons + 20 * prob.N + 11 * prob.Nconslin
                          + 21 * prob.Ncons ) ## pg. 7
-        self.default_iter_limit = max( 50, 3*( prob.N + prob.Nconslin ) + 10*prob.Ncons ) ## pg. 25
 
         ## Allocate if necessary
         if( not self.mem_alloc ):
@@ -313,23 +295,50 @@ cdef class Solver( base.Solver ):
 
 
     def solve( self ):
+        ## Option strings
+        cdef char* STR_NOLIST = "Nolist"
+        cdef char* STR_DEFAULTS = "Defaults"
+        cdef char* STR_WARM_START = "Warm Start"
+        cdef char* STR_CENTRAL_DIFFERENCE_INTERVAL = "Central Difference Interval"
+        cdef char* STR_CRASH_TOLERANCE = "Crash Tolerance"
+        cdef char* STR_DIFFERENCE_INTERVAL = "Difference Interval"
+        cdef char* STR_FEASIBILITY_TOLERANCE = "Feasibility Tolerance"
+        cdef char* STR_FUNCTION_PRECISION = "Function Precision"
+        cdef char* STR_HESSIAN_YES = "Hessian Yes"
+        cdef char* STR_INFINITE_BOUND_SIZE = "Infinite Bound Size"
+        cdef char* STR_INFINITE_STEP_SIZE = "Infinite Step Size"
+        cdef char* STR_ITERATION_LIMIT = "Iteration Limit"
+        cdef char* STR_LINE_SEARCH_TOLERANCE = "Line Search Tolerance"
+        cdef char* STR_PRINT_LEVEL = "Print Level"
+        cdef char* STR_MINOR_ITERATION_LIMIT = "Minor Iteration Limit"
+        cdef char* STR_MINOR_PRINT_LEVEL = "Minor Print Level"
+        cdef char* STR_OPTIMALITY_TOLERANCE = "Optimality Tolerance"
+        cdef char* STR_PRINT_FILE = "Print File"
+        cdef char* STR_STEP_LIMIT = "Step Limit"
+        cdef char* STR_SUMMARY_FILE = "Summary File"
+        cdef char* STR_VERIFY_LEVEL = "Verify Level"
+
         cdef bytes printFileTmp = self.printOpts[ "printFile" ].encode( "latin_1" )
         cdef char* printFile = printFileTmp
         cdef bytes summaryFileTmp = self.printOpts[ "summaryFile" ].encode( "latin_1" )
         cdef char* summaryFile = summaryFileTmp
-        cdef integer* summaryFileUnit = [ 89 ] ## Hardcoded since nobody cares
-        cdef integer* printFileUnit = [ 90 ] ## Hardcoded since nobody cares
-        cdef integer* printLevel = [ self.printOpts[ "printLevel" ] ]
-        cdef integer* minorPrintLevel = [ self.printOpts[ "minorPrintLevel" ] ]
-        cdef doublereal* infValue = [ self.solveOpts["infValue"] ]
-        cdef integer* iterLimit = [ self.solveOpts[ "iterLimit" ] ]
-        cdef integer* minorIterLimit = [ self.solveOpts[ "minorIterLimit" ] ]
-        cdef doublereal* lineSearchTol = [ self.solveOpts["lineSearchTol"] ]
-        cdef doublereal* fctnPrecision = [ self.solveOpts["fctnPrecision"] ]
-        cdef doublereal* feasiblityTol = [ self.solveOpts["feasibilityTol"] ]
-        cdef doublereal* optimalityTol = [ self.solveOpts["optimalityTol"] ]
+        cdef integer summaryFileUnit[1]
+        cdef integer printFileUnit[1]
+        cdef doublereal centralDiffInterval[1]
+        cdef doublereal crashTol[1]
+        cdef doublereal diffInterval[1]
+        cdef doublereal feasibilityTol[1]
+        cdef doublereal fctnPrecision[1]
+        cdef doublereal infBoundSize[1]
+        cdef doublereal infStepSize[1]
+        cdef integer iterLimit[1]
+        cdef doublereal lineSearchTol[1]
+        cdef integer printLevel[1]
+        cdef integer minorIterLimit[1]
+        cdef integer minorPrintLevel[1]
+        cdef doublereal optimalityTol[1]
+        cdef doublereal stepLimit[1]
         cdef integer verifyLevel[1]
-        cdef float tmpPrec
 
         cdef integer *n = [ self.prob.N ]
         cdef integer *nclin = [ self.prob.Nconslin ]
@@ -339,67 +348,104 @@ cdef class Solver( base.Solver ):
         cdef doublereal objf_val[1]
 
         ## Begin by setting up initial condition
-        tmpinit = utils.convFortran( self.prob.init )
-        memcpy( self.x, utils.getPtr( tmpinit ),
+        memcpy( self.x, utils.getPtr( utils.convFortran( self.prob.init ) ),
                 self.prob.N * sizeof( doublereal ) )
 
-        ## Set all options
-        ## Supress echo options
+        ## Supress echo options and reset optional values, pg. 21
         npsol.npoptn_( STR_NOLIST, len( STR_NOLIST ) )
+        npsol.npoptn_( STR_DEFAULTS, len( STR_DEFAULTS ) )
 
         ## Handle debug files
-        if( self.printOpts[ "printFile" ] == "" ):
-            printFileUnit[0] = 0
+        if( self.printOpts[ "printFile" ] is not None ):
+            printFileUnit[0] = 90 ## Hardcoded since nobody cares
+        else:
+            printFileUnit[0] = 0 ## disabled by default, pg. 27
 
         if( self.printOpts[ "summaryFile" ] == "stdout" ):
             summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
-        elif( self.printOpts[ "summaryFile" ] == "" ):
-            summaryFileUnit[0] = 0 ## Disable, pg. 6
+        elif( self.printOpts[ "summaryFile" ] is not None ):
+            summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
+        else:
+            summaryFileUnit[0] = 0 ## disabled by default, pg. 28
 
         npsol.npopti_( STR_PRINT_FILE, printFileUnit, len( STR_PRINT_FILE ) )
         npsol.npopti_( STR_SUMMARY_FILE, summaryFileUnit, len( STR_SUMMARY_FILE ) )
 
-        ## Set major and minor print levels
-        npsol.npopti_( STR_PRINT_LEVEL, printLevel, len( STR_PRINT_LEVEL ) )
-        npsol.npopti_( STR_MINOR_PRINT_LEVEL, minorPrintLevel, len( STR_MINOR_PRINT_LEVEL ) )
-
-        ## Set infinite bound value if necessary
-        if( self.solveOpts["infValue"] < 1e20 ):
-            npsol.npoptr_( STR_INFINITE_BOUND_SIZE, infValue, len( STR_INFINITE_BOUND_SIZE ) )
-
-        ## Set major and minor iteration limits if necessary
-        if( self.solveOpts["iterLimit"] > self.default_iter_limit ):
-            npsol.npopti_( STR_ITERATION_LIMIT, iterLimit, len( STR_ITERATION_LIMIT ) )
-        if( self.solveOpts["minorIterLimit"] > self.default_iter_limit ):
-            npsol.npopti_( STR_MINOR_ITERATION_LIMIT, minorIterLimit,
-                           len( STR_MINOR_ITERATION_LIMIT ) )
-
-        ## Set line search tolerance value
-        npsol.npoptr_( STR_LINE_SEARCH_TOLERANCE, lineSearchTol, len( STR_LINE_SEARCH_TOLERANCE ) )
-
-        ## Set fctn precision, and feasibility and optimality tolerances
-        tmpPrec = self.default_fctn_prec
-        if( self.solveOpts["fctnPrecision"] > self.default_fctn_prec ):
-            tmpPrec = self.solveOpts["fctnPrecision"]
-            npsol.npoptr_( STR_FUNCTION_PRECISION, fctnPrecision,
-                           len( STR_FUNCTION_PRECISION ) )
-        if( self.solveOpts["feasibilityTol"] > self.default_tol ):
-            npsol.npoptr_( STR_FEASIBILITY_TOLERANCE, feasiblityTol,
-                           len( STR_FEASIBILITY_TOLERANCE ) )
-        if( self.solveOpts["optimalityTol"] > np.power( tmpPrec, 0.8 ) ):
-            npsol.npoptr_( STR_OPTIMALITY_TOLERANCE, optimalityTol,
-                           len( STR_OPTIMALITY_TOLERANCE ) )
-
-        ## Set verify level if required, pg. 29
-        if( self.solveOpts["verifyGrad"] ):
-            verifyLevel[0] = 3 ## Check both obj and cons
-        else:
-            verifyLevel[0] = -1 ## Disabled
-        npsol.npopti_( STR_VERIFY_LEVEL, verifyLevel, len( STR_VERIFY_LEVEL ) )
+        ## Set optional parameters, pg. 22
+        if( self.solveOpts[ "centralDiffInterval" ] is not None ):
+            centralDiffInterval[0] = self.solveOpts[ "centralDiffInterval" ]
+            npsol.npoptr_( STR_CENTRAL_DIFFERENCE_INTERVAL, centralDiffInterval,
+                           len( STR_CENTRAL_DIFFERENCE_INTERVAL ) )
 
         if( self.warm_start ):
             npsol.npoptn_( STR_WARM_START, len( STR_WARM_START ) )
+            ## follow recommendation in pg. 24
+            npsol.npoptn_( STR_HESSIAN_YES, len( STR_HESSIAN_YES ) )
             self.warm_start = False ## Reset variable
+
+        if( self.solveOpts[ "crashTol" ] is not None ):
+            crashTol[0] = self.solveOpts[ "crashTol" ]
+            npsol.npoptr_( STR_CRASH_TOLERANCE, crashTol, len( STR_CRASH_TOLERANCE ) )
+
+        if( self.solveOpts[ "diffInterval" ] is not None ):
+            diffInterval[0] = self.solveOpts[ "diffInterval" ]
+            npsol.npoptr_( STR_DIFFERENCE_INTERVAL, diffInterval,
+                           len( STR_DIFFERENCE_INTERVAL ) )
+
+        if( self.solveOpts[ "feasibilityTol" ] is not None ):
+            feasibilityTol[0] = self.solveOpts[ "feasibilityTol" ]
+            npsol.npoptr_( STR_FEASIBILITY_TOLERANCE, feasibilityTol,
+                           len( STR_FEASIBILITY_TOLERANCE ) )
+
+        if( self.solveOpts[ "fctnPrecision" ] is not None ):
+            fctnPrecision[0] = self.solveOpts[ "fctnPrecision" ]
+            npsol.npoptr_( STR_FUNCTION_PRECISION, fctnPrecision,
+                           len( STR_FUNCTION_PRECISION ) )
+
+        if( self.solveOpts[ "infBoundSize" ] is not None ):
+            infBoundSize[0] = self.solveOpts[ "infBoundSize" ]
+            npsol.npoptr_( STR_INFINITE_BOUND_SIZE, infBoundSize, len( STR_INFINITE_BOUND_SIZE ) )
+
+        if( self.solveOpts[ "infStepSize" ] is not None ):
+            infStepSize[0] = self.solveOpts[ "infStepSize" ]
+            npsol.npoptr_( STR_INFINITE_STEP_SIZE, infStepSize, len( STR_INFINITE_STEP_SIZE ) )
+
+        if( self.solveOpts[ "iterLimit" ] is not None ):
+            iterLimit[0] = self.solveOpts["iterLimit"]
+            npsol.npopti_( STR_ITERATION_LIMIT, iterLimit, len( STR_ITERATION_LIMIT ) )
+
+        if( self.printOpts[ "printLevel" ] is not None ):
+            printLevel[0] = self.printOpts[ "printLevel" ]
+            npsol.npopti_( STR_PRINT_LEVEL, printLevel, len( STR_PRINT_LEVEL ) )
+
+        if( self.solveOpts[ "lineSearchTol" ] is not None ):
+            lineSearchTol[0] = self.solveOpts[ "lineSearchTol" ]
+            npsol.npoptr_( STR_LINE_SEARCH_TOLERANCE, lineSearchTol,
+                           len( STR_LINE_SEARCH_TOLERANCE ) )
+
+        if( self.solveOpts[ "minorIterLimit" ] is not None ):
+            minorIterLimit[0] = self.solveOpts[ "minorIterLimit" ]
+            npsol.npopti_( STR_MINOR_ITERATION_LIMIT, minorIterLimit,
+                           len( STR_MINOR_ITERATION_LIMIT ) )
+
+        if( self.printOpts[ "minorPrintLevel" ] is not None ):
+            minorPrintLevel[0] = self.printOpts[ "minorPrintLevel" ]
+            npsol.npopti_( STR_MINOR_PRINT_LEVEL, minorPrintLevel, len( STR_MINOR_PRINT_LEVEL ) )
+
+        if( self.solveOpts[ "optimalityTol" ] is not None ):
+            optimalityTol[0] = self.solveOpts[ "optimalityTol" ]
+            npsol.npoptr_( STR_OPTIMALITY_TOLERANCE, optimalityTol,
+                           len( STR_OPTIMALITY_TOLERANCE ) )
+
+        if( self.solveOpts[ "stepLimit" ] is not None ):
+            stepLimit[0] = self.solveOpts["stepLimit"]
+            npsol.npoptr_( STR_STEP_LIMIT, stepLimit, len( STR_STEP_LIMIT ) )
+
+        if( self.solveOpts[ "verifyLevel" ] is not None ):
+            verifyLevel[0] = self.solveOpts[ "verifyLevel" ]
+        else:
+            verifyLevel[0] = -1 ## disabled by default, pg. 28
+        npsol.npopti_( STR_VERIFY_LEVEL, verifyLevel, len( STR_VERIFY_LEVEL ) )
 
         ## Call NPSOL
         npsol.npsol_( n, nclin,

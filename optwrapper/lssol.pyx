@@ -6,6 +6,7 @@ from libc.stdlib cimport malloc, free
 cimport numpy as cnp
 import numpy as np
 import sys
+import os
 
 from .typedefs cimport *  ## typedefs from f2c.h
 cimport lssolh as lssol   ## import every function exposed in lssol.h
@@ -18,20 +19,21 @@ cdef class Soln( base.Soln ):
     cdef public cnp.ndarray istate
     cdef public cnp.ndarray clamda
     cdef public int Niters
-    ## pg. 10
-    cdef tuple statusInfo = ( "Strong local minimum (likely unique)", ## 0
-                              "Weak local minimum (likely not unique)", ## 1
-                              "Solution appears to be unbounded", ## 2
-                              "No feasible point found", ## 3
-                              "Iteration limit reached", ## 4
-                              "Algorithm likely cycling, point has not changed in 50 iters.", ## 5
-                              "Invalid input parameter" ) ## 6
 
     def __init__( self ):
         super().__init__()
         self.retval = 100
 
     def getStatus( self ):
+        ## pg. 10
+        cdef tuple statusInfo = ( "Strong local minimum (likely unique)", ## 0
+                                  "Weak local minimum (likely not unique)", ## 1
+                                  "Solution appears to be unbounded", ## 2
+                                  "No feasible point found", ## 3
+                                  "Iteration limit reached", ## 4
+                                  "Algorithm likely cycling, point has not changed in 50 iters.", ## 5
+                                  "Invalid input parameter" ) ## 6
+
         if( self.retval == 100 ):
             return "Return information is not defined yet"
 
@@ -62,8 +64,6 @@ cdef class Solver( base.Solver ):
     cdef doublereal *cVec
     cdef prob_t prob_type
 
-    cdef int default_iter_limit
-    cdef float default_fctn_prec
     cdef int warm_start
     cdef int mem_alloc
     cdef int mem_size[2] ## { N, Nconslin }
@@ -116,7 +116,6 @@ cdef class Solver( base.Solver ):
             self.nrowC[0] = prob.Nconslin
         self.leniw[0] = prob.N ## pg. 11
         self.lenw[0] = ( 2 * prob.N * prob.N + 10 * prob.N + 6 * prob.Nconslin ) ## pg. 11, case QP2
-        self.default_iter_limit = max( 50, 5 * ( prob.N + probl.Nconslin ) )
 
         ## Allocate if necessary
         if( not self.mem_alloc ):
@@ -261,6 +260,14 @@ cdef class Solver( base.Solver ):
         lssol.lsoptn_( STR_NOLIST, len( STR_NOLIST ) )
         lssol.lsoptn_( STR_DEFAULTS, len( STR_DEFAULTS ) )
 
+        ## Redirect stdout to printFile
+        if( self.printOpts[ "printFile" ] != "stdout" ):
+            stdout = sys.stdout
+            if( self.printOpts[ "printFile" ] is not None ):
+                sys.stdout = open( self.printOpts[ "printFile" ], "w" )
+            else:
+                sys.stdout = open( os.devnull, "w" )
+
         ## Set optional parameters, pg. 14
         if( self.warm_start ):
             lssol.lsoptn_( STR_WARM_START, len( STR_WARM_START ) )
@@ -279,7 +286,7 @@ cdef class Solver( base.Solver ):
 
         if( self.solveOpts[ "feasibilityTol" ] is not None ):
             feasibilityTol[0] = self.solveOpts[ "feasibilityTol" ]
-            lssol.lsoptr_( STR_FEASIBILITY_TOLERANCE, feasiblityTol,
+            lssol.lsoptr_( STR_FEASIBILITY_TOLERANCE, feasibilityTol,
                            len( STR_FEASIBILITY_TOLERANCE ) )
 
         if( self.solveOpts[ "infBoundSize" ] is not None ):
@@ -307,10 +314,6 @@ cdef class Solver( base.Solver ):
         else:
             raise NotImplementedError( "Problem Type not implemented" )
 
-        if( self.printOpts[ "printFile" ] is not None ):
-            stdout = sys.stdout
-            sys.stdout = open( self.printOpts[ "printFile" ], "w" )
-
         ## Call NPSOL
         lssol.lssol_( n, n,
                       nclin, self.nrowC, n,
@@ -319,9 +322,12 @@ cdef class Solver( base.Solver ):
                       inform_out, iter_out, objf_val, self.clamda,
                       self.iw, self.leniw, self.w, self.lenw )
 
-        if( self.printOpts[ "printFile" ] is not None ):
-            close( sys.stdout )
+        ## Close printFile when possible, return stdout to normal
+        try:
+            sys.stdout.close()
             sys.stdout = stdout
+        except:
+            pass
 
         ## Save result to prob
         self.prob.soln = Soln()
