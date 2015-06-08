@@ -5,6 +5,6 @@ cdef class Soln:
 
 cdef class Solver:
     def __init__( self ):
-        self.printOpts = { "printFile":"" }
+        self.printOpts = { "printFile": None }
         self.solveOpts = { }
         self.debug = False

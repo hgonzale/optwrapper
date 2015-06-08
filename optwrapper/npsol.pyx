@@ -29,17 +29,6 @@ cdef char* STR_FUNCTION_PRECISION = "Function precision"
 cdef char* STR_VERIFY_LEVEL = "Verify level"
 cdef char* STR_WARM_START = "Warm start"
 
-cdef tuple statusInfo = ( "Optimality conditions satisfied", ## 0
-                          "Optimality conditions satisfied, but sequence has not converged", ## 1
-                          "Linear constraints could not be satisfied", ## 2
-                          "Nonlinear constraints could not be satisfied", ## 3
-                          "Iteration limit reached", ## 4
-                          "N/A",
-                          "Optimality conditions not satisfied, no improvement can be made", ## 6
-                          "Derivatives appear to be incorrect", ## 7
-                          "N/A",
-                          "Invalid input parameter" ) ## 9
-
 
 ## The functions funobj and funcon should be static methods in npsol.Solver,
 ## but it appears that Cython doesn't support static cdef methods yet.
@@ -98,6 +87,17 @@ cdef class Soln( base.Soln ):
     cdef public cnp.ndarray clamda
     cdef public cnp.ndarray R
     cdef public int Niters
+    cdef tuple statusInfo = ( "Optimality conditions satisfied", ## 0
+                              "Optimality conditions satisfied, but sequence has not converged", ## 1
+                              "Linear constraints could not be satisfied", ## 2
+                              "Nonlinear constraints could not be satisfied", ## 3
+                              "Iteration limit reached", ## 4
+                              "N/A",
+                              "Optimality conditions not satisfied, no improvement can be made", ## 6
+                              "Derivatives appear to be incorrect", ## 7
+                              "N/A",
+                              "Invalid input parameter" ) ## 9
+
 
     def __init__( self ):
         super().__init__()
@@ -110,9 +110,9 @@ cdef class Soln( base.Soln ):
         if( self.retval < 0 ):
             return "Execution terminated by user defined function (should not occur)"
         elif( self.retval >= 10 ):
-            return "Invalid value"
+            return "Invalid return value"
         else:
-            return statusInfo[ self.retval ]
+            return self.statusInfo[ self.retval ]
 
 
 cdef class Solver( base.Solver ):

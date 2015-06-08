@@ -90,6 +90,9 @@ class Problem:
 
         """
 
+        if( self.Nconslin == 0 ):
+            raise ValueError( "cannot set linear constraints when Nconslin=0" )
+
         self.conslinA = np.asfortranarray( A )
 
         if( self.conslinA.shape != ( self.Nconslin, self.N ) ):
@@ -120,21 +123,15 @@ class Problem:
 
         """
 
-        self.L = np.asfortranarray( L )
+        if( Q is not None ):
+            self.objQ = np.asfortranarray( Q )
 
-        if( Q is None ):
-            self.Q = np.identity( self.N )
-        else:
-            self.Q = np.asfortranarray( Q )
-
-            if( self.Q.shape != ( self.N, self.N ) ):
+            if( self.objQ.shape != ( self.N, self.N ) ):
                 raise ValueError( "Array Q must have size (" + str(self.N) + "," +
                                   str(self.N) + ")." )
 
-        if( L is None ):
-            self.L = np.zeros( (self.N,) )
-        else:
-            self.L = np.asfortranarray( L )
+        if( L is not None ):
+            self.objL = np.asfortranarray( L )
 
-            if( self.L.shape != ( self.N, ) ):
+            if( self.objL.shape != ( self.N, ) ):
                 raise ValueError( "Array L must have size (" + str(self.N) + ",)." )
