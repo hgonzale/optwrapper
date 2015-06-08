@@ -42,6 +42,7 @@ cdef class Soln( base.Soln ):
         else:
             return statusInfo[ self.retval ]
 
+
 cdef enum prob_t:
     fp, lp, qp1, qp2, qp3, qp4, ls1, ls2, ls3, ls4
 
@@ -74,8 +75,6 @@ cdef class Solver( base.Solver ):
 
         self.mem_alloc = False
         self.mem_size[0] = self.mem_size[1] = 0
-        self.default_tol = np.sqrt( np.spacing(1) ) ## pg. 24
-        self.default_fctn_prec = np.power( np.spacing(1), 0.9 ) ## pg. 24
         self.prob = None
 
         if( prob ):
@@ -89,7 +88,7 @@ cdef class Solver( base.Solver ):
         self.solveOpts[ "feasibilityTol" ] = None
         self.solveOpts[ "infBoundSize" ] = None
         self.solveOpts[ "infStepSize" ] = None
-        self.solveOpts[ "rankTolerance" ] = None
+        self.solveOpts[ "rankTol" ] = None
 
 
     def setupProblem( self, prob ):
