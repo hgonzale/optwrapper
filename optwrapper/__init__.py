@@ -1,1 +1,1 @@
-__all__ = [ "snopt", "npsol", "nlp", "ocp", "socp" ]
+__all__ = [ "snopt", "npsol", "lssol", "qp", "nlp", "ocp", "socp" ]
