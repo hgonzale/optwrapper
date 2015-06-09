@@ -1,6 +1,6 @@
 INSTALL_MANIFEST = install_manifest.txt
 
-modules = utils base npsol snopt
+modules = utils base lssol npsol snopt
 
 all:
 	python setup.py build
