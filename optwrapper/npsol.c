@@ -3,6 +3,10 @@
 /* BEGIN: Cython Metadata
 {
     "distutils": {
+        "include_dirs": [
+            "/opt/local/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/site-packages/numpy/core/include",
+            "."
+        ],
         "libraries": [
             "npsol",
             "lssol",
@@ -12,10 +16,6 @@
         "depends": [
             "/opt/local/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/site-packages/numpy/core/include/numpy/arrayobject.h",
             "/opt/local/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/site-packages/numpy/core/include/numpy/ufuncobject.h"
-        ],
-        "include_dirs": [
-            "/opt/local/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/site-packages/numpy/core/include",
-            "."
         ]
     }
 }
@@ -1411,6 +1411,7 @@ static char __pyx_k_Ncons[] = "Ncons";
 static char __pyx_k_consf[] = "consf";
 static char __pyx_k_consg[] = "consg";
 static char __pyx_k_final[] = "final";
+static char __pyx_k_lower[] = "lower";
 static char __pyx_k_numpy[] = "numpy";
 static char __pyx_k_range[] = "range";
 static char __pyx_k_super[] = "super";
@@ -1462,7 +1463,7 @@ static char __pyx_k_diffInterval[] = "diffInterval";
 static char __pyx_k_infBoundSize[] = "infBoundSize";
 static char __pyx_k_setupProblem[] = "setupProblem";
 static char __pyx_k_fctnPrecision[] = "fctnPrecision";
-static char __pyx_k_lineSearchTol[] = "lineSearchTol";
+static char __pyx_k_linesearchTol[] = "linesearchTol";
 static char __pyx_k_optimalityTol[] = "optimalityTol";
 static char __pyx_k_feasibilityTol[] = "feasibilityTol";
 static char __pyx_k_minorIterLimit[] = "minorIterLimit";
@@ -1556,7 +1557,8 @@ static PyObject *__pyx_n_s_istate;
 static PyObject *__pyx_n_s_iterLimit;
 static PyObject *__pyx_n_s_latin_1;
 static PyObject *__pyx_n_s_lb;
-static PyObject *__pyx_n_s_lineSearchTol;
+static PyObject *__pyx_n_s_linesearchTol;
+static PyObject *__pyx_n_s_lower;
 static PyObject *__pyx_n_s_main;
 static PyObject *__pyx_n_s_minorIterLimit;
 static PyObject *__pyx_n_s_minorPrintLevel;
@@ -3179,7 +3181,7 @@ static int __pyx_pf_10optwrapper_5npsol_6Solver___init__(struct __pyx_obj_10optw
  *         self.solveOpts[ "infBoundSize" ] = None
  *         self.solveOpts[ "infStepSize" ] = None             # <<<<<<<<<<<<<<
  *         self.solveOpts[ "iterLimit" ] = None
- *         self.solveOpts[ "lineSearchTol" ] = None
+ *         self.solveOpts[ "linesearchTol" ] = None
  */
   if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
@@ -3191,7 +3193,7 @@ static int __pyx_pf_10optwrapper_5npsol_6Solver___init__(struct __pyx_obj_10optw
  *         self.solveOpts[ "infBoundSize" ] = None
  *         self.solveOpts[ "infStepSize" ] = None
  *         self.solveOpts[ "iterLimit" ] = None             # <<<<<<<<<<<<<<
- *         self.solveOpts[ "lineSearchTol" ] = None
+ *         self.solveOpts[ "linesearchTol" ] = None
  *         self.solveOpts[ "minorIterLimit" ] = None
  */
   if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
@@ -3203,7 +3205,7 @@ static int __pyx_pf_10optwrapper_5npsol_6Solver___init__(struct __pyx_obj_10optw
   /* "optwrapper/npsol.pyx":150
  *         self.solveOpts[ "infStepSize" ] = None
  *         self.solveOpts[ "iterLimit" ] = None
- *         self.solveOpts[ "lineSearchTol" ] = None             # <<<<<<<<<<<<<<
+ *         self.solveOpts[ "linesearchTol" ] = None             # <<<<<<<<<<<<<<
  *         self.solveOpts[ "minorIterLimit" ] = None
  *         self.solveOpts[ "optimalityTol" ] = None
  */
@@ -3211,11 +3213,11 @@ static int __pyx_pf_10optwrapper_5npsol_6Solver___init__(struct __pyx_obj_10optw
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
     {__pyx_filename = __pyx_f[0]; __pyx_lineno = 150; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  if (unlikely(PyDict_SetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_lineSearchTol, Py_None) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 150; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (unlikely(PyDict_SetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_linesearchTol, Py_None) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 150; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
 
   /* "optwrapper/npsol.pyx":151
  *         self.solveOpts[ "iterLimit" ] = None
- *         self.solveOpts[ "lineSearchTol" ] = None
+ *         self.solveOpts[ "linesearchTol" ] = None
  *         self.solveOpts[ "minorIterLimit" ] = None             # <<<<<<<<<<<<<<
  *         self.solveOpts[ "optimalityTol" ] = None
  *         self.solveOpts[ "stepLimit" ] = None
@@ -3227,7 +3229,7 @@ static int __pyx_pf_10optwrapper_5npsol_6Solver___init__(struct __pyx_obj_10optw
   if (unlikely(PyDict_SetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_minorIterLimit, Py_None) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 151; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
 
   /* "optwrapper/npsol.pyx":152
- *         self.solveOpts[ "lineSearchTol" ] = None
+ *         self.solveOpts[ "linesearchTol" ] = None
  *         self.solveOpts[ "minorIterLimit" ] = None
  *         self.solveOpts[ "optimalityTol" ] = None             # <<<<<<<<<<<<<<
  *         self.solveOpts[ "stepLimit" ] = None
@@ -5174,7 +5176,7 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
   __pyx_t_10optwrapper_8typedefs_doublereal __pyx_v_infBoundSize[1];
   __pyx_t_10optwrapper_8typedefs_doublereal __pyx_v_infStepSize[1];
   __pyx_t_10optwrapper_8typedefs_integer __pyx_v_iterLimit[1];
-  __pyx_t_10optwrapper_8typedefs_doublereal __pyx_v_lineSearchTol[1];
+  __pyx_t_10optwrapper_8typedefs_doublereal __pyx_v_linesearchTol[1];
   __pyx_t_10optwrapper_8typedefs_integer __pyx_v_printLevel[1];
   __pyx_t_10optwrapper_8typedefs_integer __pyx_v_minorIterLimit[1];
   __pyx_t_10optwrapper_8typedefs_integer __pyx_v_minorPrintLevel[1];
@@ -5634,7 +5636,7 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  *         else:
  *             printFileUnit[0] = 0 ## disabled by default, pg. 27             # <<<<<<<<<<<<<<
  * 
- *         if( self.printOpts[ "summaryFile" ] == "stdout" ):
+ *         if( self.printOpts[ "summaryFile" ] is not None and
  */
     (__pyx_v_printFileUnit[0]) = 0;
   }
@@ -5643,43 +5645,15 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
   /* "optwrapper/npsol.pyx":366
  *             printFileUnit[0] = 0 ## disabled by default, pg. 27
  * 
- *         if( self.printOpts[ "summaryFile" ] == "stdout" ):             # <<<<<<<<<<<<<<
- *             summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
- *         elif( self.printOpts[ "summaryFile" ] is not None and
+ *         if( self.printOpts[ "summaryFile" ] is not None and             # <<<<<<<<<<<<<<
+ *               self.printOpts[ "summaryFile" ] != "" ):
+ *             if( self.printOpts[ "summaryFile" ].lower() == "stdout" ):
  */
   if (unlikely(__pyx_v_self->__pyx_base.printOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
     {__pyx_filename = __pyx_f[0]; __pyx_lineno = 366; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
   __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_summaryFile); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 366; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-  __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_11 = (__Pyx_PyString_Equals(__pyx_t_2, __pyx_n_s_stdout, Py_EQ)); if (unlikely(__pyx_t_11 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 366; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  if (__pyx_t_11) {
-
-    /* "optwrapper/npsol.pyx":367
- * 
- *         if( self.printOpts[ "summaryFile" ] == "stdout" ):
- *             summaryFileUnit[0] = 6 ## Fortran's magic value for stdout             # <<<<<<<<<<<<<<
- *         elif( self.printOpts[ "summaryFile" ] is not None and
- *               self.printOpts[ "summaryFile" ] != "" ):
- */
-    (__pyx_v_summaryFileUnit[0]) = 6;
-    goto __pyx_L6;
-  }
-
-  /* "optwrapper/npsol.pyx":368
- *         if( self.printOpts[ "summaryFile" ] == "stdout" ):
- *             summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
- *         elif( self.printOpts[ "summaryFile" ] is not None and             # <<<<<<<<<<<<<<
- *               self.printOpts[ "summaryFile" ] != "" ):
- *             summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
- */
-  if (unlikely(__pyx_v_self->__pyx_base.printOpts == Py_None)) {
-    PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 368; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_summaryFile); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 368; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_13 = (__pyx_t_2 != Py_None);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
@@ -5690,39 +5664,91 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
     goto __pyx_L7_bool_binop_done;
   }
 
-  /* "optwrapper/npsol.pyx":369
- *             summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
- *         elif( self.printOpts[ "summaryFile" ] is not None and
+  /* "optwrapper/npsol.pyx":367
+ * 
+ *         if( self.printOpts[ "summaryFile" ] is not None and
  *               self.printOpts[ "summaryFile" ] != "" ):             # <<<<<<<<<<<<<<
- *             summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
- *         else:
+ *             if( self.printOpts[ "summaryFile" ].lower() == "stdout" ):
+ *                 summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
  */
   if (unlikely(__pyx_v_self->__pyx_base.printOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 369; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 367; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_summaryFile); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 369; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_summaryFile); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 367; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_12 = (__Pyx_PyString_Equals(__pyx_t_2, __pyx_kp_s__6, Py_NE)); if (unlikely(__pyx_t_12 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 369; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_12 = (__Pyx_PyString_Equals(__pyx_t_2, __pyx_kp_s__6, Py_NE)); if (unlikely(__pyx_t_12 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 367; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_11 = __pyx_t_12;
   __pyx_L7_bool_binop_done:;
   if (__pyx_t_11) {
 
-    /* "optwrapper/npsol.pyx":370
- *         elif( self.printOpts[ "summaryFile" ] is not None and
+    /* "optwrapper/npsol.pyx":368
+ *         if( self.printOpts[ "summaryFile" ] is not None and
  *               self.printOpts[ "summaryFile" ] != "" ):
- *             summaryFileUnit[0] = 89 ## Hardcoded since nobody cares             # <<<<<<<<<<<<<<
+ *             if( self.printOpts[ "summaryFile" ].lower() == "stdout" ):             # <<<<<<<<<<<<<<
+ *                 summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
+ *             else:
+ */
+    if (unlikely(__pyx_v_self->__pyx_base.printOpts == Py_None)) {
+      PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 368; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    }
+    __pyx_t_9 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_summaryFile); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 368; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __Pyx_GOTREF(__pyx_t_9);
+    __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_t_9, __pyx_n_s_lower); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 368; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_8);
+    __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+    __pyx_t_9 = NULL;
+    if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_8))) {
+      __pyx_t_9 = PyMethod_GET_SELF(__pyx_t_8);
+      if (likely(__pyx_t_9)) {
+        PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_8);
+        __Pyx_INCREF(__pyx_t_9);
+        __Pyx_INCREF(function);
+        __Pyx_DECREF_SET(__pyx_t_8, function);
+      }
+    }
+    if (__pyx_t_9) {
+      __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_8, __pyx_t_9); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 368; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+    } else {
+      __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_8); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 368; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    }
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+    __pyx_t_11 = (__Pyx_PyString_Equals(__pyx_t_2, __pyx_n_s_stdout, Py_EQ)); if (unlikely(__pyx_t_11 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 368; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    if (__pyx_t_11) {
+
+      /* "optwrapper/npsol.pyx":369
+ *               self.printOpts[ "summaryFile" ] != "" ):
+ *             if( self.printOpts[ "summaryFile" ].lower() == "stdout" ):
+ *                 summaryFileUnit[0] = 6 ## Fortran's magic value for stdout             # <<<<<<<<<<<<<<
+ *             else:
+ *                 summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
+ */
+      (__pyx_v_summaryFileUnit[0]) = 6;
+      goto __pyx_L9;
+    }
+    /*else*/ {
+
+      /* "optwrapper/npsol.pyx":371
+ *                 summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
+ *             else:
+ *                 summaryFileUnit[0] = 89 ## Hardcoded since nobody cares             # <<<<<<<<<<<<<<
  *         else:
  *             summaryFileUnit[0] = 0 ## disabled by default, pg. 28
  */
-    (__pyx_v_summaryFileUnit[0]) = 89;
+      (__pyx_v_summaryFileUnit[0]) = 89;
+    }
+    __pyx_L9:;
     goto __pyx_L6;
   }
   /*else*/ {
 
-    /* "optwrapper/npsol.pyx":372
- *             summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
+    /* "optwrapper/npsol.pyx":373
+ *                 summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
  *         else:
  *             summaryFileUnit[0] = 0 ## disabled by default, pg. 28             # <<<<<<<<<<<<<<
  * 
@@ -5732,7 +5758,7 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
   }
   __pyx_L6:;
 
-  /* "optwrapper/npsol.pyx":374
+  /* "optwrapper/npsol.pyx":375
  *             summaryFileUnit[0] = 0 ## disabled by default, pg. 28
  * 
  *         npsol.npopti_( STR_PRINT_FILE, printFileUnit, len( STR_PRINT_FILE ) )             # <<<<<<<<<<<<<<
@@ -5742,7 +5768,7 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
   __pyx_t_10 = strlen(__pyx_v_STR_PRINT_FILE); 
   npopti_(__pyx_v_STR_PRINT_FILE, __pyx_v_printFileUnit, __pyx_t_10);
 
-  /* "optwrapper/npsol.pyx":375
+  /* "optwrapper/npsol.pyx":376
  * 
  *         npsol.npopti_( STR_PRINT_FILE, printFileUnit, len( STR_PRINT_FILE ) )
  *         npsol.npopti_( STR_SUMMARY_FILE, summaryFileUnit, len( STR_SUMMARY_FILE ) )             # <<<<<<<<<<<<<<
@@ -5752,7 +5778,7 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
   __pyx_t_10 = strlen(__pyx_v_STR_SUMMARY_FILE); 
   npopti_(__pyx_v_STR_SUMMARY_FILE, __pyx_v_summaryFileUnit, __pyx_t_10);
 
-  /* "optwrapper/npsol.pyx":378
+  /* "optwrapper/npsol.pyx":379
  * 
  *         ## Set optional parameters, pg. 22
  *         if( self.solveOpts[ "centralDiffInterval" ] is not None ):             # <<<<<<<<<<<<<<
@@ -5761,16 +5787,16 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
   if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 378; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 379; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_centralDiffInterval); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 378; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_centralDiffInterval); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 379; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_11 = (__pyx_t_2 != Py_None);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_12 = (__pyx_t_11 != 0);
   if (__pyx_t_12) {
 
-    /* "optwrapper/npsol.pyx":379
+    /* "optwrapper/npsol.pyx":380
  *         ## Set optional parameters, pg. 22
  *         if( self.solveOpts[ "centralDiffInterval" ] is not None ):
  *             centralDiffInterval[0] = self.solveOpts[ "centralDiffInterval" ]             # <<<<<<<<<<<<<<
@@ -5779,15 +5805,15 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 379; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 380; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
-    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_centralDiffInterval); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 379; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_centralDiffInterval); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 380; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 379; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 380; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     (__pyx_v_centralDiffInterval[0]) = __pyx_t_14;
 
-    /* "optwrapper/npsol.pyx":381
+    /* "optwrapper/npsol.pyx":382
  *             centralDiffInterval[0] = self.solveOpts[ "centralDiffInterval" ]
  *             npsol.npoptr_( STR_CENTRAL_DIFFERENCE_INTERVAL, centralDiffInterval,
  *                            len( STR_CENTRAL_DIFFERENCE_INTERVAL ) )             # <<<<<<<<<<<<<<
@@ -5796,7 +5822,7 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     __pyx_t_10 = strlen(__pyx_v_STR_CENTRAL_DIFFERENCE_INTERVAL); 
 
-    /* "optwrapper/npsol.pyx":380
+    /* "optwrapper/npsol.pyx":381
  *         if( self.solveOpts[ "centralDiffInterval" ] is not None ):
  *             centralDiffInterval[0] = self.solveOpts[ "centralDiffInterval" ]
  *             npsol.npoptr_( STR_CENTRAL_DIFFERENCE_INTERVAL, centralDiffInterval,             # <<<<<<<<<<<<<<
@@ -5804,11 +5830,11 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  * 
  */
     npoptr_(__pyx_v_STR_CENTRAL_DIFFERENCE_INTERVAL, __pyx_v_centralDiffInterval, __pyx_t_10);
-    goto __pyx_L9;
+    goto __pyx_L10;
   }
-  __pyx_L9:;
+  __pyx_L10:;
 
-  /* "optwrapper/npsol.pyx":383
+  /* "optwrapper/npsol.pyx":384
  *                            len( STR_CENTRAL_DIFFERENCE_INTERVAL ) )
  * 
  *         if( self.warm_start ):             # <<<<<<<<<<<<<<
@@ -5818,7 +5844,7 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
   __pyx_t_12 = (__pyx_v_self->warm_start != 0);
   if (__pyx_t_12) {
 
-    /* "optwrapper/npsol.pyx":384
+    /* "optwrapper/npsol.pyx":385
  * 
  *         if( self.warm_start ):
  *             npsol.npoptn_( STR_WARM_START, len( STR_WARM_START ) )             # <<<<<<<<<<<<<<
@@ -5828,7 +5854,7 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
     __pyx_t_10 = strlen(__pyx_v_STR_WARM_START); 
     npoptn_(__pyx_v_STR_WARM_START, __pyx_t_10);
 
-    /* "optwrapper/npsol.pyx":386
+    /* "optwrapper/npsol.pyx":387
  *             npsol.npoptn_( STR_WARM_START, len( STR_WARM_START ) )
  *             ## follow recommendation in pg. 24
  *             npsol.npoptn_( STR_HESSIAN_YES, len( STR_HESSIAN_YES ) )             # <<<<<<<<<<<<<<
@@ -5838,7 +5864,7 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
     __pyx_t_10 = strlen(__pyx_v_STR_HESSIAN_YES); 
     npoptn_(__pyx_v_STR_HESSIAN_YES, __pyx_t_10);
 
-    /* "optwrapper/npsol.pyx":387
+    /* "optwrapper/npsol.pyx":388
  *             ## follow recommendation in pg. 24
  *             npsol.npoptn_( STR_HESSIAN_YES, len( STR_HESSIAN_YES ) )
  *             self.warm_start = False ## Reset variable             # <<<<<<<<<<<<<<
@@ -5846,11 +5872,11 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  *         if( self.solveOpts[ "crashTol" ] is not None ):
  */
     __pyx_v_self->warm_start = 0;
-    goto __pyx_L10;
+    goto __pyx_L11;
   }
-  __pyx_L10:;
+  __pyx_L11:;
 
-  /* "optwrapper/npsol.pyx":389
+  /* "optwrapper/npsol.pyx":390
  *             self.warm_start = False ## Reset variable
  * 
  *         if( self.solveOpts[ "crashTol" ] is not None ):             # <<<<<<<<<<<<<<
@@ -5859,16 +5885,16 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
   if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 389; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 390; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_crashTol); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 389; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_crashTol); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 390; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_12 = (__pyx_t_2 != Py_None);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_11 = (__pyx_t_12 != 0);
   if (__pyx_t_11) {
 
-    /* "optwrapper/npsol.pyx":390
+    /* "optwrapper/npsol.pyx":391
  * 
  *         if( self.solveOpts[ "crashTol" ] is not None ):
  *             crashTol[0] = self.solveOpts[ "crashTol" ]             # <<<<<<<<<<<<<<
@@ -5877,15 +5903,15 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 390; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 391; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
-    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_crashTol); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 390; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_crashTol); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 391; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 390; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 391; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     (__pyx_v_crashTol[0]) = __pyx_t_14;
 
-    /* "optwrapper/npsol.pyx":391
+    /* "optwrapper/npsol.pyx":392
  *         if( self.solveOpts[ "crashTol" ] is not None ):
  *             crashTol[0] = self.solveOpts[ "crashTol" ]
  *             npsol.npoptr_( STR_CRASH_TOLERANCE, crashTol, len( STR_CRASH_TOLERANCE ) )             # <<<<<<<<<<<<<<
@@ -5894,11 +5920,11 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     __pyx_t_10 = strlen(__pyx_v_STR_CRASH_TOLERANCE); 
     npoptr_(__pyx_v_STR_CRASH_TOLERANCE, __pyx_v_crashTol, __pyx_t_10);
-    goto __pyx_L11;
+    goto __pyx_L12;
   }
-  __pyx_L11:;
+  __pyx_L12:;
 
-  /* "optwrapper/npsol.pyx":393
+  /* "optwrapper/npsol.pyx":394
  *             npsol.npoptr_( STR_CRASH_TOLERANCE, crashTol, len( STR_CRASH_TOLERANCE ) )
  * 
  *         if( self.solveOpts[ "diffInterval" ] is not None ):             # <<<<<<<<<<<<<<
@@ -5907,16 +5933,16 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
   if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 393; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 394; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_diffInterval); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 393; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_diffInterval); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 394; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_11 = (__pyx_t_2 != Py_None);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_12 = (__pyx_t_11 != 0);
   if (__pyx_t_12) {
 
-    /* "optwrapper/npsol.pyx":394
+    /* "optwrapper/npsol.pyx":395
  * 
  *         if( self.solveOpts[ "diffInterval" ] is not None ):
  *             diffInterval[0] = self.solveOpts[ "diffInterval" ]             # <<<<<<<<<<<<<<
@@ -5925,15 +5951,15 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 394; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 395; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
-    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_diffInterval); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 394; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_diffInterval); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 395; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 394; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 395; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     (__pyx_v_diffInterval[0]) = __pyx_t_14;
 
-    /* "optwrapper/npsol.pyx":396
+    /* "optwrapper/npsol.pyx":397
  *             diffInterval[0] = self.solveOpts[ "diffInterval" ]
  *             npsol.npoptr_( STR_DIFFERENCE_INTERVAL, diffInterval,
  *                            len( STR_DIFFERENCE_INTERVAL ) )             # <<<<<<<<<<<<<<
@@ -5942,7 +5968,7 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     __pyx_t_10 = strlen(__pyx_v_STR_DIFFERENCE_INTERVAL); 
 
-    /* "optwrapper/npsol.pyx":395
+    /* "optwrapper/npsol.pyx":396
  *         if( self.solveOpts[ "diffInterval" ] is not None ):
  *             diffInterval[0] = self.solveOpts[ "diffInterval" ]
  *             npsol.npoptr_( STR_DIFFERENCE_INTERVAL, diffInterval,             # <<<<<<<<<<<<<<
@@ -5950,11 +5976,11 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  * 
  */
     npoptr_(__pyx_v_STR_DIFFERENCE_INTERVAL, __pyx_v_diffInterval, __pyx_t_10);
-    goto __pyx_L12;
+    goto __pyx_L13;
   }
-  __pyx_L12:;
+  __pyx_L13:;
 
-  /* "optwrapper/npsol.pyx":398
+  /* "optwrapper/npsol.pyx":399
  *                            len( STR_DIFFERENCE_INTERVAL ) )
  * 
  *         if( self.solveOpts[ "feasibilityTol" ] is not None ):             # <<<<<<<<<<<<<<
@@ -5963,16 +5989,16 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
   if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 398; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 399; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_feasibilityTol); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 398; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_feasibilityTol); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 399; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_12 = (__pyx_t_2 != Py_None);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_11 = (__pyx_t_12 != 0);
   if (__pyx_t_11) {
 
-    /* "optwrapper/npsol.pyx":399
+    /* "optwrapper/npsol.pyx":400
  * 
  *         if( self.solveOpts[ "feasibilityTol" ] is not None ):
  *             feasibilityTol[0] = self.solveOpts[ "feasibilityTol" ]             # <<<<<<<<<<<<<<
@@ -5981,15 +6007,15 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 399; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 400; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
-    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_feasibilityTol); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 399; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_feasibilityTol); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 400; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 399; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 400; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     (__pyx_v_feasibilityTol[0]) = __pyx_t_14;
 
-    /* "optwrapper/npsol.pyx":401
+    /* "optwrapper/npsol.pyx":402
  *             feasibilityTol[0] = self.solveOpts[ "feasibilityTol" ]
  *             npsol.npoptr_( STR_FEASIBILITY_TOLERANCE, feasibilityTol,
  *                            len( STR_FEASIBILITY_TOLERANCE ) )             # <<<<<<<<<<<<<<
@@ -5998,7 +6024,7 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     __pyx_t_10 = strlen(__pyx_v_STR_FEASIBILITY_TOLERANCE); 
 
-    /* "optwrapper/npsol.pyx":400
+    /* "optwrapper/npsol.pyx":401
  *         if( self.solveOpts[ "feasibilityTol" ] is not None ):
  *             feasibilityTol[0] = self.solveOpts[ "feasibilityTol" ]
  *             npsol.npoptr_( STR_FEASIBILITY_TOLERANCE, feasibilityTol,             # <<<<<<<<<<<<<<
@@ -6006,11 +6032,11 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  * 
  */
     npoptr_(__pyx_v_STR_FEASIBILITY_TOLERANCE, __pyx_v_feasibilityTol, __pyx_t_10);
-    goto __pyx_L13;
+    goto __pyx_L14;
   }
-  __pyx_L13:;
+  __pyx_L14:;
 
-  /* "optwrapper/npsol.pyx":403
+  /* "optwrapper/npsol.pyx":404
  *                            len( STR_FEASIBILITY_TOLERANCE ) )
  * 
  *         if( self.solveOpts[ "fctnPrecision" ] is not None ):             # <<<<<<<<<<<<<<
@@ -6019,16 +6045,16 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
   if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 403; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 404; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_fctnPrecision); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 403; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_fctnPrecision); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 404; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_11 = (__pyx_t_2 != Py_None);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_12 = (__pyx_t_11 != 0);
   if (__pyx_t_12) {
 
-    /* "optwrapper/npsol.pyx":404
+    /* "optwrapper/npsol.pyx":405
  * 
  *         if( self.solveOpts[ "fctnPrecision" ] is not None ):
  *             fctnPrecision[0] = self.solveOpts[ "fctnPrecision" ]             # <<<<<<<<<<<<<<
@@ -6037,15 +6063,15 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 404; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 405; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
-    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_fctnPrecision); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 404; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_fctnPrecision); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 405; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 404; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 405; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     (__pyx_v_fctnPrecision[0]) = __pyx_t_14;
 
-    /* "optwrapper/npsol.pyx":406
+    /* "optwrapper/npsol.pyx":407
  *             fctnPrecision[0] = self.solveOpts[ "fctnPrecision" ]
  *             npsol.npoptr_( STR_FUNCTION_PRECISION, fctnPrecision,
  *                            len( STR_FUNCTION_PRECISION ) )             # <<<<<<<<<<<<<<
@@ -6054,7 +6080,7 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     __pyx_t_10 = strlen(__pyx_v_STR_FUNCTION_PRECISION); 
 
-    /* "optwrapper/npsol.pyx":405
+    /* "optwrapper/npsol.pyx":406
  *         if( self.solveOpts[ "fctnPrecision" ] is not None ):
  *             fctnPrecision[0] = self.solveOpts[ "fctnPrecision" ]
  *             npsol.npoptr_( STR_FUNCTION_PRECISION, fctnPrecision,             # <<<<<<<<<<<<<<
@@ -6062,11 +6088,11 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  * 
  */
     npoptr_(__pyx_v_STR_FUNCTION_PRECISION, __pyx_v_fctnPrecision, __pyx_t_10);
-    goto __pyx_L14;
+    goto __pyx_L15;
   }
-  __pyx_L14:;
+  __pyx_L15:;
 
-  /* "optwrapper/npsol.pyx":408
+  /* "optwrapper/npsol.pyx":409
  *                            len( STR_FUNCTION_PRECISION ) )
  * 
  *         if( self.solveOpts[ "infBoundSize" ] is not None ):             # <<<<<<<<<<<<<<
@@ -6075,16 +6101,16 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
   if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 408; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 409; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_infBoundSize); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 408; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_infBoundSize); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 409; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_12 = (__pyx_t_2 != Py_None);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_11 = (__pyx_t_12 != 0);
   if (__pyx_t_11) {
 
-    /* "optwrapper/npsol.pyx":409
+    /* "optwrapper/npsol.pyx":410
  * 
  *         if( self.solveOpts[ "infBoundSize" ] is not None ):
  *             infBoundSize[0] = self.solveOpts[ "infBoundSize" ]             # <<<<<<<<<<<<<<
@@ -6093,15 +6119,15 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 409; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 410; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
-    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_infBoundSize); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 409; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_infBoundSize); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 410; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 409; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 410; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     (__pyx_v_infBoundSize[0]) = __pyx_t_14;
 
-    /* "optwrapper/npsol.pyx":410
+    /* "optwrapper/npsol.pyx":411
  *         if( self.solveOpts[ "infBoundSize" ] is not None ):
  *             infBoundSize[0] = self.solveOpts[ "infBoundSize" ]
  *             npsol.npoptr_( STR_INFINITE_BOUND_SIZE, infBoundSize, len( STR_INFINITE_BOUND_SIZE ) )             # <<<<<<<<<<<<<<
@@ -6110,11 +6136,11 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     __pyx_t_10 = strlen(__pyx_v_STR_INFINITE_BOUND_SIZE); 
     npoptr_(__pyx_v_STR_INFINITE_BOUND_SIZE, __pyx_v_infBoundSize, __pyx_t_10);
-    goto __pyx_L15;
+    goto __pyx_L16;
   }
-  __pyx_L15:;
+  __pyx_L16:;
 
-  /* "optwrapper/npsol.pyx":412
+  /* "optwrapper/npsol.pyx":413
  *             npsol.npoptr_( STR_INFINITE_BOUND_SIZE, infBoundSize, len( STR_INFINITE_BOUND_SIZE ) )
  * 
  *         if( self.solveOpts[ "infStepSize" ] is not None ):             # <<<<<<<<<<<<<<
@@ -6123,16 +6149,16 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
   if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 412; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 413; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_infStepSize); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 412; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_infStepSize); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 413; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_11 = (__pyx_t_2 != Py_None);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_12 = (__pyx_t_11 != 0);
   if (__pyx_t_12) {
 
-    /* "optwrapper/npsol.pyx":413
+    /* "optwrapper/npsol.pyx":414
  * 
  *         if( self.solveOpts[ "infStepSize" ] is not None ):
  *             infStepSize[0] = self.solveOpts[ "infStepSize" ]             # <<<<<<<<<<<<<<
@@ -6141,15 +6167,15 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 413; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 414; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
-    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_infStepSize); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 413; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_infStepSize); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 414; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 413; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 414; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     (__pyx_v_infStepSize[0]) = __pyx_t_14;
 
-    /* "optwrapper/npsol.pyx":414
+    /* "optwrapper/npsol.pyx":415
  *         if( self.solveOpts[ "infStepSize" ] is not None ):
  *             infStepSize[0] = self.solveOpts[ "infStepSize" ]
  *             npsol.npoptr_( STR_INFINITE_STEP_SIZE, infStepSize, len( STR_INFINITE_STEP_SIZE ) )             # <<<<<<<<<<<<<<
@@ -6158,11 +6184,11 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     __pyx_t_10 = strlen(__pyx_v_STR_INFINITE_STEP_SIZE); 
     npoptr_(__pyx_v_STR_INFINITE_STEP_SIZE, __pyx_v_infStepSize, __pyx_t_10);
-    goto __pyx_L16;
+    goto __pyx_L17;
   }
-  __pyx_L16:;
+  __pyx_L17:;
 
-  /* "optwrapper/npsol.pyx":416
+  /* "optwrapper/npsol.pyx":417
  *             npsol.npoptr_( STR_INFINITE_STEP_SIZE, infStepSize, len( STR_INFINITE_STEP_SIZE ) )
  * 
  *         if( self.solveOpts[ "iterLimit" ] is not None ):             # <<<<<<<<<<<<<<
@@ -6171,16 +6197,16 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
   if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 416; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 417; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_iterLimit); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 416; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_iterLimit); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 417; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_12 = (__pyx_t_2 != Py_None);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_11 = (__pyx_t_12 != 0);
   if (__pyx_t_11) {
 
-    /* "optwrapper/npsol.pyx":417
+    /* "optwrapper/npsol.pyx":418
  * 
  *         if( self.solveOpts[ "iterLimit" ] is not None ):
  *             iterLimit[0] = self.solveOpts["iterLimit"]             # <<<<<<<<<<<<<<
@@ -6189,15 +6215,15 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 417; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 418; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
-    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_iterLimit); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 417; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_iterLimit); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 418; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_4 = __Pyx_PyInt_As_long(__pyx_t_2); if (unlikely((__pyx_t_4 == (long)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 417; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_4 = __Pyx_PyInt_As_long(__pyx_t_2); if (unlikely((__pyx_t_4 == (long)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 418; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     (__pyx_v_iterLimit[0]) = __pyx_t_4;
 
-    /* "optwrapper/npsol.pyx":418
+    /* "optwrapper/npsol.pyx":419
  *         if( self.solveOpts[ "iterLimit" ] is not None ):
  *             iterLimit[0] = self.solveOpts["iterLimit"]
  *             npsol.npopti_( STR_ITERATION_LIMIT, iterLimit, len( STR_ITERATION_LIMIT ) )             # <<<<<<<<<<<<<<
@@ -6206,11 +6232,11 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     __pyx_t_10 = strlen(__pyx_v_STR_ITERATION_LIMIT); 
     npopti_(__pyx_v_STR_ITERATION_LIMIT, __pyx_v_iterLimit, __pyx_t_10);
-    goto __pyx_L17;
+    goto __pyx_L18;
   }
-  __pyx_L17:;
+  __pyx_L18:;
 
-  /* "optwrapper/npsol.pyx":420
+  /* "optwrapper/npsol.pyx":421
  *             npsol.npopti_( STR_ITERATION_LIMIT, iterLimit, len( STR_ITERATION_LIMIT ) )
  * 
  *         if( self.printOpts[ "printLevel" ] is not None ):             # <<<<<<<<<<<<<<
@@ -6219,16 +6245,16 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
   if (unlikely(__pyx_v_self->__pyx_base.printOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 420; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 421; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_printLevel); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 420; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_printLevel); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 421; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_11 = (__pyx_t_2 != Py_None);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_12 = (__pyx_t_11 != 0);
   if (__pyx_t_12) {
 
-    /* "optwrapper/npsol.pyx":421
+    /* "optwrapper/npsol.pyx":422
  * 
  *         if( self.printOpts[ "printLevel" ] is not None ):
  *             printLevel[0] = self.printOpts[ "printLevel" ]             # <<<<<<<<<<<<<<
@@ -6237,84 +6263,84 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     if (unlikely(__pyx_v_self->__pyx_base.printOpts == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 421; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 422; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
-    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_printLevel); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 421; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_printLevel); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 422; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_4 = __Pyx_PyInt_As_long(__pyx_t_2); if (unlikely((__pyx_t_4 == (long)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 421; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_4 = __Pyx_PyInt_As_long(__pyx_t_2); if (unlikely((__pyx_t_4 == (long)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 422; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     (__pyx_v_printLevel[0]) = __pyx_t_4;
 
-    /* "optwrapper/npsol.pyx":422
+    /* "optwrapper/npsol.pyx":423
  *         if( self.printOpts[ "printLevel" ] is not None ):
  *             printLevel[0] = self.printOpts[ "printLevel" ]
  *             npsol.npopti_( STR_PRINT_LEVEL, printLevel, len( STR_PRINT_LEVEL ) )             # <<<<<<<<<<<<<<
  * 
- *         if( self.solveOpts[ "lineSearchTol" ] is not None ):
+ *         if( self.solveOpts[ "linesearchTol" ] is not None ):
  */
     __pyx_t_10 = strlen(__pyx_v_STR_PRINT_LEVEL); 
     npopti_(__pyx_v_STR_PRINT_LEVEL, __pyx_v_printLevel, __pyx_t_10);
-    goto __pyx_L18;
+    goto __pyx_L19;
   }
-  __pyx_L18:;
+  __pyx_L19:;
 
-  /* "optwrapper/npsol.pyx":424
+  /* "optwrapper/npsol.pyx":425
  *             npsol.npopti_( STR_PRINT_LEVEL, printLevel, len( STR_PRINT_LEVEL ) )
  * 
- *         if( self.solveOpts[ "lineSearchTol" ] is not None ):             # <<<<<<<<<<<<<<
- *             lineSearchTol[0] = self.solveOpts[ "lineSearchTol" ]
- *             npsol.npoptr_( STR_LINE_SEARCH_TOLERANCE, lineSearchTol,
+ *         if( self.solveOpts[ "linesearchTol" ] is not None ):             # <<<<<<<<<<<<<<
+ *             linesearchTol[0] = self.solveOpts[ "linesearchTol" ]
+ *             npsol.npoptr_( STR_LINE_SEARCH_TOLERANCE, linesearchTol,
  */
   if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 424; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 425; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_lineSearchTol); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 424; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_linesearchTol); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 425; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_12 = (__pyx_t_2 != Py_None);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_11 = (__pyx_t_12 != 0);
   if (__pyx_t_11) {
 
-    /* "optwrapper/npsol.pyx":425
+    /* "optwrapper/npsol.pyx":426
  * 
- *         if( self.solveOpts[ "lineSearchTol" ] is not None ):
- *             lineSearchTol[0] = self.solveOpts[ "lineSearchTol" ]             # <<<<<<<<<<<<<<
- *             npsol.npoptr_( STR_LINE_SEARCH_TOLERANCE, lineSearchTol,
+ *         if( self.solveOpts[ "linesearchTol" ] is not None ):
+ *             linesearchTol[0] = self.solveOpts[ "linesearchTol" ]             # <<<<<<<<<<<<<<
+ *             npsol.npoptr_( STR_LINE_SEARCH_TOLERANCE, linesearchTol,
  *                            len( STR_LINE_SEARCH_TOLERANCE ) )
  */
     if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 425; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 426; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
-    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_lineSearchTol); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 425; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_linesearchTol); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 426; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 425; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 426; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    (__pyx_v_lineSearchTol[0]) = __pyx_t_14;
+    (__pyx_v_linesearchTol[0]) = __pyx_t_14;
 
-    /* "optwrapper/npsol.pyx":427
- *             lineSearchTol[0] = self.solveOpts[ "lineSearchTol" ]
- *             npsol.npoptr_( STR_LINE_SEARCH_TOLERANCE, lineSearchTol,
+    /* "optwrapper/npsol.pyx":428
+ *             linesearchTol[0] = self.solveOpts[ "linesearchTol" ]
+ *             npsol.npoptr_( STR_LINE_SEARCH_TOLERANCE, linesearchTol,
  *                            len( STR_LINE_SEARCH_TOLERANCE ) )             # <<<<<<<<<<<<<<
  * 
  *         if( self.solveOpts[ "minorIterLimit" ] is not None ):
  */
     __pyx_t_10 = strlen(__pyx_v_STR_LINE_SEARCH_TOLERANCE); 
 
-    /* "optwrapper/npsol.pyx":426
- *         if( self.solveOpts[ "lineSearchTol" ] is not None ):
- *             lineSearchTol[0] = self.solveOpts[ "lineSearchTol" ]
- *             npsol.npoptr_( STR_LINE_SEARCH_TOLERANCE, lineSearchTol,             # <<<<<<<<<<<<<<
+    /* "optwrapper/npsol.pyx":427
+ *         if( self.solveOpts[ "linesearchTol" ] is not None ):
+ *             linesearchTol[0] = self.solveOpts[ "linesearchTol" ]
+ *             npsol.npoptr_( STR_LINE_SEARCH_TOLERANCE, linesearchTol,             # <<<<<<<<<<<<<<
  *                            len( STR_LINE_SEARCH_TOLERANCE ) )
  * 
  */
-    npoptr_(__pyx_v_STR_LINE_SEARCH_TOLERANCE, __pyx_v_lineSearchTol, __pyx_t_10);
-    goto __pyx_L19;
+    npoptr_(__pyx_v_STR_LINE_SEARCH_TOLERANCE, __pyx_v_linesearchTol, __pyx_t_10);
+    goto __pyx_L20;
   }
-  __pyx_L19:;
+  __pyx_L20:;
 
-  /* "optwrapper/npsol.pyx":429
+  /* "optwrapper/npsol.pyx":430
  *                            len( STR_LINE_SEARCH_TOLERANCE ) )
  * 
  *         if( self.solveOpts[ "minorIterLimit" ] is not None ):             # <<<<<<<<<<<<<<
@@ -6323,16 +6349,16 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
   if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 429; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 430; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_minorIterLimit); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 429; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_minorIterLimit); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 430; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_11 = (__pyx_t_2 != Py_None);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_12 = (__pyx_t_11 != 0);
   if (__pyx_t_12) {
 
-    /* "optwrapper/npsol.pyx":430
+    /* "optwrapper/npsol.pyx":431
  * 
  *         if( self.solveOpts[ "minorIterLimit" ] is not None ):
  *             minorIterLimit[0] = self.solveOpts[ "minorIterLimit" ]             # <<<<<<<<<<<<<<
@@ -6341,15 +6367,15 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 430; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 431; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
-    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_minorIterLimit); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 430; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_minorIterLimit); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 431; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_4 = __Pyx_PyInt_As_long(__pyx_t_2); if (unlikely((__pyx_t_4 == (long)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 430; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_4 = __Pyx_PyInt_As_long(__pyx_t_2); if (unlikely((__pyx_t_4 == (long)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 431; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     (__pyx_v_minorIterLimit[0]) = __pyx_t_4;
 
-    /* "optwrapper/npsol.pyx":432
+    /* "optwrapper/npsol.pyx":433
  *             minorIterLimit[0] = self.solveOpts[ "minorIterLimit" ]
  *             npsol.npopti_( STR_MINOR_ITERATION_LIMIT, minorIterLimit,
  *                            len( STR_MINOR_ITERATION_LIMIT ) )             # <<<<<<<<<<<<<<
@@ -6358,7 +6384,7 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     __pyx_t_10 = strlen(__pyx_v_STR_MINOR_ITERATION_LIMIT); 
 
-    /* "optwrapper/npsol.pyx":431
+    /* "optwrapper/npsol.pyx":432
  *         if( self.solveOpts[ "minorIterLimit" ] is not None ):
  *             minorIterLimit[0] = self.solveOpts[ "minorIterLimit" ]
  *             npsol.npopti_( STR_MINOR_ITERATION_LIMIT, minorIterLimit,             # <<<<<<<<<<<<<<
@@ -6366,11 +6392,11 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  * 
  */
     npopti_(__pyx_v_STR_MINOR_ITERATION_LIMIT, __pyx_v_minorIterLimit, __pyx_t_10);
-    goto __pyx_L20;
+    goto __pyx_L21;
   }
-  __pyx_L20:;
+  __pyx_L21:;
 
-  /* "optwrapper/npsol.pyx":434
+  /* "optwrapper/npsol.pyx":435
  *                            len( STR_MINOR_ITERATION_LIMIT ) )
  * 
  *         if( self.printOpts[ "minorPrintLevel" ] is not None ):             # <<<<<<<<<<<<<<
@@ -6379,16 +6405,16 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
   if (unlikely(__pyx_v_self->__pyx_base.printOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 434; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 435; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_minorPrintLevel); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 434; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_minorPrintLevel); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 435; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_12 = (__pyx_t_2 != Py_None);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_11 = (__pyx_t_12 != 0);
   if (__pyx_t_11) {
 
-    /* "optwrapper/npsol.pyx":435
+    /* "optwrapper/npsol.pyx":436
  * 
  *         if( self.printOpts[ "minorPrintLevel" ] is not None ):
  *             minorPrintLevel[0] = self.printOpts[ "minorPrintLevel" ]             # <<<<<<<<<<<<<<
@@ -6397,15 +6423,15 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     if (unlikely(__pyx_v_self->__pyx_base.printOpts == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 435; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 436; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
-    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_minorPrintLevel); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 435; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_minorPrintLevel); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 436; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_4 = __Pyx_PyInt_As_long(__pyx_t_2); if (unlikely((__pyx_t_4 == (long)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 435; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_4 = __Pyx_PyInt_As_long(__pyx_t_2); if (unlikely((__pyx_t_4 == (long)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 436; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     (__pyx_v_minorPrintLevel[0]) = __pyx_t_4;
 
-    /* "optwrapper/npsol.pyx":436
+    /* "optwrapper/npsol.pyx":437
  *         if( self.printOpts[ "minorPrintLevel" ] is not None ):
  *             minorPrintLevel[0] = self.printOpts[ "minorPrintLevel" ]
  *             npsol.npopti_( STR_MINOR_PRINT_LEVEL, minorPrintLevel, len( STR_MINOR_PRINT_LEVEL ) )             # <<<<<<<<<<<<<<
@@ -6414,11 +6440,11 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     __pyx_t_10 = strlen(__pyx_v_STR_MINOR_PRINT_LEVEL); 
     npopti_(__pyx_v_STR_MINOR_PRINT_LEVEL, __pyx_v_minorPrintLevel, __pyx_t_10);
-    goto __pyx_L21;
+    goto __pyx_L22;
   }
-  __pyx_L21:;
+  __pyx_L22:;
 
-  /* "optwrapper/npsol.pyx":438
+  /* "optwrapper/npsol.pyx":439
  *             npsol.npopti_( STR_MINOR_PRINT_LEVEL, minorPrintLevel, len( STR_MINOR_PRINT_LEVEL ) )
  * 
  *         if( self.solveOpts[ "optimalityTol" ] is not None ):             # <<<<<<<<<<<<<<
@@ -6427,16 +6453,16 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
   if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 438; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 439; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_optimalityTol); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 438; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_optimalityTol); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 439; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_11 = (__pyx_t_2 != Py_None);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_12 = (__pyx_t_11 != 0);
   if (__pyx_t_12) {
 
-    /* "optwrapper/npsol.pyx":439
+    /* "optwrapper/npsol.pyx":440
  * 
  *         if( self.solveOpts[ "optimalityTol" ] is not None ):
  *             optimalityTol[0] = self.solveOpts[ "optimalityTol" ]             # <<<<<<<<<<<<<<
@@ -6445,15 +6471,15 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 439; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 440; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
-    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_optimalityTol); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 439; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_optimalityTol); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 440; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 439; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 440; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     (__pyx_v_optimalityTol[0]) = __pyx_t_14;
 
-    /* "optwrapper/npsol.pyx":441
+    /* "optwrapper/npsol.pyx":442
  *             optimalityTol[0] = self.solveOpts[ "optimalityTol" ]
  *             npsol.npoptr_( STR_OPTIMALITY_TOLERANCE, optimalityTol,
  *                            len( STR_OPTIMALITY_TOLERANCE ) )             # <<<<<<<<<<<<<<
@@ -6462,7 +6488,7 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     __pyx_t_10 = strlen(__pyx_v_STR_OPTIMALITY_TOLERANCE); 
 
-    /* "optwrapper/npsol.pyx":440
+    /* "optwrapper/npsol.pyx":441
  *         if( self.solveOpts[ "optimalityTol" ] is not None ):
  *             optimalityTol[0] = self.solveOpts[ "optimalityTol" ]
  *             npsol.npoptr_( STR_OPTIMALITY_TOLERANCE, optimalityTol,             # <<<<<<<<<<<<<<
@@ -6470,11 +6496,11 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  * 
  */
     npoptr_(__pyx_v_STR_OPTIMALITY_TOLERANCE, __pyx_v_optimalityTol, __pyx_t_10);
-    goto __pyx_L22;
+    goto __pyx_L23;
   }
-  __pyx_L22:;
+  __pyx_L23:;
 
-  /* "optwrapper/npsol.pyx":443
+  /* "optwrapper/npsol.pyx":444
  *                            len( STR_OPTIMALITY_TOLERANCE ) )
  * 
  *         if( self.solveOpts[ "stepLimit" ] is not None ):             # <<<<<<<<<<<<<<
@@ -6483,16 +6509,16 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
   if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 443; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 444; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_stepLimit); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 443; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_stepLimit); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 444; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_12 = (__pyx_t_2 != Py_None);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_11 = (__pyx_t_12 != 0);
   if (__pyx_t_11) {
 
-    /* "optwrapper/npsol.pyx":444
+    /* "optwrapper/npsol.pyx":445
  * 
  *         if( self.solveOpts[ "stepLimit" ] is not None ):
  *             stepLimit[0] = self.solveOpts["stepLimit"]             # <<<<<<<<<<<<<<
@@ -6501,15 +6527,15 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 444; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 445; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
-    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_stepLimit); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 444; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_stepLimit); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 445; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 444; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_14 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_14 == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 445; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     (__pyx_v_stepLimit[0]) = __pyx_t_14;
 
-    /* "optwrapper/npsol.pyx":445
+    /* "optwrapper/npsol.pyx":446
  *         if( self.solveOpts[ "stepLimit" ] is not None ):
  *             stepLimit[0] = self.solveOpts["stepLimit"]
  *             npsol.npoptr_( STR_STEP_LIMIT, stepLimit, len( STR_STEP_LIMIT ) )             # <<<<<<<<<<<<<<
@@ -6518,11 +6544,11 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     __pyx_t_10 = strlen(__pyx_v_STR_STEP_LIMIT); 
     npoptr_(__pyx_v_STR_STEP_LIMIT, __pyx_v_stepLimit, __pyx_t_10);
-    goto __pyx_L23;
+    goto __pyx_L24;
   }
-  __pyx_L23:;
+  __pyx_L24:;
 
-  /* "optwrapper/npsol.pyx":447
+  /* "optwrapper/npsol.pyx":448
  *             npsol.npoptr_( STR_STEP_LIMIT, stepLimit, len( STR_STEP_LIMIT ) )
  * 
  *         if( self.solveOpts[ "verifyLevel" ] is not None ):             # <<<<<<<<<<<<<<
@@ -6531,16 +6557,16 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
   if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 447; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 448; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_verifyLevel); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 447; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_verifyLevel); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 448; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_11 = (__pyx_t_2 != Py_None);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_12 = (__pyx_t_11 != 0);
   if (__pyx_t_12) {
 
-    /* "optwrapper/npsol.pyx":448
+    /* "optwrapper/npsol.pyx":449
  * 
  *         if( self.solveOpts[ "verifyLevel" ] is not None ):
  *             verifyLevel[0] = self.solveOpts[ "verifyLevel" ]             # <<<<<<<<<<<<<<
@@ -6549,18 +6575,18 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     if (unlikely(__pyx_v_self->__pyx_base.solveOpts == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 448; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 449; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
-    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_verifyLevel); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 448; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.solveOpts, __pyx_n_s_verifyLevel); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 449; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_4 = __Pyx_PyInt_As_long(__pyx_t_2); if (unlikely((__pyx_t_4 == (long)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 448; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_4 = __Pyx_PyInt_As_long(__pyx_t_2); if (unlikely((__pyx_t_4 == (long)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 449; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     (__pyx_v_verifyLevel[0]) = __pyx_t_4;
-    goto __pyx_L24;
+    goto __pyx_L25;
   }
   /*else*/ {
 
-    /* "optwrapper/npsol.pyx":450
+    /* "optwrapper/npsol.pyx":451
  *             verifyLevel[0] = self.solveOpts[ "verifyLevel" ]
  *         else:
  *             verifyLevel[0] = -1 ## disabled by default, pg. 28             # <<<<<<<<<<<<<<
@@ -6569,9 +6595,9 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
     (__pyx_v_verifyLevel[0]) = -1;
   }
-  __pyx_L24:;
+  __pyx_L25:;
 
-  /* "optwrapper/npsol.pyx":451
+  /* "optwrapper/npsol.pyx":452
  *         else:
  *             verifyLevel[0] = -1 ## disabled by default, pg. 28
  *         npsol.npopti_( STR_VERIFY_LEVEL, verifyLevel, len( STR_VERIFY_LEVEL ) )             # <<<<<<<<<<<<<<
@@ -6581,7 +6607,7 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
   __pyx_t_10 = strlen(__pyx_v_STR_VERIFY_LEVEL); 
   npopti_(__pyx_v_STR_VERIFY_LEVEL, __pyx_v_verifyLevel, __pyx_t_10);
 
-  /* "optwrapper/npsol.pyx":454
+  /* "optwrapper/npsol.pyx":455
  * 
  *         ## Call NPSOL
  *         npsol.npsol_( n, nclin,             # <<<<<<<<<<<<<<
@@ -6590,7 +6616,7 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
   npsol_(__pyx_v_n, __pyx_v_nclin, __pyx_v_ncnln, __pyx_v_self->ldA, __pyx_v_self->ldJ, __pyx_v_self->ldR, __pyx_v_self->A, __pyx_v_self->bl, __pyx_v_self->bu, ((__pyx_t_10optwrapper_6npsolh_funcon_fp)__pyx_f_10optwrapper_5npsol_funcon), ((__pyx_t_10optwrapper_6npsolh_funobj_fp)__pyx_f_10optwrapper_5npsol_funobj), __pyx_v_inform_out, __pyx_v_iter_out, __pyx_v_self->istate, __pyx_v_self->consf_val, __pyx_v_self->consg_val, __pyx_v_self->clamda, __pyx_v_objf_val, __pyx_v_self->objg_val, __pyx_v_self->R, __pyx_v_self->x, __pyx_v_self->iw, __pyx_v_self->leniw, __pyx_v_self->w, __pyx_v_self->lenw);
 
-  /* "optwrapper/npsol.pyx":465
+  /* "optwrapper/npsol.pyx":466
  * 
  *         ## Try to rename fortran print and summary files
  *         if( self.printOpts[ "printFile" ] is not None and             # <<<<<<<<<<<<<<
@@ -6599,9 +6625,9 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
   if (unlikely(__pyx_v_self->__pyx_base.printOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 465; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 466; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_printFile); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 465; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_printFile); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 466; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_11 = (__pyx_t_2 != Py_None);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
@@ -6609,10 +6635,10 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
   if (__pyx_t_13) {
   } else {
     __pyx_t_12 = __pyx_t_13;
-    goto __pyx_L26_bool_binop_done;
+    goto __pyx_L27_bool_binop_done;
   }
 
-  /* "optwrapper/npsol.pyx":466
+  /* "optwrapper/npsol.pyx":467
  *         ## Try to rename fortran print and summary files
  *         if( self.printOpts[ "printFile" ] is not None and
  *             self.printOpts[ "printFile" ] != "" ):             # <<<<<<<<<<<<<<
@@ -6621,17 +6647,17 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
   if (unlikely(__pyx_v_self->__pyx_base.printOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 466; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 467; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_printFile); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 466; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_printFile); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 467; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_13 = (__Pyx_PyString_Equals(__pyx_t_2, __pyx_kp_s__6, Py_NE)); if (unlikely(__pyx_t_13 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 466; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_13 = (__Pyx_PyString_Equals(__pyx_t_2, __pyx_kp_s__6, Py_NE)); if (unlikely(__pyx_t_13 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 467; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_12 = __pyx_t_13;
-  __pyx_L26_bool_binop_done:;
+  __pyx_L27_bool_binop_done:;
   if (__pyx_t_12) {
 
-    /* "optwrapper/npsol.pyx":467
+    /* "optwrapper/npsol.pyx":468
  *         if( self.printOpts[ "printFile" ] is not None and
  *             self.printOpts[ "printFile" ] != "" ):
  *             try:             # <<<<<<<<<<<<<<
@@ -6645,21 +6671,21 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
       __Pyx_XGOTREF(__pyx_t_17);
       /*try:*/ {
 
-        /* "optwrapper/npsol.pyx":468
+        /* "optwrapper/npsol.pyx":469
  *             self.printOpts[ "printFile" ] != "" ):
  *             try:
  *                 os.rename( "fort.{0}".format( printFileUnit[0] ),             # <<<<<<<<<<<<<<
  *                            self.printOpts[ "printFile" ] )
  *             except:
  */
-        __pyx_t_9 = __Pyx_GetModuleGlobalName(__pyx_n_s_os); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 468; __pyx_clineno = __LINE__; goto __pyx_L28_error;}
-        __Pyx_GOTREF(__pyx_t_9);
-        __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_t_9, __pyx_n_s_rename); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 468; __pyx_clineno = __LINE__; goto __pyx_L28_error;}
+        __pyx_t_8 = __Pyx_GetModuleGlobalName(__pyx_n_s_os); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 469; __pyx_clineno = __LINE__; goto __pyx_L29_error;}
         __Pyx_GOTREF(__pyx_t_8);
-        __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-        __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_fort_0, __pyx_n_s_format); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 468; __pyx_clineno = __LINE__; goto __pyx_L28_error;}
+        __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_t_8, __pyx_n_s_rename); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 469; __pyx_clineno = __LINE__; goto __pyx_L29_error;}
+        __Pyx_GOTREF(__pyx_t_9);
+        __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+        __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_fort_0, __pyx_n_s_format); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 469; __pyx_clineno = __LINE__; goto __pyx_L29_error;}
         __Pyx_GOTREF(__pyx_t_1);
-        __pyx_t_18 = __Pyx_PyInt_From_long((__pyx_v_printFileUnit[0])); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 468; __pyx_clineno = __LINE__; goto __pyx_L28_error;}
+        __pyx_t_18 = __Pyx_PyInt_From_long((__pyx_v_printFileUnit[0])); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 469; __pyx_clineno = __LINE__; goto __pyx_L29_error;}
         __Pyx_GOTREF(__pyx_t_18);
         __pyx_t_19 = NULL;
         if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_1))) {
@@ -6672,23 +6698,23 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
           }
         }
         if (!__pyx_t_19) {
-          __pyx_t_9 = __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_18); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 468; __pyx_clineno = __LINE__; goto __pyx_L28_error;}
+          __pyx_t_8 = __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_18); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 469; __pyx_clineno = __LINE__; goto __pyx_L29_error;}
           __Pyx_DECREF(__pyx_t_18); __pyx_t_18 = 0;
-          __Pyx_GOTREF(__pyx_t_9);
+          __Pyx_GOTREF(__pyx_t_8);
         } else {
-          __pyx_t_20 = PyTuple_New(1+1); if (unlikely(!__pyx_t_20)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 468; __pyx_clineno = __LINE__; goto __pyx_L28_error;}
+          __pyx_t_20 = PyTuple_New(1+1); if (unlikely(!__pyx_t_20)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 469; __pyx_clineno = __LINE__; goto __pyx_L29_error;}
           __Pyx_GOTREF(__pyx_t_20);
           PyTuple_SET_ITEM(__pyx_t_20, 0, __pyx_t_19); __Pyx_GIVEREF(__pyx_t_19); __pyx_t_19 = NULL;
           PyTuple_SET_ITEM(__pyx_t_20, 0+1, __pyx_t_18);
           __Pyx_GIVEREF(__pyx_t_18);
           __pyx_t_18 = 0;
-          __pyx_t_9 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_20, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 468; __pyx_clineno = __LINE__; goto __pyx_L28_error;}
-          __Pyx_GOTREF(__pyx_t_9);
+          __pyx_t_8 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_20, NULL); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 469; __pyx_clineno = __LINE__; goto __pyx_L29_error;}
+          __Pyx_GOTREF(__pyx_t_8);
           __Pyx_DECREF(__pyx_t_20); __pyx_t_20 = 0;
         }
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-        /* "optwrapper/npsol.pyx":469
+        /* "optwrapper/npsol.pyx":470
  *             try:
  *                 os.rename( "fort.{0}".format( printFileUnit[0] ),
  *                            self.printOpts[ "printFile" ] )             # <<<<<<<<<<<<<<
@@ -6697,53 +6723,53 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
         if (unlikely(__pyx_v_self->__pyx_base.printOpts == Py_None)) {
           PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 469; __pyx_clineno = __LINE__; goto __pyx_L28_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 470; __pyx_clineno = __LINE__; goto __pyx_L29_error;}
         }
-        __pyx_t_1 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_printFile); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 469; __pyx_clineno = __LINE__; goto __pyx_L28_error;};
+        __pyx_t_1 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_printFile); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 470; __pyx_clineno = __LINE__; goto __pyx_L29_error;};
         __Pyx_GOTREF(__pyx_t_1);
         __pyx_t_20 = NULL;
         __pyx_t_21 = 0;
-        if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_8))) {
-          __pyx_t_20 = PyMethod_GET_SELF(__pyx_t_8);
+        if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_9))) {
+          __pyx_t_20 = PyMethod_GET_SELF(__pyx_t_9);
           if (likely(__pyx_t_20)) {
-            PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_8);
+            PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_9);
             __Pyx_INCREF(__pyx_t_20);
             __Pyx_INCREF(function);
-            __Pyx_DECREF_SET(__pyx_t_8, function);
+            __Pyx_DECREF_SET(__pyx_t_9, function);
             __pyx_t_21 = 1;
           }
         }
-        __pyx_t_18 = PyTuple_New(2+__pyx_t_21); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 468; __pyx_clineno = __LINE__; goto __pyx_L28_error;}
+        __pyx_t_18 = PyTuple_New(2+__pyx_t_21); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 469; __pyx_clineno = __LINE__; goto __pyx_L29_error;}
         __Pyx_GOTREF(__pyx_t_18);
         if (__pyx_t_20) {
           PyTuple_SET_ITEM(__pyx_t_18, 0, __pyx_t_20); __Pyx_GIVEREF(__pyx_t_20); __pyx_t_20 = NULL;
         }
-        PyTuple_SET_ITEM(__pyx_t_18, 0+__pyx_t_21, __pyx_t_9);
-        __Pyx_GIVEREF(__pyx_t_9);
+        PyTuple_SET_ITEM(__pyx_t_18, 0+__pyx_t_21, __pyx_t_8);
+        __Pyx_GIVEREF(__pyx_t_8);
         PyTuple_SET_ITEM(__pyx_t_18, 1+__pyx_t_21, __pyx_t_1);
         __Pyx_GIVEREF(__pyx_t_1);
-        __pyx_t_9 = 0;
+        __pyx_t_8 = 0;
         __pyx_t_1 = 0;
-        __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_8, __pyx_t_18, NULL); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 468; __pyx_clineno = __LINE__; goto __pyx_L28_error;}
+        __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_9, __pyx_t_18, NULL); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 469; __pyx_clineno = __LINE__; goto __pyx_L29_error;}
         __Pyx_GOTREF(__pyx_t_2);
         __Pyx_DECREF(__pyx_t_18); __pyx_t_18 = 0;
-        __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+        __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
         __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
       }
       __Pyx_XDECREF(__pyx_t_15); __pyx_t_15 = 0;
       __Pyx_XDECREF(__pyx_t_16); __pyx_t_16 = 0;
       __Pyx_XDECREF(__pyx_t_17); __pyx_t_17 = 0;
-      goto __pyx_L35_try_end;
-      __pyx_L28_error:;
+      goto __pyx_L36_try_end;
+      __pyx_L29_error:;
       __Pyx_XDECREF(__pyx_t_19); __pyx_t_19 = 0;
       __Pyx_XDECREF(__pyx_t_20); __pyx_t_20 = 0;
-      __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
+      __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
       __Pyx_XDECREF(__pyx_t_1); __pyx_t_1 = 0;
       __Pyx_XDECREF(__pyx_t_18); __pyx_t_18 = 0;
-      __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
+      __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
       __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-      /* "optwrapper/npsol.pyx":470
+      /* "optwrapper/npsol.pyx":471
  *                 os.rename( "fort.{0}".format( printFileUnit[0] ),
  *                            self.printOpts[ "printFile" ] )
  *             except:             # <<<<<<<<<<<<<<
@@ -6752,47 +6778,25 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
       /*except:*/ {
         PyErr_Restore(0,0,0);
-        goto __pyx_L29_exception_handled;
+        goto __pyx_L30_exception_handled;
       }
-      __pyx_L29_exception_handled:;
+      __pyx_L30_exception_handled:;
       __Pyx_XGIVEREF(__pyx_t_15);
       __Pyx_XGIVEREF(__pyx_t_16);
       __Pyx_XGIVEREF(__pyx_t_17);
       __Pyx_ExceptionReset(__pyx_t_15, __pyx_t_16, __pyx_t_17);
-      __pyx_L35_try_end:;
+      __pyx_L36_try_end:;
     }
-    goto __pyx_L25;
+    goto __pyx_L26;
   }
-  __pyx_L25:;
+  __pyx_L26:;
 
-  /* "optwrapper/npsol.pyx":473
+  /* "optwrapper/npsol.pyx":474
  *                 pass
  * 
  *         if( self.printOpts[ "summaryFile" ] is not None and             # <<<<<<<<<<<<<<
  *             self.printOpts[ "summaryFile" ] != "" and
- *             self.printOpts[ "summaryFile" ] != "stdout" ):
- */
-  if (unlikely(__pyx_v_self->__pyx_base.printOpts == Py_None)) {
-    PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 473; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  }
-  __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_summaryFile); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 473; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-  __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_13 = (__pyx_t_2 != Py_None);
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_11 = (__pyx_t_13 != 0);
-  if (__pyx_t_11) {
-  } else {
-    __pyx_t_12 = __pyx_t_11;
-    goto __pyx_L37_bool_binop_done;
-  }
-
-  /* "optwrapper/npsol.pyx":474
- * 
- *         if( self.printOpts[ "summaryFile" ] is not None and
- *             self.printOpts[ "summaryFile" ] != "" and             # <<<<<<<<<<<<<<
- *             self.printOpts[ "summaryFile" ] != "stdout" ):
- *             try:
+ *             self.printOpts[ "summaryFile" ].lower() != "stdout" ):
  */
   if (unlikely(__pyx_v_self->__pyx_base.printOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
@@ -6800,20 +6804,21 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
   }
   __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_summaryFile); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 474; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_11 = (__Pyx_PyString_Equals(__pyx_t_2, __pyx_kp_s__6, Py_NE)); if (unlikely(__pyx_t_11 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 474; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_13 = (__pyx_t_2 != Py_None);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_t_11 = (__pyx_t_13 != 0);
   if (__pyx_t_11) {
   } else {
     __pyx_t_12 = __pyx_t_11;
-    goto __pyx_L37_bool_binop_done;
+    goto __pyx_L38_bool_binop_done;
   }
 
   /* "optwrapper/npsol.pyx":475
+ * 
  *         if( self.printOpts[ "summaryFile" ] is not None and
- *             self.printOpts[ "summaryFile" ] != "" and
- *             self.printOpts[ "summaryFile" ] != "stdout" ):             # <<<<<<<<<<<<<<
+ *             self.printOpts[ "summaryFile" ] != "" and             # <<<<<<<<<<<<<<
+ *             self.printOpts[ "summaryFile" ].lower() != "stdout" ):
  *             try:
- *                 os.rename( "fort.{0}".format( summaryFileUnit[0] ),
  */
   if (unlikely(__pyx_v_self->__pyx_base.printOpts == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
@@ -6821,15 +6826,57 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
   }
   __pyx_t_2 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_summaryFile); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 475; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_11 = (__Pyx_PyString_Equals(__pyx_t_2, __pyx_n_s_stdout, Py_NE)); if (unlikely(__pyx_t_11 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 475; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_11 = (__Pyx_PyString_Equals(__pyx_t_2, __pyx_kp_s__6, Py_NE)); if (unlikely(__pyx_t_11 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 475; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  if (__pyx_t_11) {
+  } else {
+    __pyx_t_12 = __pyx_t_11;
+    goto __pyx_L38_bool_binop_done;
+  }
+
+  /* "optwrapper/npsol.pyx":476
+ *         if( self.printOpts[ "summaryFile" ] is not None and
+ *             self.printOpts[ "summaryFile" ] != "" and
+ *             self.printOpts[ "summaryFile" ].lower() != "stdout" ):             # <<<<<<<<<<<<<<
+ *             try:
+ *                 os.rename( "fort.{0}".format( summaryFileUnit[0] ),
+ */
+  if (unlikely(__pyx_v_self->__pyx_base.printOpts == Py_None)) {
+    PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 476; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  }
+  __pyx_t_9 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_summaryFile); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 476; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __Pyx_GOTREF(__pyx_t_9);
+  __pyx_t_18 = __Pyx_PyObject_GetAttrStr(__pyx_t_9, __pyx_n_s_lower); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 476; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_18);
+  __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+  __pyx_t_9 = NULL;
+  if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_18))) {
+    __pyx_t_9 = PyMethod_GET_SELF(__pyx_t_18);
+    if (likely(__pyx_t_9)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_18);
+      __Pyx_INCREF(__pyx_t_9);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_18, function);
+    }
+  }
+  if (__pyx_t_9) {
+    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_18, __pyx_t_9); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 476; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+  } else {
+    __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_18); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 476; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  }
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_18); __pyx_t_18 = 0;
+  __pyx_t_11 = (__Pyx_PyString_Equals(__pyx_t_2, __pyx_n_s_stdout, Py_NE)); if (unlikely(__pyx_t_11 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 476; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_12 = __pyx_t_11;
-  __pyx_L37_bool_binop_done:;
+  __pyx_L38_bool_binop_done:;
   if (__pyx_t_12) {
 
-    /* "optwrapper/npsol.pyx":476
+    /* "optwrapper/npsol.pyx":477
  *             self.printOpts[ "summaryFile" ] != "" and
- *             self.printOpts[ "summaryFile" ] != "stdout" ):
+ *             self.printOpts[ "summaryFile" ].lower() != "stdout" ):
  *             try:             # <<<<<<<<<<<<<<
  *                 os.rename( "fort.{0}".format( summaryFileUnit[0] ),
  *                            self.printOpts[ "summaryFile" ] )
@@ -6841,22 +6888,22 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
       __Pyx_XGOTREF(__pyx_t_15);
       /*try:*/ {
 
-        /* "optwrapper/npsol.pyx":477
- *             self.printOpts[ "summaryFile" ] != "stdout" ):
+        /* "optwrapper/npsol.pyx":478
+ *             self.printOpts[ "summaryFile" ].lower() != "stdout" ):
  *             try:
  *                 os.rename( "fort.{0}".format( summaryFileUnit[0] ),             # <<<<<<<<<<<<<<
  *                            self.printOpts[ "summaryFile" ] )
  *             except:
  */
-        __pyx_t_8 = __Pyx_GetModuleGlobalName(__pyx_n_s_os); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 477; __pyx_clineno = __LINE__; goto __pyx_L40_error;}
-        __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_18 = __Pyx_PyObject_GetAttrStr(__pyx_t_8, __pyx_n_s_rename); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 477; __pyx_clineno = __LINE__; goto __pyx_L40_error;}
+        __pyx_t_18 = __Pyx_GetModuleGlobalName(__pyx_n_s_os); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 478; __pyx_clineno = __LINE__; goto __pyx_L41_error;}
         __Pyx_GOTREF(__pyx_t_18);
-        __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_fort_0, __pyx_n_s_format); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 477; __pyx_clineno = __LINE__; goto __pyx_L40_error;}
-        __Pyx_GOTREF(__pyx_t_1);
-        __pyx_t_9 = __Pyx_PyInt_From_long((__pyx_v_summaryFileUnit[0])); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 477; __pyx_clineno = __LINE__; goto __pyx_L40_error;}
+        __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_t_18, __pyx_n_s_rename); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 478; __pyx_clineno = __LINE__; goto __pyx_L41_error;}
         __Pyx_GOTREF(__pyx_t_9);
+        __Pyx_DECREF(__pyx_t_18); __pyx_t_18 = 0;
+        __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_fort_0, __pyx_n_s_format); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 478; __pyx_clineno = __LINE__; goto __pyx_L41_error;}
+        __Pyx_GOTREF(__pyx_t_1);
+        __pyx_t_8 = __Pyx_PyInt_From_long((__pyx_v_summaryFileUnit[0])); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 478; __pyx_clineno = __LINE__; goto __pyx_L41_error;}
+        __Pyx_GOTREF(__pyx_t_8);
         __pyx_t_20 = NULL;
         if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_1))) {
           __pyx_t_20 = PyMethod_GET_SELF(__pyx_t_1);
@@ -6868,23 +6915,23 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
           }
         }
         if (!__pyx_t_20) {
-          __pyx_t_8 = __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_9); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 477; __pyx_clineno = __LINE__; goto __pyx_L40_error;}
-          __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-          __Pyx_GOTREF(__pyx_t_8);
+          __pyx_t_18 = __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_8); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 478; __pyx_clineno = __LINE__; goto __pyx_L41_error;}
+          __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+          __Pyx_GOTREF(__pyx_t_18);
         } else {
-          __pyx_t_19 = PyTuple_New(1+1); if (unlikely(!__pyx_t_19)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 477; __pyx_clineno = __LINE__; goto __pyx_L40_error;}
+          __pyx_t_19 = PyTuple_New(1+1); if (unlikely(!__pyx_t_19)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 478; __pyx_clineno = __LINE__; goto __pyx_L41_error;}
           __Pyx_GOTREF(__pyx_t_19);
           PyTuple_SET_ITEM(__pyx_t_19, 0, __pyx_t_20); __Pyx_GIVEREF(__pyx_t_20); __pyx_t_20 = NULL;
-          PyTuple_SET_ITEM(__pyx_t_19, 0+1, __pyx_t_9);
-          __Pyx_GIVEREF(__pyx_t_9);
-          __pyx_t_9 = 0;
-          __pyx_t_8 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_19, NULL); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 477; __pyx_clineno = __LINE__; goto __pyx_L40_error;}
-          __Pyx_GOTREF(__pyx_t_8);
+          PyTuple_SET_ITEM(__pyx_t_19, 0+1, __pyx_t_8);
+          __Pyx_GIVEREF(__pyx_t_8);
+          __pyx_t_8 = 0;
+          __pyx_t_18 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_19, NULL); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 478; __pyx_clineno = __LINE__; goto __pyx_L41_error;}
+          __Pyx_GOTREF(__pyx_t_18);
           __Pyx_DECREF(__pyx_t_19); __pyx_t_19 = 0;
         }
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-        /* "optwrapper/npsol.pyx":478
+        /* "optwrapper/npsol.pyx":479
  *             try:
  *                 os.rename( "fort.{0}".format( summaryFileUnit[0] ),
  *                            self.printOpts[ "summaryFile" ] )             # <<<<<<<<<<<<<<
@@ -6893,53 +6940,53 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
         if (unlikely(__pyx_v_self->__pyx_base.printOpts == Py_None)) {
           PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 478; __pyx_clineno = __LINE__; goto __pyx_L40_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 479; __pyx_clineno = __LINE__; goto __pyx_L41_error;}
         }
-        __pyx_t_1 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_summaryFile); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 478; __pyx_clineno = __LINE__; goto __pyx_L40_error;};
+        __pyx_t_1 = __Pyx_PyDict_GetItem(__pyx_v_self->__pyx_base.printOpts, __pyx_n_s_summaryFile); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 479; __pyx_clineno = __LINE__; goto __pyx_L41_error;};
         __Pyx_GOTREF(__pyx_t_1);
         __pyx_t_19 = NULL;
         __pyx_t_21 = 0;
-        if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_18))) {
-          __pyx_t_19 = PyMethod_GET_SELF(__pyx_t_18);
+        if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_9))) {
+          __pyx_t_19 = PyMethod_GET_SELF(__pyx_t_9);
           if (likely(__pyx_t_19)) {
-            PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_18);
+            PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_9);
             __Pyx_INCREF(__pyx_t_19);
             __Pyx_INCREF(function);
-            __Pyx_DECREF_SET(__pyx_t_18, function);
+            __Pyx_DECREF_SET(__pyx_t_9, function);
             __pyx_t_21 = 1;
           }
         }
-        __pyx_t_9 = PyTuple_New(2+__pyx_t_21); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 477; __pyx_clineno = __LINE__; goto __pyx_L40_error;}
-        __Pyx_GOTREF(__pyx_t_9);
+        __pyx_t_8 = PyTuple_New(2+__pyx_t_21); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 478; __pyx_clineno = __LINE__; goto __pyx_L41_error;}
+        __Pyx_GOTREF(__pyx_t_8);
         if (__pyx_t_19) {
-          PyTuple_SET_ITEM(__pyx_t_9, 0, __pyx_t_19); __Pyx_GIVEREF(__pyx_t_19); __pyx_t_19 = NULL;
+          PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_19); __Pyx_GIVEREF(__pyx_t_19); __pyx_t_19 = NULL;
         }
-        PyTuple_SET_ITEM(__pyx_t_9, 0+__pyx_t_21, __pyx_t_8);
-        __Pyx_GIVEREF(__pyx_t_8);
-        PyTuple_SET_ITEM(__pyx_t_9, 1+__pyx_t_21, __pyx_t_1);
+        PyTuple_SET_ITEM(__pyx_t_8, 0+__pyx_t_21, __pyx_t_18);
+        __Pyx_GIVEREF(__pyx_t_18);
+        PyTuple_SET_ITEM(__pyx_t_8, 1+__pyx_t_21, __pyx_t_1);
         __Pyx_GIVEREF(__pyx_t_1);
-        __pyx_t_8 = 0;
+        __pyx_t_18 = 0;
         __pyx_t_1 = 0;
-        __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_18, __pyx_t_9, NULL); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 477; __pyx_clineno = __LINE__; goto __pyx_L40_error;}
+        __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_9, __pyx_t_8, NULL); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 478; __pyx_clineno = __LINE__; goto __pyx_L41_error;}
         __Pyx_GOTREF(__pyx_t_2);
+        __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
         __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-        __Pyx_DECREF(__pyx_t_18); __pyx_t_18 = 0;
         __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
       }
       __Pyx_XDECREF(__pyx_t_17); __pyx_t_17 = 0;
       __Pyx_XDECREF(__pyx_t_16); __pyx_t_16 = 0;
       __Pyx_XDECREF(__pyx_t_15); __pyx_t_15 = 0;
-      goto __pyx_L47_try_end;
-      __pyx_L40_error:;
+      goto __pyx_L48_try_end;
+      __pyx_L41_error:;
       __Pyx_XDECREF(__pyx_t_20); __pyx_t_20 = 0;
       __Pyx_XDECREF(__pyx_t_19); __pyx_t_19 = 0;
-      __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
-      __Pyx_XDECREF(__pyx_t_1); __pyx_t_1 = 0;
-      __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
       __Pyx_XDECREF(__pyx_t_18); __pyx_t_18 = 0;
+      __Pyx_XDECREF(__pyx_t_1); __pyx_t_1 = 0;
+      __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
+      __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
       __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-      /* "optwrapper/npsol.pyx":479
+      /* "optwrapper/npsol.pyx":480
  *                 os.rename( "fort.{0}".format( summaryFileUnit[0] ),
  *                            self.printOpts[ "summaryFile" ] )
  *             except:             # <<<<<<<<<<<<<<
@@ -6948,353 +6995,353 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  */
       /*except:*/ {
         PyErr_Restore(0,0,0);
-        goto __pyx_L41_exception_handled;
+        goto __pyx_L42_exception_handled;
       }
-      __pyx_L41_exception_handled:;
+      __pyx_L42_exception_handled:;
       __Pyx_XGIVEREF(__pyx_t_17);
       __Pyx_XGIVEREF(__pyx_t_16);
       __Pyx_XGIVEREF(__pyx_t_15);
       __Pyx_ExceptionReset(__pyx_t_17, __pyx_t_16, __pyx_t_15);
-      __pyx_L47_try_end:;
+      __pyx_L48_try_end:;
     }
-    goto __pyx_L36;
+    goto __pyx_L37;
   }
-  __pyx_L36:;
+  __pyx_L37:;
 
-  /* "optwrapper/npsol.pyx":483
+  /* "optwrapper/npsol.pyx":484
  * 
  *         ## Save result to prob
  *         self.prob.soln = Soln()             # <<<<<<<<<<<<<<
  *         self.prob.soln.value = float( objf_val[0] )
  *         self.prob.soln.final = np.copy( utils.wrap1dPtr( self.x, self.prob.N,
  */
-  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)__pyx_ptype_10optwrapper_5npsol_Soln)), __pyx_empty_tuple, NULL); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 483; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)__pyx_ptype_10optwrapper_5npsol_Soln)), __pyx_empty_tuple, NULL); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 484; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  if (__Pyx_PyObject_SetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln, __pyx_t_2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 483; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (__Pyx_PyObject_SetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln, __pyx_t_2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 484; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "optwrapper/npsol.pyx":484
+  /* "optwrapper/npsol.pyx":485
  *         ## Save result to prob
  *         self.prob.soln = Soln()
  *         self.prob.soln.value = float( objf_val[0] )             # <<<<<<<<<<<<<<
  *         self.prob.soln.final = np.copy( utils.wrap1dPtr( self.x, self.prob.N,
  *                                                          utils.doublereal_type ) )
  */
-  __pyx_t_2 = PyFloat_FromDouble(((double)(__pyx_v_objf_val[0]))); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 484; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = PyFloat_FromDouble(((double)(__pyx_v_objf_val[0]))); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 485; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_18 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 484; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_18);
-  if (__Pyx_PyObject_SetAttrStr(__pyx_t_18, __pyx_n_s_value, __pyx_t_2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 484; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 485; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_9);
+  if (__Pyx_PyObject_SetAttrStr(__pyx_t_9, __pyx_n_s_value, __pyx_t_2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 485; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __Pyx_DECREF(__pyx_t_18); __pyx_t_18 = 0;
+  __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
 
-  /* "optwrapper/npsol.pyx":485
+  /* "optwrapper/npsol.pyx":486
  *         self.prob.soln = Soln()
  *         self.prob.soln.value = float( objf_val[0] )
  *         self.prob.soln.final = np.copy( utils.wrap1dPtr( self.x, self.prob.N,             # <<<<<<<<<<<<<<
  *                                                          utils.doublereal_type ) )
  *         self.prob.soln.istate = np.copy( utils.wrap1dPtr( self.istate, self.nctotl,
  */
-  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 485; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 486; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_copy); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 485; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_9);
+  __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_copy); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 486; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_8);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_N); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 485; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_N); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 486; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_22 = __Pyx_PyInt_As_int(__pyx_t_2); if (unlikely((__pyx_t_22 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 485; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_22 = __Pyx_PyInt_As_int(__pyx_t_2); if (unlikely((__pyx_t_22 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 486; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "optwrapper/npsol.pyx":486
+  /* "optwrapper/npsol.pyx":487
  *         self.prob.soln.value = float( objf_val[0] )
  *         self.prob.soln.final = np.copy( utils.wrap1dPtr( self.x, self.prob.N,
  *                                                          utils.doublereal_type ) )             # <<<<<<<<<<<<<<
  *         self.prob.soln.istate = np.copy( utils.wrap1dPtr( self.istate, self.nctotl,
  *                                                           utils.integer_type ) )
  */
-  __pyx_t_2 = ((PyObject *)__pyx_f_10optwrapper_5utils_wrap1dPtr(__pyx_v_self->x, __pyx_t_22, __pyx_v_10optwrapper_5utils_doublereal_type)); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 485; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = ((PyObject *)__pyx_f_10optwrapper_5utils_wrap1dPtr(__pyx_v_self->x, __pyx_t_22, __pyx_v_10optwrapper_5utils_doublereal_type)); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 486; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_1 = NULL;
-  if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_9))) {
-    __pyx_t_1 = PyMethod_GET_SELF(__pyx_t_9);
+  if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_8))) {
+    __pyx_t_1 = PyMethod_GET_SELF(__pyx_t_8);
     if (likely(__pyx_t_1)) {
-      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_9);
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_8);
       __Pyx_INCREF(__pyx_t_1);
       __Pyx_INCREF(function);
-      __Pyx_DECREF_SET(__pyx_t_9, function);
+      __Pyx_DECREF_SET(__pyx_t_8, function);
     }
   }
   if (!__pyx_t_1) {
-    __pyx_t_18 = __Pyx_PyObject_CallOneArg(__pyx_t_9, __pyx_t_2); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 485; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_9 = __Pyx_PyObject_CallOneArg(__pyx_t_8, __pyx_t_2); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 486; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __Pyx_GOTREF(__pyx_t_18);
+    __Pyx_GOTREF(__pyx_t_9);
   } else {
-    __pyx_t_8 = PyTuple_New(1+1); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 485; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_GOTREF(__pyx_t_8);
-    PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_1); __Pyx_GIVEREF(__pyx_t_1); __pyx_t_1 = NULL;
-    PyTuple_SET_ITEM(__pyx_t_8, 0+1, __pyx_t_2);
+    __pyx_t_18 = PyTuple_New(1+1); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 486; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_18);
+    PyTuple_SET_ITEM(__pyx_t_18, 0, __pyx_t_1); __Pyx_GIVEREF(__pyx_t_1); __pyx_t_1 = NULL;
+    PyTuple_SET_ITEM(__pyx_t_18, 0+1, __pyx_t_2);
     __Pyx_GIVEREF(__pyx_t_2);
     __pyx_t_2 = 0;
-    __pyx_t_18 = __Pyx_PyObject_Call(__pyx_t_9, __pyx_t_8, NULL); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 485; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_GOTREF(__pyx_t_18);
-    __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+    __pyx_t_9 = __Pyx_PyObject_Call(__pyx_t_8, __pyx_t_18, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 486; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_9);
+    __Pyx_DECREF(__pyx_t_18); __pyx_t_18 = 0;
   }
-  __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+  __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-  /* "optwrapper/npsol.pyx":485
+  /* "optwrapper/npsol.pyx":486
  *         self.prob.soln = Soln()
  *         self.prob.soln.value = float( objf_val[0] )
  *         self.prob.soln.final = np.copy( utils.wrap1dPtr( self.x, self.prob.N,             # <<<<<<<<<<<<<<
  *                                                          utils.doublereal_type ) )
  *         self.prob.soln.istate = np.copy( utils.wrap1dPtr( self.istate, self.nctotl,
  */
-  __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 485; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_9);
-  if (__Pyx_PyObject_SetAttrStr(__pyx_t_9, __pyx_n_s_final, __pyx_t_18) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 485; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_DECREF(__pyx_t_18); __pyx_t_18 = 0;
+  __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 486; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_8);
+  if (__Pyx_PyObject_SetAttrStr(__pyx_t_8, __pyx_n_s_final, __pyx_t_9) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 486; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+  __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-  /* "optwrapper/npsol.pyx":487
+  /* "optwrapper/npsol.pyx":488
  *         self.prob.soln.final = np.copy( utils.wrap1dPtr( self.x, self.prob.N,
  *                                                          utils.doublereal_type ) )
  *         self.prob.soln.istate = np.copy( utils.wrap1dPtr( self.istate, self.nctotl,             # <<<<<<<<<<<<<<
  *                                                           utils.integer_type ) )
  *         self.prob.soln.clamda = np.copy( utils.wrap1dPtr( self.clamda, self.nctotl,
  */
-  __pyx_t_18 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 487; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_9 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 488; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_9);
+  __pyx_t_18 = __Pyx_PyObject_GetAttrStr(__pyx_t_9, __pyx_n_s_copy); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 488; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_18);
-  __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_t_18, __pyx_n_s_copy); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 487; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_8);
-  __Pyx_DECREF(__pyx_t_18); __pyx_t_18 = 0;
+  __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
 
-  /* "optwrapper/npsol.pyx":488
+  /* "optwrapper/npsol.pyx":489
  *                                                          utils.doublereal_type ) )
  *         self.prob.soln.istate = np.copy( utils.wrap1dPtr( self.istate, self.nctotl,
  *                                                           utils.integer_type ) )             # <<<<<<<<<<<<<<
  *         self.prob.soln.clamda = np.copy( utils.wrap1dPtr( self.clamda, self.nctotl,
  *                                                           utils.doublereal_type ) )
  */
-  __pyx_t_18 = ((PyObject *)__pyx_f_10optwrapper_5utils_wrap1dPtr(__pyx_v_self->istate, __pyx_v_self->nctotl, __pyx_v_10optwrapper_5utils_integer_type)); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 487; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_18);
+  __pyx_t_9 = ((PyObject *)__pyx_f_10optwrapper_5utils_wrap1dPtr(__pyx_v_self->istate, __pyx_v_self->nctotl, __pyx_v_10optwrapper_5utils_integer_type)); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 488; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_9);
   __pyx_t_2 = NULL;
-  if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_8))) {
-    __pyx_t_2 = PyMethod_GET_SELF(__pyx_t_8);
+  if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_18))) {
+    __pyx_t_2 = PyMethod_GET_SELF(__pyx_t_18);
     if (likely(__pyx_t_2)) {
-      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_8);
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_18);
       __Pyx_INCREF(__pyx_t_2);
       __Pyx_INCREF(function);
-      __Pyx_DECREF_SET(__pyx_t_8, function);
+      __Pyx_DECREF_SET(__pyx_t_18, function);
     }
   }
   if (!__pyx_t_2) {
-    __pyx_t_9 = __Pyx_PyObject_CallOneArg(__pyx_t_8, __pyx_t_18); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 487; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_DECREF(__pyx_t_18); __pyx_t_18 = 0;
-    __Pyx_GOTREF(__pyx_t_9);
+    __pyx_t_8 = __Pyx_PyObject_CallOneArg(__pyx_t_18, __pyx_t_9); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 488; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+    __Pyx_GOTREF(__pyx_t_8);
   } else {
-    __pyx_t_1 = PyTuple_New(1+1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 487; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = PyTuple_New(1+1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 488; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_1);
     PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_t_2); __Pyx_GIVEREF(__pyx_t_2); __pyx_t_2 = NULL;
-    PyTuple_SET_ITEM(__pyx_t_1, 0+1, __pyx_t_18);
-    __Pyx_GIVEREF(__pyx_t_18);
-    __pyx_t_18 = 0;
-    __pyx_t_9 = __Pyx_PyObject_Call(__pyx_t_8, __pyx_t_1, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 487; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_GOTREF(__pyx_t_9);
+    PyTuple_SET_ITEM(__pyx_t_1, 0+1, __pyx_t_9);
+    __Pyx_GIVEREF(__pyx_t_9);
+    __pyx_t_9 = 0;
+    __pyx_t_8 = __Pyx_PyObject_Call(__pyx_t_18, __pyx_t_1, NULL); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 488; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_8);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   }
-  __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+  __Pyx_DECREF(__pyx_t_18); __pyx_t_18 = 0;
 
-  /* "optwrapper/npsol.pyx":487
+  /* "optwrapper/npsol.pyx":488
  *         self.prob.soln.final = np.copy( utils.wrap1dPtr( self.x, self.prob.N,
  *                                                          utils.doublereal_type ) )
  *         self.prob.soln.istate = np.copy( utils.wrap1dPtr( self.istate, self.nctotl,             # <<<<<<<<<<<<<<
  *                                                           utils.integer_type ) )
  *         self.prob.soln.clamda = np.copy( utils.wrap1dPtr( self.clamda, self.nctotl,
  */
-  __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 487; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_8);
-  if (__Pyx_PyObject_SetAttrStr(__pyx_t_8, __pyx_n_s_istate, __pyx_t_9) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 487; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+  __pyx_t_18 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 488; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_18);
+  if (__Pyx_PyObject_SetAttrStr(__pyx_t_18, __pyx_n_s_istate, __pyx_t_8) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 488; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+  __Pyx_DECREF(__pyx_t_18); __pyx_t_18 = 0;
 
-  /* "optwrapper/npsol.pyx":489
+  /* "optwrapper/npsol.pyx":490
  *         self.prob.soln.istate = np.copy( utils.wrap1dPtr( self.istate, self.nctotl,
  *                                                           utils.integer_type ) )
  *         self.prob.soln.clamda = np.copy( utils.wrap1dPtr( self.clamda, self.nctotl,             # <<<<<<<<<<<<<<
  *                                                           utils.doublereal_type ) )
  *         self.prob.soln.R = np.copy( utils.wrap2dPtr( self.R, self.prob.N, self.prob.N,
  */
-  __pyx_t_9 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 489; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_9);
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_9, __pyx_n_s_copy); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 489; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_8 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 490; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_8);
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_8, __pyx_n_s_copy); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 490; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+  __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-  /* "optwrapper/npsol.pyx":490
+  /* "optwrapper/npsol.pyx":491
  *                                                           utils.integer_type ) )
  *         self.prob.soln.clamda = np.copy( utils.wrap1dPtr( self.clamda, self.nctotl,
  *                                                           utils.doublereal_type ) )             # <<<<<<<<<<<<<<
  *         self.prob.soln.R = np.copy( utils.wrap2dPtr( self.R, self.prob.N, self.prob.N,
  *                                                      utils.doublereal_type ) )
  */
-  __pyx_t_9 = ((PyObject *)__pyx_f_10optwrapper_5utils_wrap1dPtr(__pyx_v_self->clamda, __pyx_v_self->nctotl, __pyx_v_10optwrapper_5utils_doublereal_type)); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 489; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_9);
-  __pyx_t_18 = NULL;
+  __pyx_t_8 = ((PyObject *)__pyx_f_10optwrapper_5utils_wrap1dPtr(__pyx_v_self->clamda, __pyx_v_self->nctotl, __pyx_v_10optwrapper_5utils_doublereal_type)); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 490; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_8);
+  __pyx_t_9 = NULL;
   if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_1))) {
-    __pyx_t_18 = PyMethod_GET_SELF(__pyx_t_1);
-    if (likely(__pyx_t_18)) {
+    __pyx_t_9 = PyMethod_GET_SELF(__pyx_t_1);
+    if (likely(__pyx_t_9)) {
       PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_1);
-      __Pyx_INCREF(__pyx_t_18);
+      __Pyx_INCREF(__pyx_t_9);
       __Pyx_INCREF(function);
       __Pyx_DECREF_SET(__pyx_t_1, function);
     }
   }
-  if (!__pyx_t_18) {
-    __pyx_t_8 = __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_9); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 489; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-    __Pyx_GOTREF(__pyx_t_8);
+  if (!__pyx_t_9) {
+    __pyx_t_18 = __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_8); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 490; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+    __Pyx_GOTREF(__pyx_t_18);
   } else {
-    __pyx_t_2 = PyTuple_New(1+1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 489; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_2 = PyTuple_New(1+1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 490; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_2);
-    PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_t_18); __Pyx_GIVEREF(__pyx_t_18); __pyx_t_18 = NULL;
-    PyTuple_SET_ITEM(__pyx_t_2, 0+1, __pyx_t_9);
-    __Pyx_GIVEREF(__pyx_t_9);
-    __pyx_t_9 = 0;
-    __pyx_t_8 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_2, NULL); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 489; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_GOTREF(__pyx_t_8);
+    PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_t_9); __Pyx_GIVEREF(__pyx_t_9); __pyx_t_9 = NULL;
+    PyTuple_SET_ITEM(__pyx_t_2, 0+1, __pyx_t_8);
+    __Pyx_GIVEREF(__pyx_t_8);
+    __pyx_t_8 = 0;
+    __pyx_t_18 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_2, NULL); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 490; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_18);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "optwrapper/npsol.pyx":489
+  /* "optwrapper/npsol.pyx":490
  *         self.prob.soln.istate = np.copy( utils.wrap1dPtr( self.istate, self.nctotl,
  *                                                           utils.integer_type ) )
  *         self.prob.soln.clamda = np.copy( utils.wrap1dPtr( self.clamda, self.nctotl,             # <<<<<<<<<<<<<<
  *                                                           utils.doublereal_type ) )
  *         self.prob.soln.R = np.copy( utils.wrap2dPtr( self.R, self.prob.N, self.prob.N,
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 489; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 490; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  if (__Pyx_PyObject_SetAttrStr(__pyx_t_1, __pyx_n_s_clamda, __pyx_t_8) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 489; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+  if (__Pyx_PyObject_SetAttrStr(__pyx_t_1, __pyx_n_s_clamda, __pyx_t_18) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 490; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_18); __pyx_t_18 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "optwrapper/npsol.pyx":491
+  /* "optwrapper/npsol.pyx":492
  *         self.prob.soln.clamda = np.copy( utils.wrap1dPtr( self.clamda, self.nctotl,
  *                                                           utils.doublereal_type ) )
  *         self.prob.soln.R = np.copy( utils.wrap2dPtr( self.R, self.prob.N, self.prob.N,             # <<<<<<<<<<<<<<
  *                                                      utils.doublereal_type ) )
  *         self.prob.soln.Niters = int( iter_out[0] )
  */
-  __pyx_t_8 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 491; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_8);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_8, __pyx_n_s_copy); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 491; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_18 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 492; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_18);
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_18, __pyx_n_s_copy); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 492; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-  __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_N); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 491; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_8);
-  __pyx_t_22 = __Pyx_PyInt_As_int(__pyx_t_8); if (unlikely((__pyx_t_22 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 491; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-  __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_N); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 491; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_8);
-  __pyx_t_23 = __Pyx_PyInt_As_int(__pyx_t_8); if (unlikely((__pyx_t_23 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 491; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+  __Pyx_DECREF(__pyx_t_18); __pyx_t_18 = 0;
+  __pyx_t_18 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_N); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 492; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_18);
+  __pyx_t_22 = __Pyx_PyInt_As_int(__pyx_t_18); if (unlikely((__pyx_t_22 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 492; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_18); __pyx_t_18 = 0;
+  __pyx_t_18 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_N); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 492; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_18);
+  __pyx_t_23 = __Pyx_PyInt_As_int(__pyx_t_18); if (unlikely((__pyx_t_23 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 492; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_18); __pyx_t_18 = 0;
 
-  /* "optwrapper/npsol.pyx":492
+  /* "optwrapper/npsol.pyx":493
  *                                                           utils.doublereal_type ) )
  *         self.prob.soln.R = np.copy( utils.wrap2dPtr( self.R, self.prob.N, self.prob.N,
  *                                                      utils.doublereal_type ) )             # <<<<<<<<<<<<<<
  *         self.prob.soln.Niters = int( iter_out[0] )
  *         self.prob.soln.retval = int( inform_out[0] )
  */
-  __pyx_t_8 = ((PyObject *)__pyx_f_10optwrapper_5utils_wrap2dPtr(__pyx_v_self->R, __pyx_t_22, __pyx_t_23, __pyx_v_10optwrapper_5utils_doublereal_type)); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 491; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_8);
-  __pyx_t_9 = NULL;
+  __pyx_t_18 = ((PyObject *)__pyx_f_10optwrapper_5utils_wrap2dPtr(__pyx_v_self->R, __pyx_t_22, __pyx_t_23, __pyx_v_10optwrapper_5utils_doublereal_type)); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 492; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_18);
+  __pyx_t_8 = NULL;
   if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_2))) {
-    __pyx_t_9 = PyMethod_GET_SELF(__pyx_t_2);
-    if (likely(__pyx_t_9)) {
+    __pyx_t_8 = PyMethod_GET_SELF(__pyx_t_2);
+    if (likely(__pyx_t_8)) {
       PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_2);
-      __Pyx_INCREF(__pyx_t_9);
+      __Pyx_INCREF(__pyx_t_8);
       __Pyx_INCREF(function);
       __Pyx_DECREF_SET(__pyx_t_2, function);
     }
   }
-  if (!__pyx_t_9) {
-    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_8); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 491; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+  if (!__pyx_t_8) {
+    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_18); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 492; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_18); __pyx_t_18 = 0;
     __Pyx_GOTREF(__pyx_t_1);
   } else {
-    __pyx_t_18 = PyTuple_New(1+1); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 491; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_GOTREF(__pyx_t_18);
-    PyTuple_SET_ITEM(__pyx_t_18, 0, __pyx_t_9); __Pyx_GIVEREF(__pyx_t_9); __pyx_t_9 = NULL;
-    PyTuple_SET_ITEM(__pyx_t_18, 0+1, __pyx_t_8);
-    __Pyx_GIVEREF(__pyx_t_8);
-    __pyx_t_8 = 0;
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_18, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 491; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_9 = PyTuple_New(1+1); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 492; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_9);
+    PyTuple_SET_ITEM(__pyx_t_9, 0, __pyx_t_8); __Pyx_GIVEREF(__pyx_t_8); __pyx_t_8 = NULL;
+    PyTuple_SET_ITEM(__pyx_t_9, 0+1, __pyx_t_18);
+    __Pyx_GIVEREF(__pyx_t_18);
+    __pyx_t_18 = 0;
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_9, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 492; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_1);
-    __Pyx_DECREF(__pyx_t_18); __pyx_t_18 = 0;
+    __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
   }
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "optwrapper/npsol.pyx":491
+  /* "optwrapper/npsol.pyx":492
  *         self.prob.soln.clamda = np.copy( utils.wrap1dPtr( self.clamda, self.nctotl,
  *                                                           utils.doublereal_type ) )
  *         self.prob.soln.R = np.copy( utils.wrap2dPtr( self.R, self.prob.N, self.prob.N,             # <<<<<<<<<<<<<<
  *                                                      utils.doublereal_type ) )
  *         self.prob.soln.Niters = int( iter_out[0] )
  */
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 491; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 492; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  if (__Pyx_PyObject_SetAttrStr(__pyx_t_2, __pyx_n_s_R, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 491; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (__Pyx_PyObject_SetAttrStr(__pyx_t_2, __pyx_n_s_R, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 492; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "optwrapper/npsol.pyx":493
+  /* "optwrapper/npsol.pyx":494
  *         self.prob.soln.R = np.copy( utils.wrap2dPtr( self.R, self.prob.N, self.prob.N,
  *                                                      utils.doublereal_type ) )
  *         self.prob.soln.Niters = int( iter_out[0] )             # <<<<<<<<<<<<<<
  *         self.prob.soln.retval = int( inform_out[0] )
  * 
  */
-  __pyx_t_2 = __Pyx_PyInt_From_long((__pyx_v_iter_out[0])); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 493; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyInt_From_long((__pyx_v_iter_out[0])); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 494; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 493; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 494; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_t_2);
   __Pyx_GIVEREF(__pyx_t_2);
   __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)(&PyInt_Type))), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 493; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)(&PyInt_Type))), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 494; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 493; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 494; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  if (__Pyx_PyObject_SetAttrStr(__pyx_t_1, __pyx_n_s_Niters, __pyx_t_2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 493; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (__Pyx_PyObject_SetAttrStr(__pyx_t_1, __pyx_n_s_Niters, __pyx_t_2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 494; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "optwrapper/npsol.pyx":494
+  /* "optwrapper/npsol.pyx":495
  *                                                      utils.doublereal_type ) )
  *         self.prob.soln.Niters = int( iter_out[0] )
  *         self.prob.soln.retval = int( inform_out[0] )             # <<<<<<<<<<<<<<
  * 
  *         return( self.prob.soln.final,
  */
-  __pyx_t_1 = __Pyx_PyInt_From_long((__pyx_v_inform_out[0])); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 494; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyInt_From_long((__pyx_v_inform_out[0])); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 495; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = PyTuple_New(1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 494; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = PyTuple_New(1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 495; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_t_1);
   __Pyx_GIVEREF(__pyx_t_1);
   __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)(&PyInt_Type))), __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 494; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)(&PyInt_Type))), __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 495; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 494; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 495; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  if (__Pyx_PyObject_SetAttrStr(__pyx_t_2, __pyx_n_s_retval, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 494; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (__Pyx_PyObject_SetAttrStr(__pyx_t_2, __pyx_n_s_retval, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 495; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "optwrapper/npsol.pyx":496
+  /* "optwrapper/npsol.pyx":497
  *         self.prob.soln.retval = int( inform_out[0] )
  * 
  *         return( self.prob.soln.final,             # <<<<<<<<<<<<<<
@@ -7302,53 +7349,53 @@ static PyObject *__pyx_pf_10optwrapper_5npsol_6Solver_8solve(struct __pyx_obj_10
  *                 self.prob.soln.retval )
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 496; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 497; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_final); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 496; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_final); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 497; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "optwrapper/npsol.pyx":497
+  /* "optwrapper/npsol.pyx":498
  * 
  *         return( self.prob.soln.final,
  *                 self.prob.soln.value,             # <<<<<<<<<<<<<<
  *                 self.prob.soln.retval )
  */
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 497; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 498; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_18 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_value); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 497; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_18);
+  __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_value); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 498; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_9);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "optwrapper/npsol.pyx":498
+  /* "optwrapper/npsol.pyx":499
  *         return( self.prob.soln.final,
  *                 self.prob.soln.value,
  *                 self.prob.soln.retval )             # <<<<<<<<<<<<<<
  */
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 498; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base.prob, __pyx_n_s_soln); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 499; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_retval); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 498; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_8);
+  __pyx_t_18 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_retval); if (unlikely(!__pyx_t_18)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 499; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_18);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "optwrapper/npsol.pyx":496
+  /* "optwrapper/npsol.pyx":497
  *         self.prob.soln.retval = int( inform_out[0] )
  * 
  *         return( self.prob.soln.final,             # <<<<<<<<<<<<<<
  *                 self.prob.soln.value,
  *                 self.prob.soln.retval )
  */
-  __pyx_t_2 = PyTuple_New(3); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 496; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = PyTuple_New(3); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 497; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_t_1);
   __Pyx_GIVEREF(__pyx_t_1);
-  PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_t_18);
+  PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_t_9);
+  __Pyx_GIVEREF(__pyx_t_9);
+  PyTuple_SET_ITEM(__pyx_t_2, 2, __pyx_t_18);
   __Pyx_GIVEREF(__pyx_t_18);
-  PyTuple_SET_ITEM(__pyx_t_2, 2, __pyx_t_8);
-  __Pyx_GIVEREF(__pyx_t_8);
   __pyx_t_1 = 0;
+  __pyx_t_9 = 0;
   __pyx_t_18 = 0;
-  __pyx_t_8 = 0;
   __pyx_r = __pyx_t_2;
   __pyx_t_2 = 0;
   goto __pyx_L0;
@@ -9747,7 +9794,8 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_iterLimit, __pyx_k_iterLimit, sizeof(__pyx_k_iterLimit), 0, 0, 1, 1},
   {&__pyx_n_s_latin_1, __pyx_k_latin_1, sizeof(__pyx_k_latin_1), 0, 0, 1, 1},
   {&__pyx_n_s_lb, __pyx_k_lb, sizeof(__pyx_k_lb), 0, 0, 1, 1},
-  {&__pyx_n_s_lineSearchTol, __pyx_k_lineSearchTol, sizeof(__pyx_k_lineSearchTol), 0, 0, 1, 1},
+  {&__pyx_n_s_linesearchTol, __pyx_k_linesearchTol, sizeof(__pyx_k_linesearchTol), 0, 0, 1, 1},
+  {&__pyx_n_s_lower, __pyx_k_lower, sizeof(__pyx_k_lower), 0, 0, 1, 1},
   {&__pyx_n_s_main, __pyx_k_main, sizeof(__pyx_k_main), 0, 0, 1, 1},
   {&__pyx_n_s_minorIterLimit, __pyx_k_minorIterLimit, sizeof(__pyx_k_minorIterLimit), 0, 0, 1, 1},
   {&__pyx_n_s_minorPrintLevel, __pyx_k_minorPrintLevel, sizeof(__pyx_k_minorPrintLevel), 0, 0, 1, 1},

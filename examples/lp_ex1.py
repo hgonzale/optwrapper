@@ -1,12 +1,6 @@
 import numpy as np
 from optwrapper import qp, lssol
 
-## pg. 25 of LSSOL's manual
-
-Q = np.zeros( (9,9) )
-Q[0:5,0:5] = 1
-Q[ [0,1,2,3,4], [0,1,2,3,4] ] = 2
-
 L = -1 * np.ones( (9,) )
 L[0] = -4
 L[7] = -.1
@@ -29,7 +23,7 @@ prob = qp.Problem( N=9, Nconslin=3 )
 prob.initPoint( np.zeros( (9,) ) )
 prob.consBox( lb = -2 * np.ones( (9,) ),
               ub =  2 * np.ones( (9,) ) )
-prob.objFctn( quad=Q, lin=L )
+prob.objFctn( lin=L )
 prob.consLinear( C, lb=Clb, ub=Cub )
 
 solver = lssol.Solver( prob ) ## change this line to use another solver
@@ -38,14 +32,7 @@ solver.printOpts[ "printFile" ] = "debugp.txt"
 solver.printOpts[ "summaryFile" ] = "debugs.txt"
 solver.printOpts[ "printLevel" ] = 10
 
-optimal_soln = np.array( [ 2, -.23333333, -.26666667, -.3, -.1, 2, 2, -1.77777778, -.45555556 ] )
-optimal_value = -8.067777633666992
-
-print( "The results of both runs should be..." )
-print( "Value: " + str( optimal_value ) )
-print( "Final point: " + str( optimal_soln ) )
-
-print( "\nFirst run..." )
+print( "First run..." )
 solver.solve()
 print( prob.soln.getStatus() )
 print( "Value: " + str( prob.soln.value ) )

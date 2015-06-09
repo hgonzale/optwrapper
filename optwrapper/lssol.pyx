@@ -274,11 +274,12 @@ cdef class Solver( base.Solver ):
         else:
             printFileUnit[0] = 0 ## disabled by default, pg. 27
 
-        if( self.printOpts[ "summaryFile" ] == "stdout" ):
-            summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
-        elif( self.printOpts[ "summaryFile" ] is not None and
+        if( self.printOpts[ "summaryFile" ] is not None and
               self.printOpts[ "summaryFile" ] != "" ):
-            summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
+            if( self.printOpts[ "summaryFile" ].lower() == "stdout" ):
+                summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
+            else:
+                summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
         else:
             summaryFileUnit[0] = 0 ## disabled by default, pg. 28
 
@@ -350,7 +351,7 @@ cdef class Solver( base.Solver ):
 
         if( self.printOpts[ "summaryFile" ] is not None and
             self.printOpts[ "summaryFile" ] != "" and
-            self.printOpts[ "summaryFile" ] != "stdout" ):
+            self.printOpts[ "summaryFile" ].lower() != "stdout" ):
             try:
                 os.rename( "fort.{0}".format( summaryFileUnit[0] ),
                            self.printOpts[ "summaryFile" ] )

@@ -113,7 +113,7 @@ class Problem:
             raise ValueError( "Bounds must have size (" + str(self.Nconslin) + ",)." )
 
 
-    def objFctn( self, Q=None, L=None ):
+    def objFctn( self, quad=None, lin=None ):
         """
         sets objective function of the form: 0.5 * x.dot(Q).dot(x) + L.dot(x).
 
@@ -123,15 +123,15 @@ class Problem:
 
         """
 
-        if( Q is not None ):
-            self.objQ = np.asfortranarray( Q )
+        if( quad is not None ):
+            self.objQ = np.asfortranarray( quad )
 
             if( self.objQ.shape != ( self.N, self.N ) ):
                 raise ValueError( "Array Q must have size (" + str(self.N) + "," +
                                   str(self.N) + ")." )
 
-        if( L is not None ):
-            self.objL = np.asfortranarray( L )
+        if( lin is not None ):
+            self.objL = np.asfortranarray( lin )
 
             if( self.objL.shape != ( self.N, ) ):
                 raise ValueError( "Array L must have size (" + str(self.N) + ",)." )

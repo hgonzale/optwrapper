@@ -252,6 +252,22 @@ cdef class Soln( base.Soln ):
         self.nS = 0
 
     def getStatus( self ):
+        cdef tuple statusInfo = ( "Finished successfully", ## 0
+                                  "The problem appears to be infeasible", ## 10
+                                  "The problem appears to be unbounded", ## 20
+                                  "Resource limit error", ## 30
+                                  "Terminated after numerical difficulties", ## 40
+                                  "Error in the user-supplied functions", ## 50
+                                  "Undefined user-supplied functions", ## 60
+                                  "User requested termination", ## 70
+                                  "Insufficient storage allocated", ## 80
+                                  "Input arguments out of range", ## 90
+                                  "SNOPT auxiliary routine finished successfully", ## 100
+                                  "Errors while processing MPS data", ## 110
+                                  "Errors while estimating Jacobian structure", ## 120
+                                  "Errors while reading the Specs file", ## 130
+                                  "System error" ) ## 140
+
         if( self.retval == 1000 ):
             return "Return information is not defined yet"
 
@@ -261,53 +277,6 @@ cdef class Soln( base.Soln ):
             return "Invalid value"
         else:
             return statusInfo[ int( self.retval / 10 ) ]
-
-
-## SNOPT's option strings
-cdef char* STR_NONDERIVATIVE_LINESEARCH = "Nonderivative linesearch"
-cdef char* STR_DIFFERENCE_INTERVAL = "Difference interval"
-cdef char* STR_FUNCTION_PRECISION = "Function precision"
-cdef char* STR_MAJOR_FEASIBILITY_TOLERANCE = "Major feasibility tolerance"
-cdef char* STR_MINOR_FEASIBILITY_TOLERANCE = "Minor feasibility tolerance"
-cdef char* STR_HESSIAN_FULL_MEMORY = "Hessian full memory"
-cdef char* STR_HESSIAN_UPDATES = "Hessian updates"
-cdef char* STR_INFINITE_BOUND = "Infinite bound"
-cdef char* STR_ITERATIONS_LIMIT = "Iterations limit"
-cdef char* STR_MAJOR_ITERATIONS_LIMIT = "Major iterations limit"
-cdef char* STR_MINOR_ITERATIONS_LIMIT = "Minor iterations limit"
-cdef char* STR_LINESEARCH_TOLERANCE = "Linesearch tolerance"
-cdef char* STR_MAJOR_OPTIMALITY_TOLERANCE = "Major optimality tolerance"
-cdef char* STR_MAJOR_PRINT_LEVEL = "Major print level"
-cdef char* STR_MINOR_PRINT_LEVEL = "Minor print level"
-cdef char* STR_PIVOT_TOLERANCE = "Pivot tolerance"
-cdef char* STR_QPSOLVER_CHOLESKY = "QPSolver Cholesky"
-cdef char* STR_QPSOLVER_CG = "QPSolver CG"
-cdef char* STR_QPSOLVER_QN = "QPSolver QN"
-cdef char* STR_SCALE_OPTION = "Scale option"
-cdef char* STR_SCALE_PRINT = "Scale print"
-cdef char* STR_SOLUTION_NO = "Solution No"
-cdef char* STR_SUPPRESS_PARAMETERS = "Suppress parameters"
-cdef char* STR_TOTAL_CHARACTER_WORKSPACE = "Total character workspace"
-cdef char* STR_TOTAL_INTEGER_WORKSPACE = "Total integer workspace"
-cdef char* STR_TOTAL_REAL_WORKSPACE = "Total real workspace"
-cdef char* STR_VERIFY_LEVEL = "Verify level"
-cdef char* STR_VIOLATION_LIMIT = "Violation limit"
-
-cdef tuple statusInfo = ( "Finished successfully", ## 0
-                          "The problem appears to be infeasible", ## 10
-                          "The problem appears to be unbounded", ## 20
-                          "Resource limit error", ## 30
-                          "Terminated after numerical difficulties", ## 40
-                          "Error in the user-supplied functions", ## 50
-                          "Undefined user-supplied functions", ## 60
-                          "User requested termination", ## 70
-                          "Insufficient storage allocated", ## 80
-                          "Input arguments out of range", ## 90
-                          "SNOPT auxiliary routine finished successfully", ## 100
-                          "Errors while processing MPS data", ## 110
-                          "Errors while estimating Jacobian structure", ## 120
-                          "Errors while reading the Specs file", ## 130
-                          "System error" ) ## 140
 
 
 ## helper static function usrfun used to evaluate user defined functions in Solver.prob
@@ -384,14 +353,6 @@ cdef class Solver( base.Solver ):
     cdef int mem_alloc_ws
     cdef integer mem_size_ws[3]
 
-    cdef float default_tol
-    cdef float default_fctn_prec
-    cdef float default_feas_tol
-    cdef int default_iter_limit
-    cdef int default_maj_iter_limit
-    cdef int default_min_iter_limit
-    cdef float default_violation_limit
-
     def __init__( self, prob=None ):
         super().__init__()
 
@@ -399,39 +360,62 @@ cdef class Solver( base.Solver ):
         self.mem_alloc_ws = False
         memset( self.mem_size, 0, 4 * sizeof( integer ) ) ## Set mem_size to zero
         memset( self.mem_size_ws, 0, 3 * sizeof( integer ) ) ## Set mem_size_ws to zero
-        self.default_tol = np.sqrt( np.spacing(1) ) ## "Difference interval", pg. 71
-        self.default_fctn_prec = np.power( np.spacing(1), 2.0/3.0 ) ## pg. 72, there is a typo there
-        self.default_feas_tol = 1.0e-6 ## pg. 76
-        self.default_min_iter_limit = 500 ## pg. 78
-        self.default_violation_limit = 10 ## pg. 85
         self.prob = None
 
         if( prob ):
             self.setupProblem( prob )
 
         ## Set options
-        self.printOpts[ "summaryFile" ] = "stdout"
-        self.printOpts[ "printLevel" ] = 0
-        self.printOpts[ "minorPrintLevel" ] = 0
-        self.solveOpts[ "derivLinesearch" ] = True
-        self.solveOpts[ "diffInterval" ] = self.default_tol
-        self.solveOpts[ "fctnPrecision" ] = self.default_fctn_prec
-        self.solveOpts[ "majorFeasibilityTol" ] = self.default_feas_tol
-        self.solveOpts[ "minorFeasibilityTol" ] = self.default_feas_tol
-        self.solveOpts[ "forceFullHessian" ] = False
-        self.solveOpts[ "bfgsResetFreq" ] = 10 ## pg. 74
-        self.solveOpts[ "infValue" ] = 1.0e20 ## pg. 74
-        self.solveOpts[ "iterLimit" ] = self.default_iter_limit ## defined in setupProblem
-        self.solveOpts[ "majorIterLimit" ] = self.default_maj_iter_limit ## defined in setupProblem
-        self.solveOpts[ "minorIterLimit" ] = self.default_min_iter_limit
-        self.solveOpts[ "lineSearchTol" ] = 0.9
-        self.solveOpts[ "majorOptimalityTol" ] = self.default_feas_tol
-        self.solveOpts[ "pivotTol" ] = self.default_fctn_prec
-        self.solveOpts[ "qpSolver" ] = "Cholesky"
-        self.solveOpts[ "disableScaling" ] = False
-        self.solveOpts[ "printScaling" ] = False
-        self.solveOpts[ "verifyGrad" ] = False
-        self.solveOpts[ "violationLimit" ] = self.default_violation_limit
+        self.printOpts[ "summaryFile" ] = None
+        self.printOpts[ "printLevel" ] = None
+        self.printOpts[ "minorPrintLevel" ] = None
+        self.printOpts[ "printFreq" ] = None
+        self.printOpts[ "scalePrint" ] = None
+        self.printOpts[ "solutionPrint" ] = None
+        self.printOpts[ "systemInfo" ] = None
+        self.printOpts[ "timingLevel" ] = None
+
+        self.solveOpts[ "centralDiffInterval" ] = None
+        self.solveOpts[ "checkFreq" ] = None
+        self.solveOpts[ "crashOpt" ] = None
+        self.solveOpts[ "crashTol" ] = None
+        self.solveOpts[ "nonderivLinesearch"] = None
+        self.solveOpts[ "diffInterval" ] = None
+        self.solveOpts[ "elasticWeight" ] = None
+        self.solveOpts[ "expandFreq" ] = None
+        self.solveOpts[ "factorizationFreq" ] = None
+        self.solveOpts[ "feasiblePoint" ] = None
+        self.solveOpts[ "fctnPrecision" ] = None
+        self.solveOpts[ "hessianFreq" ] = None
+        self.solveOpts[ "hessianMemory" ] = None
+        self.solveOpts[ "hessianUpdates" ] = None
+        self.solveOpts[ "infBound" ] = None
+        self.solveOpts[ "iterLimit" ] = None
+        self.solveOpts[ "linesearchTol" ] = None
+        self.solveOpts[ "luFactorTol" ] = None
+        self.solveOpts[ "luUpdateTol" ] = None
+        self.solveOpts[ "luPivoting" ] = None
+        self.solveOpts[ "luDensityTol" ] = None
+        self.solveOpts[ "luSingularityTol" ] = None
+        self.solveOpts[ "majorFeasibilityTol" ] = None
+        self.solveOpts[ "majorIterLimit" ] = None
+        self.solveOpts[ "majorOptimalityTol" ] = None
+        self.solveOpts[ "majorStepLimit" ] = None
+        self.solveOpts[ "minorIterLimit" ] = None
+        self.solveOpts[ "minorFeasibilityTol" ] = None
+        self.solveOpts[ "newSuperbasicsLimit" ] = None
+        self.solveOpts[ "partialPrice" ] = None
+        self.solveOpts[ "pivotTol" ] = None
+        self.solveOpts[ "proximalPointMethod" ] = None
+        self.solveOpts[ "qpSolver" ] = None
+        self.solveOpts[ "reducedHessianDim" ] = None
+        self.solveOpts[ "scaleOption" ] = None
+        self.solveOpts[ "scaleTol" ] = None
+        self.solveOpts[ "superbasicsLimit" ] = None
+        self.solveOpts[ "unboundedObjValue" ] = None
+        self.solveOpts[ "unboundedStepSize" ] = None
+        self.solveOpts[ "verifyLevel" ] = None
+        self.solveOpts[ "violationLimit" ] = None
 
 
     def setupProblem( self, prob ):
@@ -484,10 +468,6 @@ cdef class Solver( base.Solver ):
             consGsparse = sMatrix( np.ones( ( prob.Ncons, prob.N ) ) )
         self.lenG[0] = objGsparse.nnz + consGsparse.nnz
         self.neG[0] = self.lenG[0]
-
-        ## I'm guessing the definition of m in pgs. 74,76
-        self.default_iter_limit = max( 1000, 20*( prob.Ncons + prob.Nconslin ) )
-        self.default_maj_iter_limit = max( 1000, prob.Ncons + prob.Nconslin )
 
         ## Allocate if necessary
         if( self.mustAllocate( prob.N, self.nF[0], self.lenA[0], self.lenG[0] ) ):
@@ -681,7 +661,7 @@ cdef class Solver( base.Solver ):
         print( ">>> Memory allocated for data: " +
                str( self.mem_size[0] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
                     self.mem_size[1] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
-                    self.mem_size[2] * ( sizeof(doublereal) + 2*sizeof(integer) ) +
+                    self.mem_size[2] * ( sizeof(doublereal) + 2 * sizeof(integer) ) +
                     self.mem_size[3] * 2 * sizeof(integer) ) +
                " bytes." )
 
@@ -690,6 +670,14 @@ cdef class Solver( base.Solver ):
                     self.mem_size_ws[1] * sizeof(integer) +
                     self.mem_size_ws[2] * sizeof(doublereal) ) +
                " bytes." )
+
+        if( isinstance( self.prob, nlp.SparseProblem ) ):
+            if( self.prob.Nconslin > 0 ):
+                print( ">>> Sparsity of A: %.1f" %
+                       ( self.lenA[0] * 100 / ( self.prob.N * self.prob.Nconslin ) ) + "%" )
+            if( self.prob.Ncons > 0 ):
+                print( ">>> Sparsity of gradient: %.1f" %
+                       ( self.lenG[0] * 100 / ( self.prob.N * (1 + self.prob.Ncons ) ) ) + "%" )
 
 
     def __dealloc__( self ):
@@ -711,6 +699,96 @@ cdef class Solver( base.Solver ):
 
 
     def solve( self ):
+        def ezset( char* s, bint temp=False ):
+            if( temp ):
+                snopt.snset_( s,
+                              printFileUnit, summaryFileUnit, inform_out,
+                              tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw,
+                              len( s ), ltmpcw[0]*8 )
+            else:
+                snopt.snset_( s,
+                              printFileUnit, summaryFileUnit, inform_out,
+                              self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                              len( s ), self.lencw[0]*8 )
+
+        def ezseti( char* s, integer i, bint temp=False ):
+            cdef integer* tmpInt = [ i ]
+            if( temp ):
+                snopt.snseti_( s, tmpInt,
+                               printFileUnit, summaryFileUnit, inform_out,
+                               tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw,
+                               len( s ), ltmpcw[0]*8 )
+            else:
+                snopt.snseti_( s, tmpInt,
+                               printFileUnit, summaryFileUnit, inform_out,
+                               self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                               len( s ), self.lencw[0]*8 )
+
+        def ezsetr( char* s, doublereal r ):
+            cdef doublereal* tmpReal = [ r ]
+            snopt.snsetr_( s, tmpReal,
+                           printFileUnit, summaryFileUnit, inform_out,
+                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
+                           len( s ), self.lencw[0]*8 )
+
+        ## option strings
+        cdef char* STR_CENTRAL_DIFFERENCE_INTERVAL = "Central difference interval"
+        cdef char* STR_CHECK_FREQUENCY = "Check frequency"
+        cdef char* STR_CRASH_OPTION = "Crash option"
+        cdef char* STR_CRASH_TOLERANCE = "Crash tolerance"
+        cdef char* STR_NONDERIVATIVE_LINESEARCH = "Nonderivative linesearch"
+        cdef char* STR_DIFFERENCE_INTERVAL = "Difference interval"
+        cdef char* STR_ELASTIC_WEIGHT = "Elastic weight"
+        cdef char* STR_EXPAND_FREQUENCY = "Expand frequency"
+        cdef char* STR_FACTORIZATION_FREQUENCY = "Factorization frequency"
+        cdef char* STR_FEASIBLE_POINT = "Feasible point"
+        cdef char* STR_FUNCTION_PRECISION = "Function precision"
+        cdef char* STR_HESSIAN_FULL_MEMORY = "Hessian full memory"
+        cdef char* STR_HESSIAN_LIMITED_MEMORY = "Hessian limited memory"
+        cdef char* STR_HESSIAN_FREQUENCY = "Hessian frequency"
+        cdef char* STR_HESSIAN_UPDATES = "Hessian updates"
+        cdef char* STR_INFINITE_BOUND = "Infinite bound"
+        cdef char* STR_ITERATIONS_LIMIT = "Iterations limit"
+        cdef char* STR_LINESEARCH_TOLERANCE = "Linesearch tolerance"
+        cdef char* STR_LU_FACTOR_TOLERANCE = "LU factor tolerance"
+        cdef char* STR_LU_UPDATE_TOLERANCE = "LU update tolerance"
+        cdef char* STR_LU_ROOK_PIVOTING = "LU rook pivoting"
+        cdef char* STR_LU_COMPLETE_PIVOTING = "LU complete pivoting"
+        cdef char* STR_LU_DENSITY_TOLERANCE = "LU density tolerance"
+        cdef char* STR_LU_SINGULARITY_TOLERANCE = "LU singularity tolerance"
+        cdef char* STR_MAJOR_FEASIBILITY_TOLERANCE = "Major feasibility tolerance"
+        cdef char* STR_MAJOR_ITERATIONS_LIMIT = "Major iterations limit"
+        cdef char* STR_MAJOR_OPTIMALITY_TOLERANCE = "Major optimality tolerance"
+        cdef char* STR_MAJOR_PRINT_LEVEL = "Major print level"
+        cdef char* STR_MAJOR_STEP_LIMIT = "Major step limit"
+        cdef char* STR_MINOR_ITERATIONS_LIMIT = "Minor iterations limit"
+        cdef char* STR_MINOR_FEASIBILITY_TOLERANCE = "Minor feasibility tolerance"
+        cdef char* STR_MINOR_PRINT_LEVEL = "Minor print level"
+        cdef char* STR_NEW_SUPERBASICS_LIMIT = "New superbasics limit"
+        cdef char* STR_PARTIAL_PRICE = "Partial price"
+        cdef char* STR_PIVOT_TOLERANCE = "Pivot tolerance"
+        cdef char* STR_PRINT_FREQUENCY = "Print frequency"
+        cdef char* STR_PROXIMAL_POINT_METHOD = "Proximal point method"
+        cdef char* STR_QPSOLVER_CG = "QPSolver CG"
+        cdef char* STR_QPSOLVER_QN = "QPSolver QN"
+        cdef char* STR_REDUCED_HESSIAN_DIMENSION = "Reduced Hessian dimension"
+        cdef char* STR_SCALE_OPTION = "Scale option"
+        cdef char* STR_SCALE_TOLERANCE = "Scale tolerance"
+        cdef char* STR_SCALE_PRINT = "Scale print"
+        cdef char* STR_SOLUTION_YES = "Solution Yes"
+        cdef char* STR_SOLUTION_NO = "Solution No"
+        cdef char* STR_SUPERBASICS_LIMIT = "Superbasics limit"
+        cdef char* STR_SUPPRESS_PARAMETERS = "Suppress parameters"
+        cdef char* STR_TOTAL_CHARACTER_WORKSPACE = "Total character workspace"
+        cdef char* STR_TOTAL_INTEGER_WORKSPACE = "Total integer workspace"
+        cdef char* STR_TOTAL_REAL_WORKSPACE = "Total real workspace"
+        cdef char* STR_SYSTEM_INFORMATION_YES = "System information Yes"
+        cdef char* STR_TIMING_LEVEL = "Timing level"
+        cdef char* STR_UNBOUNDED_OBJECTIVE_VALUE = "Unbounded objective value"
+        cdef char* STR_UNBOUNDED_STEP_SIZE = "Unbounded step size"
+        cdef char* STR_VERIFY_LEVEL = "Verify level"
+        cdef char* STR_VIOLATION_LIMIT = "Violation limit"
+
         cdef integer nS[1]
         cdef integer nInf[1]
         cdef doublereal sInf[1]
@@ -733,29 +811,8 @@ cdef class Solver( base.Solver ):
         cdef char *probname = "optwrapp" ## Must have 8 characters
         cdef char *xnames = "dummy"
         cdef char *Fnames = "dummy"
-        cdef bytes printFileTmp = self.printOpts[ "printFile" ].encode( "latin_1" )
-        cdef char* printFile = printFileTmp
-        cdef bytes summaryFileTmp = self.printOpts[ "summaryFile" ].encode( "latin_1" )
-        cdef char* summaryFile = summaryFileTmp
-        cdef integer* summaryFileUnit = [ 89 ] ## Hardcoded since nobody cares
-        cdef integer* printFileUnit = [ 90 ] ## Hardcoded since nobody cares
-        cdef integer* printLevel = [ self.printOpts[ "printLevel" ] ]
-        cdef integer* minorPrintLevel = [ self.printOpts[ "minorPrintLevel" ] ]
-        cdef doublereal* diffInterval = [ self.solveOpts[ "diffInterval" ] ]
-        cdef doublereal* fctnPrecision = [ self.solveOpts[ "fctnPrecision" ] ]
-        cdef doublereal* majorFeasibilityTol = [ self.solveOpts[ "majorFeasibilityTol" ] ]
-        cdef doublereal* minorFeasibilityTol = [ self.solveOpts[ "minorFeasibilityTol" ] ]
-        cdef integer* bfgsResetFreq = [ self.solveOpts[ "bfgsResetFreq" ] ]
-        cdef doublereal* infValue = [ self.solveOpts[ "infValue" ] ]
-        cdef integer* iterLimit = [ self.solveOpts[ "iterLimit" ] ]
-        cdef integer* majorIterLimit = [ self.solveOpts[ "majorIterLimit" ] ]
-        cdef integer* minorIterLimit = [ self.solveOpts[ "minorIterLimit" ] ]
-        cdef doublereal* lineSearchTol = [ self.solveOpts[ "lineSearchTol" ] ]
-        cdef doublereal* majorOptimalityTol = [ self.solveOpts[ "majorOptimalityTol" ] ]
-        cdef doublereal* pivotTol = [ self.solveOpts[ "pivotTol" ] ]
-        cdef doublereal* violationLimit = [ self.solveOpts[ "violationLimit" ] ]
-        cdef integer* zero = [ 0 ]
-        cdef integer verifyLevel[1]
+        cdef integer summaryFileUnit[1]
+        cdef integer printFileUnit[1]
 
         ## Begin by setting up initial condition
         tmpinit = utils.convFortran( self.prob.init )
@@ -763,13 +820,20 @@ cdef class Solver( base.Solver ):
                 self.prob.N * sizeof( doublereal ) )
 
         ## Handle debug files
-        if( self.printOpts[ "printFile" ] == "" ):
-            printFileUnit[0] = 0
+        if( self.printOpts[ "printFile" ] is not None and
+            self.printOpts[ "printFile" ] != "" ):
+            printFileUnit[0] = 90 ## Hardcoded since nobody cares
+        else:
+            printFileUnit[0] = 0 ## disabled by default, pg. 27
 
-        if( self.printOpts[ "summaryFile" ] == "stdout" ):
-            summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
-        elif( self.printOpts[ "summaryFile" ] == "" ):
-            summaryFileUnit[0] = 0 ## Disable, pg. 6
+        if( self.printOpts[ "summaryFile" ] is not None and
+              self.printOpts[ "summaryFile" ] != "" ):
+            if( self.printOpts[ "summaryFile" ].lower() == "stdout" ):
+                summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
+            else:
+                summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
+        else:
+            summaryFileUnit[0] = 0 ## disabled by default, pg. 28
 
         ## Initialize
         snopt.sninit_( printFileUnit, summaryFileUnit,
@@ -777,28 +841,35 @@ cdef class Solver( base.Solver ):
                        ltmpcw[0]*8 )
 
         inform_out[0] = 0 ## Reset inform_out before running snset* functions
-        ## The following two settings change the outcome of snmema, pg. 29
-        ## Force full hessian
-        if( self.solveOpts[ "forceFullHessian" ] ):
-            snopt.snset_( STR_HESSIAN_FULL_MEMORY,
-                          printFileUnit, summaryFileUnit, inform_out,
-                          tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw,
-                          len( STR_HESSIAN_FULL_MEMORY ), ltmpcw[0]*8 )
 
-        ## Set BFGS reset frequency
-        snopt.snseti_( STR_HESSIAN_UPDATES, bfgsResetFreq,
-                       printFileUnit, summaryFileUnit, inform_out,
-                       tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw,
-                       len( STR_HESSIAN_UPDATES ), ltmpcw[0]*8 )
+        ## Suppress parameter verbosity
+        ezset( STR_SUPPRESS_PARAMETERS, True )
 
-        ## Estimate workspace memory requirements
+        ## The following settings change the outcome of snmema, pg. 29
+        if( self.solveOpts[ "hessianMemory" ] is not None ):
+            if( self.solveOpts[ "hessianMemory" ].lower() == "full" ):
+                ezset( STR_HESSIAN_FULL_MEMORY, True )
+            elif( self.solveOpts[ "hessianMemory" ].lower() == "limited" ):
+                ezset( STR_HESSIAN_LIMITED_MEMORY, True )
+
+        if( self.solveOpts[ "hessianUpdates" ] is not None ):
+            ezseti( STR_HESSIAN_UPDATES, self.solveOpts[ "hessianUpdates" ], True )
+
+        if( self.solveOpts[ "reducedHessianDim" ] is not None ):
+            ezseti( STR_REDUCED_HESSIAN_DIMENSION, self.solveOpts[ "reducedHessianDim" ], True )
+
+        if( self.solveOpts[ "superbasicsLimit" ] is not None ):
+            ezseti( STR_SUPERBASICS_LIMIT, self.solveOpts[ "superbasicsLimit" ], True )
+
+        ## Now we get to know how much memory we need
         snopt.snmema_( inform_out, self.nF, n, nxname, nFname, self.lenA, self.lenG,
                        self.lencw, self.leniw, self.lenrw,
                        tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw,
                        ltmpcw[0]*8 )
         if( inform_out[0] != 104 ):
-            raise Exception( "snopt.snMemA failed to estimate workspace memory requirements" )
+            raise Exception( "snMemA failed to estimate workspace memory requirements" )
 
+        ## Recallocate with new memory requirements
         if( self.mustAllocateWS( self.lencw[0], self.leniw[0], self.lenrw[0] ) ):
             self.deallocateWS()
             self.allocateWS()
@@ -809,6 +880,7 @@ cdef class Solver( base.Solver ):
         memcpy( self.rw, tmprw, ltmprw[0] * sizeof( doublereal ) )
 
         inform_out[0] = 0 ## Reset inform_out before running snset* functions
+
         ## Set new workspace lengths
         snopt.snseti_( STR_TOTAL_CHARACTER_WORKSPACE, self.lencw,
                        printFileUnit, summaryFileUnit, inform_out,
@@ -825,172 +897,155 @@ cdef class Solver( base.Solver ):
         if( inform_out[0] != 0 ):
             raise Exception( "Could not set workspace lengths" )
 
-        ## Suppress parameters
-        snopt.snset_( STR_SUPPRESS_PARAMETERS,
-                      printFileUnit, summaryFileUnit, inform_out,
-                      self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                      len( STR_SUPPRESS_PARAMETERS ), self.lencw[0]*8 )
+        ## Set rest of the parameters
+        if( self.solveOpts[ "centralDiffInterval" ] is not None ):
+            ezsetr( STR_CENTRAL_DIFFERENCE_INTERVAL, self.solveOpts[ "centralDiffInterval" ] )
 
+        if( self.solveOpts[ "checkFreq" ] is not None ):
+            ezseti( STR_CHECK_FREQUENCY, self.solveOpts[ "checkFreq" ] )
 
-        ## Set major print level
-        snopt.snseti_( STR_MAJOR_PRINT_LEVEL, printLevel,
-                       printFileUnit, summaryFileUnit, inform_out,
-                       self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                       len( STR_MAJOR_PRINT_LEVEL ), self.lencw[0]*8 )
+        if( self.solveOpts[ "crashOpt" ] is not None ):
+            ezseti( STR_CRASH_OPTION, self.solveOpts[ "crashOpt" ] )
 
-        ## Set minor print level
-        snopt.snseti_( STR_MINOR_PRINT_LEVEL, minorPrintLevel,
-                       printFileUnit, summaryFileUnit, inform_out,
-                       self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                       len( STR_MINOR_PRINT_LEVEL ), self.lencw[0]*8 )
+        if( self.solveOpts[ "crashTol" ] is not None ):
+            ezseti( STR_CRASH_TOLERANCE, self.solveOpts[ "crashTol" ] )
 
-        ## Disable derivative linesearch is necessary
-        if( not self.solveOpts[ "derivLinesearch" ] ):
-            snopt.snset_( STR_NONDERIVATIVE_LINESEARCH,
-                          printFileUnit, summaryFileUnit, inform_out,
-                          self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                          len( STR_NONDERIVATIVE_LINESEARCH ), self.lencw[0]*8 )
+        if( self.solveOpts[ "nonderivLinesearch"] is not None ):
+            ezset( STR_NONDERIVATIVE_LINESEARCH )
 
-        ## Set difference interval if necessary
-        if( self.solveOpts[ "diffInterval" ] > self.default_tol ):
-            snopt.snsetr_( STR_DIFFERENCE_INTERVAL, diffInterval,
-                           printFileUnit, summaryFileUnit, inform_out,
-                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                           len( STR_DIFFERENCE_INTERVAL ), self.lencw[0]*8 )
+        if( self.solveOpts[ "diffInterval" ] is not None ):
+            ezsetr( STR_DIFFERENCE_INTERVAL, self.solveOpts[ "diffInterval" ] )
 
-        ## Set functino precision if necessary
-        if( self.solveOpts[ "fctnPrecision" ] > self.default_fctn_prec ):
-            snopt.snsetr_( STR_FUNCTION_PRECISION, fctnPrecision,
-                           printFileUnit, summaryFileUnit, inform_out,
-                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                           len( STR_FUNCTION_PRECISION ), self.lencw[0]*8 )
+        if( self.solveOpts[ "elasticWeight" ] is not None ):
+            ezsetr( STR_ELASTIC_WEIGHT, self.solveOpts[ "elasticWeight" ] )
 
-        ## Set major feasibility tolerance if necessary
-        if( self.solveOpts[ "majorFeasibilityTol" ] > self.default_feas_tol ):
-            snopt.snsetr_( STR_MAJOR_FEASIBILITY_TOLERANCE, majorFeasibilityTol,
-                           printFileUnit, summaryFileUnit, inform_out,
-                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                           len( STR_MAJOR_FEASIBILITY_TOLERANCE ), self.lencw[0]*8 )
+        if( self.solveOpts[ "expandFreq" ] is not None ):
+            ezseti( STR_EXPAND_FREQUENCY, self.solveOpts[ "expandFreq" ] )
 
-        ## Set minor feasibility tolerance if necessary
-        if( self.solveOpts[ "minorFeasibilityTol" ] > self.default_feas_tol ):
-            snopt.snsetr_( STR_MINOR_FEASIBILITY_TOLERANCE, minorFeasibilityTol,
-                           printFileUnit, summaryFileUnit, inform_out,
-                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                           len( STR_MINOR_FEASIBILITY_TOLERANCE ), self.lencw[0]*8 )
+        if( self.solveOpts[ "factorizationFreq" ] is not None ):
+            ezseti( STR_FACTORIZATION_FREQUENCY, self.solveOpts[ "factorizationFreq" ] )
 
-        ## Set infinity value
-        snopt.snsetr_( STR_INFINITE_BOUND, infValue,
-                       printFileUnit, summaryFileUnit, inform_out,
-                       self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                       len( STR_INFINITE_BOUND ), self.lencw[0]*8 )
+        if( self.solveOpts[ "feasiblePoint" ] is not None ):
+            ezset( STR_FEASIBLE_POINT )
 
-        ## Set iterations limit if necessary
-        if( self.solveOpts[ "iterLimit" ] > self.default_iter_limit ):
-            snopt.snseti_( STR_ITERATIONS_LIMIT, iterLimit,
-                           printFileUnit, summaryFileUnit, inform_out,
-                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                           len( STR_ITERATIONS_LIMIT ), self.lencw[0]*8 )
+        if( self.solveOpts[ "fctnPrecision" ] is not None ):
+            ezsetr( STR_FUNCTION_PRECISION, self.solveOpts[ "fctnPrecision" ] )
 
-        ## Set major iterations limit if necessary
-        if( self.solveOpts[ "majorIterLimit" ] > self.default_maj_iter_limit ):
-            snopt.snseti_( STR_MAJOR_ITERATIONS_LIMIT, majorIterLimit,
-                           printFileUnit, summaryFileUnit, inform_out,
-                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                           len( STR_MAJOR_ITERATIONS_LIMIT ), self.lencw[0]*8 )
+        if( self.solveOpts[ "hessianFreq" ] is not None ):
+            ezseti( STR_HESSIAN_FREQUENCY, self.solveOpts[ "hessianFreq" ] )
 
-        ## Set minor iterations limit if necessary
-        if( self.solveOpts[ "minorIterLimit" ] > self.default_min_iter_limit ):
-            snopt.snseti_( STR_MINOR_ITERATIONS_LIMIT, minorIterLimit,
-                           printFileUnit, summaryFileUnit, inform_out,
-                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                           len( STR_MINOR_ITERATIONS_LIMIT ), self.lencw[0]*8 )
+        if( self.solveOpts[ "infBound" ] is not None ):
+            ezsetr( STR_INFINITE_BOUND, self.solveOpts[ "infBound" ] )
 
-        ## Set line search tolerance
-        snopt.snsetr_( STR_LINESEARCH_TOLERANCE, lineSearchTol,
-                       printFileUnit, summaryFileUnit, inform_out,
-                       self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                       len( STR_LINESEARCH_TOLERANCE ), self.lencw[0]*8 )
+        if( self.solveOpts[ "iterLimit" ] is not None ):
+            ezseti( STR_ITERATIONS_LIMIT, self.solveOpts[ "iterLimit" ] )
 
-        ## Set major optimality tolerance if necessary
-        if( self.solveOpts[ "majorOptimalityTol" ] > self.default_feas_tol ):
-            snopt.snsetr_( STR_MAJOR_OPTIMALITY_TOLERANCE, majorOptimalityTol,
-                           printFileUnit, summaryFileUnit, inform_out,
-                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                           len( STR_MAJOR_OPTIMALITY_TOLERANCE ), self.lencw[0]*8 )
+        if( self.solveOpts[ "linesearchTol" ] is not None ):
+            ezsetr( STR_LINESEARCH_TOLERANCE, self.solveOpts[ "linesearchTol" ] )
 
-        ## Set pivot tolerance
-        if( self.solveOpts[ "pivotTol" ] > self.default_fctn_prec ):
-            snopt.snsetr_( STR_PIVOT_TOLERANCE, pivotTol,
-                           printFileUnit, summaryFileUnit, inform_out,
-                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                           len( STR_PIVOT_TOLERANCE ), self.lencw[0]*8 )
+        if( self.solveOpts[ "luFactorTol" ] is not None ):
+            ezsetr( STR_LU_FACTOR_TOLERANCE, self.solveOpts[ "luFactorTol" ] )
 
-        ## Set QP solver
-        if( self.solveOpts[ "qpSolver" ].lower() == "cholesky" ):
-            snopt.snset_( STR_QPSOLVER_CHOLESKY,
-                          printFileUnit, summaryFileUnit, inform_out,
-                          self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                          len( STR_QPSOLVER_CHOLESKY ), self.lencw[0]*8 )
-        elif( self.solveOpts[ "qpSolver" ].lower() == "cg" ):
-            snopt.snset_( STR_QPSOLVER_CG,
-                          printFileUnit, summaryFileUnit, inform_out,
-                          self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                          len( STR_QPSOLVER_CG ), self.lencw[0]*8 )
-        elif( self.solveOpts[ "qpSolver" ].lower() == "qn" ):
-            snopt.snset_( STR_QPSOLVER_QN,
-                          printFileUnit, summaryFileUnit, inform_out,
-                          self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                          len( STR_QPSOLVER_QN ), self.lencw[0]*8 )
+        if( self.solveOpts[ "luUpdateTol" ] is not None ):
+            ezsetr( STR_LU_UPDATE_TOLERANCE, self.solveOpts[ "luUpdateTol" ] )
 
-        ## Scaling option and print
-        if( self.solveOpts[ "disableScaling" ] ):
-            snopt.snseti_( STR_SCALE_OPTION, zero,
-                          printFileUnit, summaryFileUnit, inform_out,
-                          self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                          len( STR_SCALE_OPTION ), self.lencw[0]*8 )
-        if( self.solveOpts[ "printScaling" ] ):
-            snopt.snset_( STR_SCALE_PRINT,
-                          printFileUnit, summaryFileUnit, inform_out,
-                          self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                          len( STR_SCALE_PRINT ), self.lencw[0]*8 )
+        if( self.solveOpts[ "luPivoting" ] is not None ):
+            if( self.solveOpts[ "luPivoting" ].lower() == "rook" ):
+                ezset( STR_LU_ROOK_PIVOTING )
+            elif( self.solveOpts[ "luPivoting" ].lower() == "complete" ):
+                ezset( STR_LU_COMPLETE_PIVOTING )
 
-        ## Do not print solution to print file
-        snopt.snset_( STR_SOLUTION_NO,
-                      printFileUnit, summaryFileUnit, inform_out,
-                      self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                      len( STR_SOLUTION_NO ), self.lencw[0]*8 )
+        if( self.solveOpts[ "luDensityTol" ] is not None ):
+            ezsetr( STR_LU_DENSITY_TOLERANCE, self.solveOpts[ "luDensityTol" ] )
 
-        ## Set verify level
-        if( self.solveOpts[ "verifyGrad" ] ):
-            verifyLevel[0] = 3 ## Check gradients with two algorithms
+        if( self.solveOpts[ "luSingularityTol" ] is not None ):
+            ezsetr( STR_LU_SINGULARITY_TOLERANCE, self.solveOpts[ "luSingularityTol" ] )
+
+        if( self.solveOpts[ "majorFeasibilityTol" ] is not None ):
+            ezsetr( STR_MAJOR_FEASIBILITY_TOLERANCE, self.solveOpts[ "majorFeasibilityTol" ] )
+
+        if( self.solveOpts[ "majorIterLimit" ] is not None ):
+            ezseti( STR_MAJOR_ITERATIONS_LIMIT, self.solveOpts[ "majorIterLimit" ] )
+
+        if( self.solveOpts[ "majorOptimalityTol" ] is not None ):
+            ezsetr( STR_MAJOR_OPTIMALITY_TOLERANCE, self.solveOpts[ "majorOptimalityTol" ] )
+
+        if( self.printOpts[ "printLevel" ] is not None ):
+            ezseti( STR_MAJOR_PRINT_LEVEL, self.printOpts[ "printLevel" ] )
+
+        if( self.solveOpts[ "majorStepLimit" ] is not None ):
+            ezsetr( STR_MAJOR_STEP_LIMIT, self.solveOpts[ "majorStepLimit" ] )
+
+        if( self.solveOpts[ "minorIterLimit" ] is not None ):
+            ezseti( STR_MINOR_ITERATIONS_LIMIT, self.solveOpts[ "minorIterLimit" ] )
+
+        if( self.solveOpts[ "minorFeasibilityTol" ] is not None ):
+            ezsetr( STR_MINOR_FEASIBILITY_TOLERANCE, self.solveOpts[ "minorFeasibilityTol" ] )
+
+        if( self.printOpts[ "minorPrintLevel" ] is not None ):
+            ezseti( STR_MINOR_PRINT_LEVEL, self.printOpts[ "minorPrintLevel" ] )
+
+        if( self.solveOpts[ "newSuperbasicsLimit" ] is not None ):
+            ezseti( STR_NEW_SUPERBASICS_LIMIT, self.solveOpts[ "newSuperbasicsLimit" ] )
+
+        if( self.solveOpts[ "partialPrice" ] is not None ):
+            ezseti( STR_PARTIAL_PRICE, self.solveOpts[ "partialPrice" ] )
+
+        if( self.solveOpts[ "pivotTol" ] is not None ):
+            ezsetr( STR_PIVOT_TOLERANCE, self.solveOpts[ "pivotTol" ] )
+
+        if( self.printOpts[ "printFreq" ] is not None ):
+            ezseti( STR_PRINT_FREQUENCY, self.printOpts[ "printFreq" ] )
+
+        if( self.solveOpts[ "proximalPointMethod" ] is not None ):
+            ezseti( STR_PROXIMAL_POINT_METHOD, self.solveOpts[ "proximalPointMethod" ] )
+
+        if( self.solveOpts[ "qpSolver" ] is not None ):
+            if( self.solveOpts[ "qpSolver" ].lower() == "cg" ):
+                ezset( STR_QPSOLVER_CG )
+            elif( self.solveOpts[ "qpSolver" ].lower() == "qn" ):
+                ezset( STR_QPSOLVER_QN )
+
+        if( self.solveOpts[ "scaleOption" ] is not None ):
+            ezseti( STR_SCALE_OPTION, self.solveOpts[ "scaleOption" ] )
+
+        if( self.solveOpts[ "scaleTol" ] is not None ):
+            ezsetr( STR_SCALE_TOLERANCE, self.solveOpts[ "scaleTol" ] )
+
+        if( self.printOpts[ "scalePrint" ] is not None ):
+            ezset( STR_SCALE_PRINT )
+
+        if( self.printOpts[ "solutionPrint" ] == True ):
+            ezset( STR_SOLUTION_YES )
         else:
-            verifyLevel[0] = -1 ## Disabled
-        snopt.snseti_( STR_VERIFY_LEVEL, verifyLevel,
-                       printFileUnit, summaryFileUnit, inform_out,
-                       self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                       len( STR_VERIFY_LEVEL ), self.lencw[0]*8 )
+            ezset( STR_SOLUTION_NO ) ## changed default value! we don't print soln unless requested
 
-        ## Set constraint violation limit
-        if( self.solveOpts[ "violationLimit" ] > self.default_violation_limit ):
-            snopt.snsetr_( STR_VIOLATION_LIMIT, violationLimit,
-                           printFileUnit, summaryFileUnit, inform_out,
-                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                           len( STR_VIOLATION_LIMIT ), self.lencw[0]*8 )
+        if( self.printOpts[ "systemInfo" ] is not None ):
+            ezset( STR_SYSTEM_INFORMATION_YES )
 
+        if( self.printOpts[ "timingLevel" ] is not None ):
+            ezseti( STR_TIMING_LEVEL, self.printOpts[ "timingLevel" ] )
+
+        if( self.solveOpts[ "unboundedObjValue" ] is not None ):
+            ezsetr( STR_UNBOUNDED_OBJECTIVE_VALUE, self.solveOpts[ "unboundedObjValue" ] )
+
+        if( self.solveOpts[ "unboundedStepSize" ] is not None ):
+            ezsetr( STR_UNBOUNDED_STEP_SIZE, self.solveOpts[ "unboundedStepSize" ] )
+
+        if( self.solveOpts[ "verifyLevel" ] is not None ):
+            ezseti( STR_VERIFY_LEVEL, self.solveOpts[ "verifyLevel" ] )
+        else:
+            ezseti( STR_VERIFY_LEVEL, -1 ) ## changed default value! disabled by default, pg. 84
+
+        if( self.solveOpts[ "violationLimit" ] is not None ):
+            ezsetr( STR_VIOLATION_LIMIT, self.solveOpts[ "violationLimit" ] )
+
+        ## Checkout if we had any errors before we run SNOPT
         if( inform_out[0] != 0 ):
             raise Exception( "At least one option setting failed" )
 
         if( self.debug ):
             self.debugMem()
-
-            if( isinstance( self.prob, nlp.SparseProblem ) ):
-                if( self.prob.Nconslin > 0 ):
-                    print( ">>> Sparsity of A: %.1f" %
-                           ( self.lenA[0] * 100 / ( self.prob.N * self.prob.Nconslin ) ) + "%" )
-                if( self.prob.Ncons > 0 ):
-                    print( ">>> Sparsity of gradient: %.1f" %
-                           ( self.lenG[0] * 100 / ( self.prob.N * (1 + self.prob.Ncons ) ) ) + "%" )
 
         ## Execute SNOPT
         snopt.snopta_( self.Start, self.nF,
@@ -1012,15 +1067,17 @@ cdef class Solver( base.Solver ):
                        self.lencw[0]*8, self.lencw[0]*8 )
 
         ## Try to rename fortran print and summary files
-        if( self.printOpts[ "printFile" ] != "" ):
+        if( self.printOpts[ "printFile" ] is not None and
+            self.printOpts[ "printFile" ] != "" ):
             try:
                 os.rename( "fort.{0}".format( printFileUnit[0] ),
                            self.printOpts[ "printFile" ] )
             except:
                 pass
 
-        if( self.printOpts[ "summaryFile" ] != "" and
-            self.printOpts[ "summaryFile" ] != "stdout" ):
+        if( self.printOpts[ "summaryFile" ] is not None and
+            self.printOpts[ "summaryFile" ] != "" and
+            self.printOpts[ "summaryFile" ].lower() != "stdout" ):
             try:
                 os.rename( "fort.{0}".format( summaryFileUnit[0] ),
                            self.printOpts[ "summaryFile" ] )
