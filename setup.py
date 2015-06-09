@@ -4,7 +4,7 @@ from Cython.Build import cythonize
 import numpy as np
 
 major = "0"
-minor = "3.1"
+minor = "4"
 
 extensions = [ Extension( "optwrapper.utils",
                           sources = [ "optwrapper/utils.pyx" ],
@@ -12,23 +12,25 @@ extensions = [ Extension( "optwrapper.utils",
                Extension( "optwrapper.base",
                           sources = [ "optwrapper/base.pyx" ],
                           include_dirs = [ np.get_include(), "." ] ),
+               Extension( "optwrapper.lssol",
+                          sources = [ "optwrapper/lssol.pyx" ],
+                          include_dirs = [ np.get_include(), "." ],
+                          libraries = [ "lssol",
+                                        "blas",
+                                        "m" ] ),
                Extension( "optwrapper.npsol",
-                          sources = [ "optwrapper/npsol.pyx",
-                                      "optwrapper/filehandler.c" ],
+                          sources = [ "optwrapper/npsol.pyx" ],
                           include_dirs = [ np.get_include(), "." ],
                           libraries = [ "npsol",
                                         "lssol",
                                         "blas",
-                                        "f2c", ## Used to convert filehandler.f
                                         "m" ] ),
                Extension( "optwrapper.snopt",
-                          sources = [ "optwrapper/snopt.pyx",
-                                      "optwrapper/filehandler.c" ],
+                          sources = [ "optwrapper/snopt.pyx" ],
                           include_dirs = [ np.get_include(), "." ],
                           libraries = [ "snopt",
                                         "snprint",
                                         "blas",
-                                        "f2c", ## Used to convert filehandler.f
                                         "m" ] ) ]
 
 setup( name = "OptWrapper",

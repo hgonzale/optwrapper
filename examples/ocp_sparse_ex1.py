@@ -1,5 +1,6 @@
 import numpy as np
-from optwrapper import nlp, ocp, snopt
+import sys
+from optwrapper import nlp, ocp, snopt, npsol
 
 def instcost( x, u, grad=True ):
     Q = np.identity(2)
@@ -65,7 +66,12 @@ prob.consBoxInput( -10 * np.ones( prob.Ninputs ),
                    10 * np.ones( prob.Ninputs ) )
 
 ( nlpprob, solndecode ) = prob.discForwardEuler( Nsamples=30 )
-nlpprob.checkGrad( h=1e-6, etol=1e-4, point=None, debug=True )
+
+if( not nlpprob.checkGrad( debug=True ) ):
+    sys.exit( "Gradient check failed." )
+
+if( not nlpprob.checkPattern( debug=True ) ):
+    sys.exit( "Pattern check failed." )
 
 solver = snopt.Solver( nlpprob )
 solver.debug = True

@@ -1,16 +1,16 @@
 import numpy as np
 cimport numpy as np
-from optwrapper.f2ch cimport *
+from .typedefs cimport *
 
 ## Numpy must be initialized. When using numpy from C or Cython you must
 ## _always_ do that, or you will have segfaults
 np.import_array()
 
 ## Match f2c data types with python data types
-if( sizeof( integer ) == 4 ):
-    integer_type = np.NPY_INT32
-elif( sizeof( integer ) == 8 ):
+if( sizeof( integer ) == 8 ):
     integer_type = np.NPY_INT64
+# elif( sizeof( integer ) == 4 ):
+#     integer_type = np.NPY_INT32
 else:
     raise TypeError( "C data type 'long int' has size " + str( sizeof( integer ) ) )
 
@@ -66,7 +66,7 @@ cpdef np.ndarray convFortran( np.ndarray array ):
 
 
 cpdef np.ndarray convIntFortran( np.ndarray array ):
-    return np.require( array, dtype=np.int_, requirements=['F', 'A'] )
+    return np.require( array, dtype=np.int64, requirements=['F', 'A'] )
 
 
 cpdef int isInt( object obj ):

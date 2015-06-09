@@ -1,3 +1,1 @@
-#from optwrapper.snopt import *
-
-__all__ = [ "snopt", "npsol", "nlp" ]
+__all__ = [ "snopt", "npsol", "nlp", "ocp", "socp" ]

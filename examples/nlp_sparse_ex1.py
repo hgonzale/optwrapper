@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import sys
 from optwrapper import nlp, npsol, snopt
 
 def objf( out, x ):
@@ -13,8 +14,8 @@ def consf( out, x ):
                (x[0] - 2)*(x[0] - 2) + x[1]*x[1] ]
 
 def consg( out, x ):
-    out[0,:] = [ -1, 8*x[1] ]
-    out[1,:] = [ 2*(x[0]-2), 2*x[1] ]
+    out[0] = [ -1, 8*x[1] ]
+    out[1] = [ 2*(x[0]-2), 2*x[1] ]
 
 prob = nlp.SparseProblem( N=2, Ncons=2 )
 prob.initPoint( [10.0, 12.0] )
@@ -25,20 +26,17 @@ prob.objGrad( objg, pattern=[ 0, 1 ] )
 prob.consFctn( consf, lb=[ -np.inf, -np.inf ], ub=[ 4, 5 ] )
 prob.consGrad( consg, pattern=[ [1,1], [1,1] ] )
 
-if( not prob.checkGrad() ):
-    print( "Gradient does not match function." )
-    raise SystemExit
+if( not prob.checkGrad( debug=True ) ):
+    sys.exit( "Gradient check failed." )
 
-solver = snopt.Solver( prob )
+if( not prob.checkPattern( debug=True ) ):
+    sys.exit( "Pattern check failed." )
+
+solver = snopt.Solver( prob ) ## change this line to use another solver
 solver.debug = True
 solver.printOpts[ "summaryFile" ] = "debugs.txt"
 solver.printOpts[ "printFile" ] = "debugp.txt"
 solver.printOpts[ "printLevel" ] = 10
-
-if( not solver.checkPrintOpts() or
-    not solver.checkSolveOpts() ):
-    print( "Options are invalid." )
-    raise SystemExit
 
 print( "First run..." )
 solver.solve()
