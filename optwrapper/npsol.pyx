@@ -480,6 +480,12 @@ cdef class Solver( base.Solver ):
             except:
                 pass
 
+        ## Try to remove spurious print file fort.9 file left because NOLIST does not work
+        try:
+            os.remove( "fort.9" )
+        except:
+            pass
+
         ## Save result to prob
         self.prob.soln = Soln()
         self.prob.soln.value = float( objf_val[0] )
