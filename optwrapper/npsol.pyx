@@ -357,14 +357,16 @@ cdef class Solver( base.Solver ):
         npsol.npoptn_( STR_DEFAULTS, len( STR_DEFAULTS ) )
 
         ## Handle debug files
-        if( self.printOpts[ "printFile" ] is not None ):
+        if( self.printOpts[ "printFile" ] is not None and
+            self.printOpts[ "printFile" ] != "" ):
             printFileUnit[0] = 90 ## Hardcoded since nobody cares
         else:
             printFileUnit[0] = 0 ## disabled by default, pg. 27
 
         if( self.printOpts[ "summaryFile" ] == "stdout" ):
             summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
-        elif( self.printOpts[ "summaryFile" ] is not None ):
+        elif( self.printOpts[ "summaryFile" ] is not None and
+              self.printOpts[ "summaryFile" ] != "" ):
             summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
         else:
             summaryFileUnit[0] = 0 ## disabled by default, pg. 28
@@ -460,14 +462,16 @@ cdef class Solver( base.Solver ):
                       self.iw, self.leniw, self.w, self.lenw )
 
         ## Try to rename fortran print and summary files
-        if( self.printOpts[ "printFile" ] != "" ):
+        if( self.printOpts[ "printFile" ] is not None and
+            self.printOpts[ "printFile" ] != "" ):
             try:
                 os.rename( "fort.{0}".format( printFileUnit[0] ),
                            self.printOpts[ "printFile" ] )
             except:
                 pass
 
-        if( self.printOpts[ "summaryFile" ] != "" and
+        if( self.printOpts[ "summaryFile" ] is not None and
+            self.printOpts[ "summaryFile" ] != "" and
             self.printOpts[ "summaryFile" ] != "stdout" ):
             try:
                 os.rename( "fort.{0}".format( summaryFileUnit[0] ),

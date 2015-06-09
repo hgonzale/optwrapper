@@ -18,6 +18,7 @@ import qp
 cdef class Soln( base.Soln ):
     cdef public cnp.ndarray istate
     cdef public cnp.ndarray clamda
+    cdef public cnp.ndarray R
     cdef public int Niters
 
     def __init__( self ):
@@ -81,6 +82,7 @@ cdef class Solver( base.Solver ):
             self.setupProblem( prob )
 
         ## Set print options
+        self.printOpts[ "summaryFile" ] = None
         self.printOpts[ "printLevel" ] = None
         ## Set solve options
         self.solveOpts[ "crashTol" ] = None
@@ -129,10 +131,6 @@ cdef class Solver( base.Solver ):
                 prob.N * sizeof( doublereal ) )
         memcpy( &self.bu[0], utils.getPtr( utils.convFortran( prob.ub ) ),
                 prob.N * sizeof( doublereal ) )
-        if( prob.objQ is not None ):
-            memcpy( &self.A[0],
-                    utils.getPtr( utils.convFortran( prob.objQ ) ),
-                    prob.N * prob.N * sizeof( doublereal ) )
         if( prob.objL is not None ):
             memcpy( &self.cVec[0], utils.getPtr( utils.convFortran( prob.objL ) ),
                     prob.N * sizeof( doublereal ) )
@@ -236,6 +234,8 @@ cdef class Solver( base.Solver ):
         cdef char* STR_PROBLEM_TYPE_LP = "Problem Type LP"
         cdef char* STR_PROBLEM_TYPE_QP2 = "Problem Type QP2"
         cdef char* STR_RANK_TOLERANCE = "Rank Tolerance"
+        cdef char* STR_PRINT_FILE = "Print File"
+        cdef char* STR_SUMMARY_FILE = "Summary File"
 
         cdef doublereal crashTol[1]
         cdef integer iterLimit[1]
@@ -244,6 +244,8 @@ cdef class Solver( base.Solver ):
         cdef doublereal infStepSize[1]
         cdef integer printLevel[1]
         cdef doublereal rankTol[1]
+        cdef integer printFileUnit[1]
+        cdef integer summaryFileUnit[1]
 
         cdef integer *n = [ self.prob.N ]
         cdef integer *nclin = [ self.prob.Nconslin ]
@@ -255,17 +257,33 @@ cdef class Solver( base.Solver ):
         memcpy( self.x, utils.getPtr( utils.convFortran( self.prob.init ) ),
                 self.prob.N * sizeof( doublereal ) )
 
+        ## Set quadratic obj term if available, it is overwritten after each run, pg. 9
+        if( self.prob.objQ is not None ):
+            memcpy( &self.A[0],
+                    utils.getPtr( utils.convFortran( self.prob.objQ ) ),
+                    self.prob.N * self.prob.N * sizeof( doublereal ) )
+
         ## Supress echo options and reset optional values, pg. 13
         lssol.lsoptn_( STR_NOLIST, len( STR_NOLIST ) )
         lssol.lsoptn_( STR_DEFAULTS, len( STR_DEFAULTS ) )
 
-        ## Redirect stdout to printFile
-        if( self.printOpts[ "printFile" ] != "stdout" ):
-            stdout = sys.stdout
-            if( self.printOpts[ "printFile" ] is not None ):
-                sys.stdout = open( self.printOpts[ "printFile" ], "w" )
-            else:
-                sys.stdout = open( os.devnull, "w" )
+        ## Handle debug files
+        if( self.printOpts[ "printFile" ] is not None and
+            self.printOpts[ "printFile" ] != "" ):
+            printFileUnit[0] = 90 ## Hardcoded since nobody cares
+        else:
+            printFileUnit[0] = 0 ## disabled by default, pg. 27
+
+        if( self.printOpts[ "summaryFile" ] == "stdout" ):
+            summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
+        elif( self.printOpts[ "summaryFile" ] is not None and
+              self.printOpts[ "summaryFile" ] != "" ):
+            summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
+        else:
+            summaryFileUnit[0] = 0 ## disabled by default, pg. 28
+
+        lssol.lsopti_( STR_PRINT_FILE, printFileUnit, len( STR_PRINT_FILE ) )
+        lssol.lsopti_( STR_SUMMARY_FILE, summaryFileUnit, len( STR_SUMMARY_FILE ) )
 
         ## Set optional parameters, pg. 14
         if( self.warm_start ):
@@ -321,10 +339,27 @@ cdef class Solver( base.Solver ):
                       inform_out, iter_out, objf_val, self.clamda,
                       self.iw, self.leniw, self.w, self.lenw )
 
-        ## Close printFile when possible, return stdout to normal
+        ## Try to rename fortran print and summary files
+        if( self.printOpts[ "printFile" ] is not None and
+            self.printOpts[ "printFile" ] != "" ):
+            try:
+                os.rename( "fort.{0}".format( printFileUnit[0] ),
+                           self.printOpts[ "printFile" ] )
+            except:
+                pass
+
+        if( self.printOpts[ "summaryFile" ] is not None and
+            self.printOpts[ "summaryFile" ] != "" and
+            self.printOpts[ "summaryFile" ] != "stdout" ):
+            try:
+                os.rename( "fort.{0}".format( summaryFileUnit[0] ),
+                           self.printOpts[ "summaryFile" ] )
+            except:
+                pass
+
+        ## Try to remove spurious print file fort.9 file left because NOLIST does not work
         try:
-            sys.stdout.close()
-            sys.stdout = stdout
+            os.remove( "fort.9" )
         except:
             pass
 
@@ -339,6 +374,9 @@ cdef class Solver( base.Solver ):
         self.prob.soln.clamda = np.copy( utils.wrap1dPtr( self.clamda,
                                                           self.prob.N + self.prob.Nconslin,
                                                           utils.doublereal_type ) )
+        self.prob.soln.R = np.copy( utils.wrap2dPtr( self.A,
+                                                     self.prob.N, self.prob.N,
+                                                     utils.doublereal_type ) )
         self.prob.soln.Niters = int( iter_out[0] )
         self.prob.soln.retval = int( inform_out[0] )
 
