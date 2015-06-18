@@ -66,6 +66,8 @@ cdef class sMatrix:
         self.shape = ( self.nrows, self.ncols )
 
         ## copy ridx and cidx
+        ## WARNING! we assume np.nonzero() returns C-ordered indices, even though the documentation
+        ## says nothing about it. This could become a nasty bug
         memcpy( self.ridx,
                 utils.getPtr( utils.convIntFortran( rowarr ) ),
                 self.nnz * sizeof( integer ) )
@@ -657,29 +659,6 @@ cdef class Solver( base.Solver ):
         return True
 
 
-    cdef void debugMem( self ):
-        print( ">>> Memory allocated for data: " +
-               str( self.mem_size[0] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
-                    self.mem_size[1] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
-                    self.mem_size[2] * ( sizeof(doublereal) + 2 * sizeof(integer) ) +
-                    self.mem_size[3] * 2 * sizeof(integer) ) +
-               " bytes." )
-
-        print( ">>> Memory allocated for workspace: " +
-               str( self.mem_size_ws[0] * 8 * sizeof(char) +
-                    self.mem_size_ws[1] * sizeof(integer) +
-                    self.mem_size_ws[2] * sizeof(doublereal) ) +
-               " bytes." )
-
-        if( isinstance( self.prob, nlp.SparseProblem ) ):
-            if( self.prob.Nconslin > 0 ):
-                print( ">>> Sparsity of A: %.1f" %
-                       ( self.lenA[0] * 100 / ( self.prob.N * self.prob.Nconslin ) ) + "%" )
-            if( self.prob.Ncons > 0 ):
-                print( ">>> Sparsity of gradient: %.1f" %
-                       ( self.lenG[0] * 100 / ( self.prob.N * (1 + self.prob.Ncons ) ) ) + "%" )
-
-
     def __dealloc__( self ):
         self.deallocateWS()
         self.deallocate()
@@ -1045,7 +1024,26 @@ cdef class Solver( base.Solver ):
             raise Exception( "At least one option setting failed" )
 
         if( self.debug ):
-            self.debugMem()
+            print( ">>> Memory allocated for data: " +
+                   str( self.mem_size[0] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
+                        self.mem_size[1] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
+                        self.mem_size[2] * ( sizeof(doublereal) + 2 * sizeof(integer) ) +
+                        self.mem_size[3] * 2 * sizeof(integer) ) +
+                   " bytes." )
+
+            print( ">>> Memory allocated for workspace: " +
+                   str( self.mem_size_ws[0] * 8 * sizeof(char) +
+                        self.mem_size_ws[1] * sizeof(integer) +
+                        self.mem_size_ws[2] * sizeof(doublereal) ) +
+                   " bytes." )
+
+            if( isinstance( self.prob, nlp.SparseProblem ) ):
+                if( self.prob.Nconslin > 0 ):
+                    print( ">>> Sparsity of A: %.1f" %
+                           ( self.lenA[0] * 100 / ( self.prob.N * self.prob.Nconslin ) ) + "%" )
+                if( self.prob.Ncons > 0 ):
+                    print( ">>> Sparsity of gradient: %.1f" %
+                           ( self.lenG[0] * 100 / ( self.prob.N * (1 + self.prob.Ncons ) ) ) + "%" )
 
         ## Execute SNOPT
         snopt.snopta_( self.Start, self.nF,
