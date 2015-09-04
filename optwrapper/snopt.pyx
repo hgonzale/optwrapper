@@ -54,32 +54,30 @@ cdef class sMatrix:
         if( arr.ndim > 2 ):
             raise ValueError( "argument can have at most two dimensions" )
 
-        ( self.nrows, self.ncols ) = arr.shape
-        ( rowarr, colarr ) = np.nonzero( arr )
-        self.nnz = colarr.size
+        ( self.nrows, self.ncols ) = self.shape = arr.shape
+        self.nnz = np.count_nonzero( arr )
 
         self.data = <doublereal *> malloc( self.nnz * sizeof( doublereal ) )
         self.rptr = <integer *> malloc( ( self.nrows + 1 ) * sizeof( integer ) )
         self.ridx = <integer *> malloc( self.nnz * sizeof( integer ) )
         self.cidx = <integer *> malloc( self.nnz * sizeof( integer ) )
 
-        self.shape = ( self.nrows, self.ncols )
+        ## populate ridx, cidx, and rptr by walking through arr in C order
+        cdef integer row, col, k
+        k = 0
+        for row in range( self.nrows ):
+            self.rptr[row] = k
+            for col in range( self.ncols ):
+                if( arr[row,col] != 0.0 ):
+                    self.ridx[k] = row
+                    self.cidx[k] = col
+                    k += 1
+        self.rptr[self.nrows] = self.nnz
 
-        ## copy ridx and cidx
-        ## WARNING! we assume np.nonzero() returns C-ordered indices, even though the documentation
-        ## says nothing about it. This could become a nasty bug
-        memcpy( self.ridx,
-                utils.getPtr( utils.convIntFortran( rowarr ) ),
-                self.nnz * sizeof( integer ) )
-        memcpy( self.cidx,
-                utils.getPtr( utils.convIntFortran( colarr ) ),
-                self.nnz * sizeof( integer ) )
-        ## write rptr
-        self.rptr[0] = 0
-        for k in range( self.nrows ):
-            self.rptr[k+1] = self.rptr[k] + np.sum( rowarr == k )
-        ## zero data
+        ## populate data
         if( copy_data ):
+            rowarr = utils.wrap1dPtr( self.ridx, self.nnz, utils.integer_type )
+            colarr = utils.wrap1dPtr( self.cidx, self.nnz, utils.integer_type )
             memcpy( self.data,
                     utils.getPtr( utils.convFortran( arr[rowarr,colarr].flatten() ) ),
                     self.nnz * sizeof( doublereal ) )
