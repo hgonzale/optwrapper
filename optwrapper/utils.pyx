@@ -67,27 +67,3 @@ cpdef np.ndarray convFortran( np.ndarray array ):
 
 cpdef np.ndarray convIntFortran( np.ndarray array ):
     return np.require( array, dtype=np.int64, requirements=['F', 'A'] )
-
-
-cpdef int isInt( object obj ):
-    try:
-        int( obj )
-        return True
-    except ValueError:
-        return False
-
-
-cpdef int isFloat( object obj ):
-    try:
-        float( obj )
-        return True
-    except ValueError:
-        return False
-
-
-cpdef int isString( object obj ):
-    try:
-        str( obj )
-        return True
-    except ValueError:
-        return False

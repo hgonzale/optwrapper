@@ -54,30 +54,30 @@ cdef class sMatrix:
         if( arr.ndim > 2 ):
             raise ValueError( "argument can have at most two dimensions" )
 
-        ( self.nrows, self.ncols ) = arr.shape
-        ( rowarr, colarr ) = np.nonzero( arr )
-        self.nnz = colarr.size
+        ( self.nrows, self.ncols ) = self.shape = arr.shape
+        self.nnz = np.count_nonzero( arr )
 
         self.data = <doublereal *> malloc( self.nnz * sizeof( doublereal ) )
         self.rptr = <integer *> malloc( ( self.nrows + 1 ) * sizeof( integer ) )
         self.ridx = <integer *> malloc( self.nnz * sizeof( integer ) )
         self.cidx = <integer *> malloc( self.nnz * sizeof( integer ) )
 
-        self.shape = ( self.nrows, self.ncols )
+        ## populate ridx, cidx, and rptr by walking through arr in C order
+        cdef integer row, col, k
+        k = 0
+        for row in range( self.nrows ):
+            self.rptr[row] = k
+            for col in range( self.ncols ):
+                if( arr[row,col] != 0.0 ):
+                    self.ridx[k] = row
+                    self.cidx[k] = col
+                    k += 1
+        self.rptr[self.nrows] = self.nnz
 
-        ## copy ridx and cidx
-        memcpy( self.ridx,
-                utils.getPtr( utils.convIntFortran( rowarr ) ),
-                self.nnz * sizeof( integer ) )
-        memcpy( self.cidx,
-                utils.getPtr( utils.convIntFortran( colarr ) ),
-                self.nnz * sizeof( integer ) )
-        ## write rptr
-        self.rptr[0] = 0
-        for k in range( self.nrows ):
-            self.rptr[k+1] = self.rptr[k] + np.sum( rowarr == k )
-        ## zero data
+        ## populate data
         if( copy_data ):
+            rowarr = utils.wrap1dPtr( self.ridx, self.nnz, utils.integer_type )
+            colarr = utils.wrap1dPtr( self.cidx, self.nnz, utils.integer_type )
             memcpy( self.data,
                     utils.getPtr( utils.convFortran( arr[rowarr,colarr].flatten() ) ),
                     self.nnz * sizeof( doublereal ) )
@@ -657,29 +657,6 @@ cdef class Solver( base.Solver ):
         return True
 
 
-    cdef void debugMem( self ):
-        print( ">>> Memory allocated for data: " +
-               str( self.mem_size[0] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
-                    self.mem_size[1] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
-                    self.mem_size[2] * ( sizeof(doublereal) + 2 * sizeof(integer) ) +
-                    self.mem_size[3] * 2 * sizeof(integer) ) +
-               " bytes." )
-
-        print( ">>> Memory allocated for workspace: " +
-               str( self.mem_size_ws[0] * 8 * sizeof(char) +
-                    self.mem_size_ws[1] * sizeof(integer) +
-                    self.mem_size_ws[2] * sizeof(doublereal) ) +
-               " bytes." )
-
-        if( isinstance( self.prob, nlp.SparseProblem ) ):
-            if( self.prob.Nconslin > 0 ):
-                print( ">>> Sparsity of A: %.1f" %
-                       ( self.lenA[0] * 100 / ( self.prob.N * self.prob.Nconslin ) ) + "%" )
-            if( self.prob.Ncons > 0 ):
-                print( ">>> Sparsity of gradient: %.1f" %
-                       ( self.lenG[0] * 100 / ( self.prob.N * (1 + self.prob.Ncons ) ) ) + "%" )
-
-
     def __dealloc__( self ):
         self.deallocateWS()
         self.deallocate()
@@ -1045,7 +1022,26 @@ cdef class Solver( base.Solver ):
             raise Exception( "At least one option setting failed" )
 
         if( self.debug ):
-            self.debugMem()
+            print( ">>> Memory allocated for data: " +
+                   str( self.mem_size[0] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
+                        self.mem_size[1] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
+                        self.mem_size[2] * ( sizeof(doublereal) + 2 * sizeof(integer) ) +
+                        self.mem_size[3] * 2 * sizeof(integer) ) +
+                   " bytes." )
+
+            print( ">>> Memory allocated for workspace: " +
+                   str( self.mem_size_ws[0] * 8 * sizeof(char) +
+                        self.mem_size_ws[1] * sizeof(integer) +
+                        self.mem_size_ws[2] * sizeof(doublereal) ) +
+                   " bytes." )
+
+            if( isinstance( self.prob, nlp.SparseProblem ) ):
+                if( self.prob.Nconslin > 0 ):
+                    print( ">>> Sparsity of A: %.1f" %
+                           ( self.lenA[0] * 100 / ( self.prob.N * self.prob.Nconslin ) ) + "%" )
+                if( self.prob.Ncons > 0 ):
+                    print( ">>> Sparsity of gradient: %.1f" %
+                           ( self.lenG[0] * 100 / ( self.prob.N * (1 + self.prob.Ncons ) ) ) + "%" )
 
         ## Execute SNOPT
         snopt.snopta_( self.Start, self.nF,

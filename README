@@ -1,4 +1,4 @@
-OptWrapper v0.4
+OptWrapper v0.5
 ---------------
 
 This is a python wrapper for numerical optimization libraries. It contains two general types of objects: problems and solvers. This version has been tested in Python 2.7 and 3.4, and Cython 0.21 and 0.22.
