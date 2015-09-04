@@ -1,7 +1,7 @@
 OptWrapper v0.5
 ---------------
 
-This is a python wrapper for numerical optimization libraries. It contains two general types of objects: problems and solvers. This version has been tested in Python 2.7 and 3.4, and Cython version 0.21 and 0.22.
+This is a python wrapper for numerical optimization libraries. It contains two general types of objects: problems and solvers. This version has been tested in Python 2.7 and 3.4, and Cython 0.21 and 0.22.
 
 Currently we implement the following problems:
 - Quadratic and Linear Programming Problems (qp.Problem)
@@ -22,7 +22,7 @@ Requirements
 ------------
 
 - Python (either 2.x or 3.x)
-- Cython (only if you want to modify the .pyx files)
+- Cython
 - NumPy + SciPy
 - NPSOL 6
 - SNOPT 7
