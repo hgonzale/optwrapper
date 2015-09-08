@@ -44,6 +44,7 @@ cdef class sMatrix:
     cdef int data_alloc
 
     def __cinit__( self, arr, int copy_data=False ):
+        cdef doublereal tmp
         self.data_alloc = True
 
         try:
@@ -65,23 +66,20 @@ cdef class sMatrix:
         ## populate ridx, cidx, and rptr by walking through arr in C order
         cdef integer row, col, k
         k = 0
+        self.rptr[0] = 0
         for row in range( self.nrows ):
-            self.rptr[row] = k
             for col in range( self.ncols ):
-                if( arr[row,col] != 0.0 ):
+                tmp = arr[row,col]
+                if( tmp != 0.0 ):
                     self.ridx[k] = row
                     self.cidx[k] = col
+                    if( copy_data ):
+                        self.data[k] = tmp
                     k += 1
-        self.rptr[self.nrows] = self.nnz
+            self.rptr[row] = k
 
-        ## populate data
-        if( copy_data ):
-            rowarr = utils.wrap1dPtr( self.ridx, self.nnz, utils.integer_type )
-            colarr = utils.wrap1dPtr( self.cidx, self.nnz, utils.integer_type )
-            memcpy( self.data,
-                    utils.getPtr( utils.convFortran( arr[rowarr,colarr].flatten() ) ),
-                    self.nnz * sizeof( doublereal ) )
-        else:
+        ## zero out data if we didn't copy
+        if( not copy_data ):
             memset( self.data, 0, self.nnz * sizeof( doublereal ) )
 
 
