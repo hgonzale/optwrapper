@@ -44,7 +44,6 @@ cdef class sMatrix:
     cdef int data_alloc
 
     def __cinit__( self, arr, int copy_data=False ):
-        cdef doublereal tmp
         self.data_alloc = True
 
         try:
@@ -65,6 +64,7 @@ cdef class sMatrix:
 
         ## populate ridx, cidx, and rptr by walking through arr in C order
         cdef integer row, col, k
+        cdef doublereal tmp
         k = 0
         self.rptr[0] = 0
         for row in range( self.nrows ):
@@ -76,7 +76,7 @@ cdef class sMatrix:
                     if( copy_data ):
                         self.data[k] = tmp
                     k += 1
-            self.rptr[row] = k
+            self.rptr[row+1] = k
 
         ## zero out data if we didn't copy
         if( not copy_data ):
@@ -447,8 +447,8 @@ cdef class Solver( base.Solver ):
         else:
             tmplist += ( np.zeros( ( prob.Ncons, prob.N ) ), )
         Asparse = sMatrix( np.vstack( tmplist ), copy_data=True )
-        self.lenA[0] = Asparse.nnz
-        if( self.lenA[0] > 0 ):
+        if( Asparse.nnz > 0 ):
+            self.lenA[0] = Asparse.nnz
             self.neA[0] = self.lenA[0]
         else: ## Minimum allowed values, pg. 16
             self.lenA[0] = 1
@@ -464,8 +464,12 @@ cdef class Solver( base.Solver ):
             consGsparse = sMatrix( prob.consgpattern )
         else:
             consGsparse = sMatrix( np.ones( ( prob.Ncons, prob.N ) ) )
-        self.lenG[0] = objGsparse.nnz + consGsparse.nnz
-        self.neG[0] = self.lenG[0]
+        if( objGsparse.nnz + consGsparse.nnz > 0 ):
+            self.lenG[0] = objGsparse.nnz + consGsparse.nnz
+            self.neG[0] = self.lenG[0]
+        else:
+            self.lenG[0] = 1
+            self.neG[0] = 0
 
         ## Allocate if necessary
         if( self.mustAllocate( prob.N, self.nF[0], self.lenA[0], self.lenG[0] ) ):
@@ -489,6 +493,16 @@ cdef class Solver( base.Solver ):
         Asparse.copyFortranIdxs( &self.iAfun[0], &self.jAvar[0] )
         ## copy matrix data of A
         Asparse.copyData( &self.A[0] )
+
+        # print( "lenA: {0}, neA: {1}".format( self.lenA[0], self.neA[0] ) )
+        # print( "idx: (iAfun,jAvar) A" )
+        # for k in range( self.lenA[0] ):
+        #     print( str(k) + ": " + "(" + str(self.iAfun[k]) + "," + str(self.jAvar[k]) + ") " + str(self.A[k]) )
+
+        # print( "lenG: {0}, neG: {1}".format( self.lenG[0], self.neG[0] ) )
+        # print( "idx: (iGfun,jGvar)" )
+        # for k in range( self.lenG[0] ):
+        #     print( str(k) + ": " + "(" + str(self.iGfun[k]) + "," + str(self.jGvar[k]) + ")" )
 
         ## copy general constraints limits
         ## objective function knows no limits (https://i.imgur.com/UuQbJ.gif)

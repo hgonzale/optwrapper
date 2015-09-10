@@ -256,6 +256,12 @@ class Problem:
 
         if( point is None ):
             point = self.init
+        elif( point == "random" ):
+            ub = self.ub
+            ub[ np.isinf( ub ) ] = 1
+            lb = self.lb
+            lb[ np.isinf( lb ) ] = 0
+            point = np.random.rand( self.N ) * ( ub - lb ) + lb
         else:
             point = np.asfortranarray( point )
             if( point.shape != ( self.N, ) ):
