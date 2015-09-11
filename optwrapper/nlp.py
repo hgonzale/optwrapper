@@ -233,7 +233,7 @@ class Problem:
         self.consg = consg
 
 
-    def checkGrad( self, h=1e-5, etol=1e-4, point=None, debug=False ):
+    def checkGrad( self, Ntries=10, h=1e-5, etol=1e-4, point=None, debug=False ):
         """
         checks if user-defined gradients are correct using central finite differences.
 
@@ -255,63 +255,65 @@ class Problem:
             raise StandardError( "Constraints must be set before gradients are checked." )
 
         if( point is None ):
-            point = self.init
-        elif( point == "random" ):
             ub = self.ub
             ub[ np.isinf( ub ) ] = 1
             lb = self.lb
-            lb[ np.isinf( lb ) ] = 0
+            lb[ np.isinf( lb ) ] = -1
             point = np.random.rand( self.N ) * ( ub - lb ) + lb
         else:
+            Ntries = 1
             point = np.asfortranarray( point )
             if( point.shape != ( self.N, ) ):
                 raise ValueError( "Argument 'point' must have size (" + str(self.N) + ",)." )
 
         usrgrad = np.zeros( ( self.Ncons + 1, self.N ) )
         numgrad = np.zeros( ( self.Ncons + 1, self.N ) )
-
         fph = np.zeros( (self.Ncons + 1,) )
         fmh = np.zeros( (self.Ncons + 1,) )
-        for k in range( self.N ):
-            hvec = np.zeros( (self.N,) )
-            hvec[k] = h
 
-            self.objf( fph[0:1], point + hvec )
-            self.objf( fmh[0:1], point - hvec )
+        for iter in range( Ntries ):
+            if( Ntries > 1 ):
+                point = np.random.rand( self.N ) * ( ub - lb ) + lb
+
+            self.objg( usrgrad[0,:], point )
             if( self.Ncons > 0 ):
-                self.consf( fph[1:], point + hvec )
-                self.consf( fmh[1:], point - hvec )
+                self.consg( usrgrad[1:,:], point )
+            if( not np.all( np.isfinite( usrgrad ) ) ):
+                raise ValueError( "gradient returned non-finite value" )
 
-            if( not np.all( np.isfinite( fph ) ) or
-                not np.all( np.isfinite( fmh ) ) ):
-                raise ValueError( "non-finite value inf at iteration {0}".format( k ) )
+            for k in range( self.N ):
+                hvec = np.zeros( (self.N,) )
+                hvec[k] = h
 
-            numgrad[:,k] = ( fph - fmh ) / 2.0 / h
+                self.objf( fph[0:1], point + hvec )
+                self.objf( fmh[0:1], point - hvec )
+                if( self.Ncons > 0 ):
+                    self.consf( fph[1:], point + hvec )
+                    self.consf( fmh[1:], point - hvec )
 
-        self.objg( usrgrad[0,:], point )
-        if( self.Ncons > 0 ):
-            self.consg( usrgrad[1:,:], point )
-        if( not np.all( np.isfinite( usrgrad ) ) ):
-            raise ValueError( "gradient returned non-finite value" )
+                if( not np.all( np.isfinite( fph ) ) or
+                    not np.all( np.isfinite( fmh ) ) ):
+                    raise ValueError( "non-finite value inf at iteration {0}".format( k ) )
 
-        errgrad = abs( usrgrad - numgrad )
-        if( errgrad.max() < etol ):
-            if( debug ):
-                print( ">>> Numerical gradient check passed. " +
-                       "Max error: {0}".format( errgrad.max() ) )
-            return True
-        else:
-            if( debug ):
-                print( ">>> Numerical gradient check failed. " +
-                       "Max error: {0}".format( errgrad.max() ) )
+                numgrad[:,k] = ( fph - fmh ) / 2.0 / h
 
-                idx = np.unravel_index( np.argmax(errgrad), errgrad.shape )
-                if( idx[0] == 0 ):
-                    print( ">>> Max error achieved at element {0} of objg()".format( idx[1] ) )
-                else:
-                    print( ">>> Max error achieved at element ({0},{1})".format( idx[0]-1,idx[1] ) +
-                           " of consg()" )
-            return False
+            errgrad = abs( usrgrad - numgrad )
+            if( errgrad.max() >= etol ):
+                if( debug ):
+                    print( ">>> Numerical gradient check failed. " +
+                           "Max error: {0}".format( errgrad.max() ) )
+                    idx = np.unravel_index( np.argmax(errgrad), errgrad.shape )
+                    if( idx[0] == 0 ):
+                        print( ">>> Max error achieved at element " +
+                               "{0} of objg()".format( idx[1] ) )
+                    else:
+                        print( ">>> Max error achieved at element " +
+                               "({0},{1}) of consg()".format( idx[0]-1,idx[1] ) )
+                return False
+
+        if( debug ):
+            print( ">>> Numerical gradient check passed. " )
+        return True
 
 
 class SparseProblem( Problem ):
