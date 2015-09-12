@@ -266,14 +266,14 @@ class Problem:
             if( point.shape != ( self.N, ) ):
                 raise ValueError( "Argument 'point' must have size (" + str(self.N) + ",)." )
 
-        usrgrad = np.zeros( ( self.Ncons + 1, self.N ) )
-        numgrad = np.zeros( ( self.Ncons + 1, self.N ) )
-        fph = np.zeros( (self.Ncons + 1,) )
-        fmh = np.zeros( (self.Ncons + 1,) )
-
         for iter in range( Ntries ):
             if( Ntries > 1 ):
                 point = np.random.rand( self.N ) * ( ub - lb ) + lb
+
+            usrgrad = np.zeros( ( self.Ncons + 1, self.N ) )
+            numgrad = np.zeros( ( self.Ncons + 1, self.N ) )
+            fph = np.zeros( (self.Ncons + 1,) )
+            fmh = np.zeros( (self.Ncons + 1,) )
 
             self.objg( usrgrad[0,:], point )
             if( self.Ncons > 0 ):

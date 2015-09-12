@@ -23,4 +23,4 @@ clean:
 test:
 	@cd ${HOME}; $(foreach module,$(modules),python -c "from optwrapper.$(module) import *; print('$(module) works fine.')";)
 
-.PHONY: all clean test install uninstall
+.PHONY: all clean test install install_local uninstall
