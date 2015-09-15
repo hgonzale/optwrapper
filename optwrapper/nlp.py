@@ -272,8 +272,6 @@ class Problem:
 
             usrgrad = np.zeros( ( self.Ncons + 1, self.N ) )
             numgrad = np.zeros( ( self.Ncons + 1, self.N ) )
-            fph = np.zeros( (self.Ncons + 1,) )
-            fmh = np.zeros( (self.Ncons + 1,) )
 
             self.objg( usrgrad[0,:], point )
             if( self.Ncons > 0 ):
@@ -282,6 +280,8 @@ class Problem:
                 raise ValueError( "gradient returned non-finite value" )
 
             for k in range( self.N ):
+                fph = np.zeros( (self.Ncons + 1,) )
+                fmh = np.zeros( (self.Ncons + 1,) )
                 hvec = np.zeros( (self.N,) )
                 hvec[k] = h
 
