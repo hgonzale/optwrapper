@@ -1,6 +1,7 @@
 # cython: boundscheck=False
 # cython: wraparound=False
 
+from __future__ import division
 from libc.string cimport memcpy, memset
 from libc.stdlib cimport malloc, free
 cimport numpy as cnp
@@ -295,6 +296,7 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
 
     xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
 
+    print( "eval {0} {1}".format( needF[0], needG[0] ) )
     if( needF[0] > 0 ):
         ## we zero out all arrays in case the user does not modify all the values,
         ## e.g., in sparse problems.
@@ -551,21 +553,21 @@ cdef class Solver( base.Solver ):
         self.iGfun = <integer *> malloc( self.lenG[0] * sizeof( integer ) )
         self.jGvar = <integer *> malloc( self.lenG[0] * sizeof( integer ) )
 
-        if( self.x is NULL or
-            self.xlow is NULL or
-            self.xupp is NULL or
-            self.xmul is NULL or
-            self.xstate is NULL or
-            self.F is NULL or
-            self.Flow is NULL or
-            self.Fupp is NULL or
-            self.Fmul is NULL or
-            self.Fstate is NULL or
-            self.A is NULL or
-            self.iAfun is NULL or
-            self.jAvar is NULL or
-            self.iGfun is NULL or
-            self.jGvar is NULL ):
+        if( not ( self.x and
+                  self.xlow and
+                  self.xupp and
+                  self.xmul and
+                  self.xstate and
+                  self.F and
+                  self.Flow and
+                  self.Fupp and
+                  self.Fmul and
+                  self.Fstate and
+                  self.A and
+                  self.iAfun and
+                  self.jAvar and
+                  self.iGfun and
+                  self.jGvar ) ):
             raise MemoryError( "At least one memory allocation failed" )
 
         self.mem_alloc = True
@@ -628,9 +630,9 @@ cdef class Solver( base.Solver ):
         self.iw = <integer *> malloc( self.leniw[0] * sizeof( integer ) )
         self.rw = <doublereal *> malloc( self.lenrw[0] * sizeof( doublereal ) )
 
-        if( self.iw is NULL or
-            self.rw is NULL or
-            self.cw is NULL ):
+        if( not ( self.iw and
+                  self.rw and
+                  self.cw ) ):
             raise MemoryError( "At least one memory allocation failed" )
 
         self.mem_alloc_ws = True
@@ -778,9 +780,6 @@ cdef class Solver( base.Solver ):
         cdef char* STR_VERIFY_LEVEL = "Verify level"
         cdef char* STR_VIOLATION_LIMIT = "Violation limit"
 
-        cdef integer nS[1]
-        cdef integer nInf[1]
-        cdef doublereal sInf[1]
         cdef integer mincw[1]
         cdef integer miniw[1]
         cdef integer minrw[1]
@@ -788,20 +787,22 @@ cdef class Solver( base.Solver ):
         cdef integer *ltmpcw = [ 500 ]
         cdef integer *ltmpiw = [ 500 ]
         cdef integer *ltmprw = [ 500 ]
-        cdef char tmpcw[500*8]
+        cdef char tmpcw[500 * 8]
         cdef integer tmpiw[500]
         cdef doublereal tmprw[500]
-
+        cdef integer summaryFileUnit[1]
+        cdef integer printFileUnit[1]
         cdef integer *n = [ self.prob.N ]
         cdef integer *nxname = [ 1 ] ## Do not provide vars names
         cdef integer *nFname = [ 1 ] ## Do not provide cons names
+        cdef integer nS[1]
+        cdef integer nInf[1]
+        cdef doublereal sInf[1]
         cdef doublereal *ObjAdd = [ 0.0 ]
         cdef integer *ObjRow = [ 1 ]
         cdef char *probname = "optwrapp" ## Must have 8 characters
         cdef char *xnames = "dummy"
         cdef char *Fnames = "dummy"
-        cdef integer summaryFileUnit[1]
-        cdef integer printFileUnit[1]
 
         ## Begin by setting up initial condition
         tmpinit = utils.convFortran( self.prob.init )
@@ -812,17 +813,27 @@ cdef class Solver( base.Solver ):
         if( self.printOpts[ "printFile" ] is not None and
             self.printOpts[ "printFile" ] != "" ):
             printFileUnit[0] = 90 ## Hardcoded since nobody cares
+            if( self.debug ):
+                print( ">>> Sending print file to " + self.printOpts[ "printFile" ] )
         else:
             printFileUnit[0] = 0 ## disabled by default, pg. 27
+            if( self.debug ):
+                print( ">>> Print file is disabled" )
 
         if( self.printOpts[ "summaryFile" ] is not None and
-              self.printOpts[ "summaryFile" ] != "" ):
+            self.printOpts[ "summaryFile" ] != "" ):
             if( self.printOpts[ "summaryFile" ].lower() == "stdout" ):
                 summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
+                if( self.debug ):
+                    print( ">>> Sending summary to stdout" )
             else:
                 summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
+                if( self.debug ):
+                    print( ">>> Sending summary to " + self.printOpts[ "summaryFile" ] )
         else:
             summaryFileUnit[0] = 0 ## disabled by default, pg. 28
+            if( self.debug ):
+                print( ">>> Summary is disabled" )
 
         ## Initialize
         snopt.sninit_( printFileUnit, summaryFileUnit,
@@ -832,7 +843,8 @@ cdef class Solver( base.Solver ):
         inform_out[0] = 0 ## Reset inform_out before running snset* functions
 
         ## Suppress parameter verbosity
-        ezset( STR_SUPPRESS_PARAMETERS, True )
+        if( not self.debug ):
+            ezset( STR_SUPPRESS_PARAMETERS, True )
 
         ## The following settings change the outcome of snmema, pg. 29
         if( self.solveOpts[ "hessianMemory" ] is not None ):
@@ -864,7 +876,7 @@ cdef class Solver( base.Solver ):
             self.allocateWS()
 
         ## Copy content of temp workspace arrays to malloc'ed workspace arrays
-        memcpy( self.cw, tmpcw, ltmpcw[0] * sizeof( char ) )
+        memcpy( self.cw, tmpcw, ltmpcw[0] * 8 * sizeof( char ) )
         memcpy( self.iw, tmpiw, ltmpiw[0] * sizeof( integer ) )
         memcpy( self.rw, tmprw, ltmprw[0] * sizeof( doublereal ) )
 
@@ -1032,28 +1044,28 @@ cdef class Solver( base.Solver ):
         ## Checkout if we had any errors before we run SNOPT
         if( inform_out[0] != 0 ):
             raise Exception( "At least one option setting failed" )
+        elif( self.debug ):
+            print( ">>> All options successfully set up" )
 
         if( self.debug ):
-            print( ">>> Memory allocated for data: " +
-                   str( self.mem_size[0] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
-                        self.mem_size[1] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
-                        self.mem_size[2] * ( sizeof(doublereal) + 2 * sizeof(integer) ) +
-                        self.mem_size[3] * 2 * sizeof(integer) ) +
-                   " bytes." )
+            print( ">>> Memory allocated for data: {0:,.3} MB".format(
+                        ( self.mem_size[0] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
+                          self.mem_size[1] * ( 4 * sizeof(doublereal) + sizeof(integer) ) +
+                          self.mem_size[2] * ( sizeof(doublereal) + 2 * sizeof(integer) ) +
+                          self.mem_size[3] * 2 * sizeof(integer) ) / 1024 / 1024 ) )
 
-            print( ">>> Memory allocated for workspace: " +
-                   str( self.mem_size_ws[0] * 8 * sizeof(char) +
-                        self.mem_size_ws[1] * sizeof(integer) +
-                        self.mem_size_ws[2] * sizeof(doublereal) ) +
-                   " bytes." )
+            print( ">>> Memory allocated for workspace: {0:,.3} MB".format(
+                        ( self.mem_size_ws[0] * 8 * sizeof(char) +
+                          self.mem_size_ws[1] * sizeof(integer) +
+                          self.mem_size_ws[2] * sizeof(doublereal) ) / 1024 / 1024 ) )
 
             if( isinstance( self.prob, nlp.SparseProblem ) ):
                 if( self.prob.Nconslin > 0 ):
-                    print( ">>> Sparsity of A: %.1f" %
-                           ( self.lenA[0] * 100 / ( self.prob.N * self.prob.Nconslin ) ) + "%" )
+                    print( ">>> Sparsity of A: {0:.1%}".format(
+                           self.lenA[0] / ( self.prob.N * self.prob.Nconslin ) ) )
                 if( self.prob.Ncons > 0 ):
-                    print( ">>> Sparsity of gradient: %.1f" %
-                           ( self.lenG[0] * 100 / ( self.prob.N * (1 + self.prob.Ncons ) ) ) + "%" )
+                    print( ">>> Sparsity of gradient: {0:.1%}".format(
+                           self.lenG[0] / ( self.prob.N * ( 1 + self.prob.Ncons ) ) ) )
 
         ## Execute SNOPT
         snopt.snopta_( self.Start, self.nF,
