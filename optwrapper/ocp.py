@@ -1,3 +1,4 @@
+from __future__ import division
 import numpy as np
 import types
 from optwrapper import nlp
@@ -255,16 +256,16 @@ class Problem:
         """
 
         ## index helpers
-        stidx = np.arange( 0, self.Nstates * ( Nsamples + 1 ) ).reshape(
-            ( self.Nstates, Nsamples + 1 ),
-            order='F' )
-        uidx = stidx.size + np.arange( 0, self.Ninputs * Nsamples ).reshape(
-            ( self.Ninputs, Nsamples ),
-            order='F' )
+        stidx = np.arange( 0, self.Nstates * ( Nsamples + 1 ),
+                           dtype=np.int ).reshape( ( self.Nstates, Nsamples + 1 ), order='F' )
+        uidx = ( stidx.size +
+                 np.arange( 0, self.Ninputs * Nsamples,
+                            dtype=np.int ).reshape( ( self.Ninputs, Nsamples ), order='F' ) )
+
         dconsidx = stidx
-        iconsidx = dconsidx.size + np.arange( 0, self.Ncons * Nsamples ).reshape(
-            ( self.Ncons, Nsamples ),
-            order='F' )
+        iconsidx = ( dconsidx.size +
+                     np.arange( 0, self.Ncons * Nsamples,
+                                dtype=np.int ).reshape( ( self.Ncons, Nsamples ), order='F' ) )
 
         deltaT = ( self.tf - self.t0 ) / ( Nsamples + 1 )
 
@@ -408,12 +409,12 @@ class Problem:
 
             ( st, u ) =  decode( s )
 
-            out[ np.ix_( dconsidx[:,0], stidx[:,0] ) ] = np.identity( self.Nstates )
+            out[ dconsidx[:,0], stidx[:,0] ] = 1.0
             for k in range( Nsamples ):
                 ( dyndx, dyndu ) = self.vfield( st[:,k], u[:,k] )[1:3]
-                out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] = (
-                    - np.identity( self.Nstates ) - deltaT * dyndx )
-                out[ np.ix_( dconsidx[:,k+1], stidx[:,k+1] ) ] = np.identity( self.Nstates )
+                out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] = ( - np.identity( self.Nstates )
+                                                                 - deltaT * dyndx )
+                out[ dconsidx[:,k+1], stidx[:,k+1] ] = 1.0
                 out[ np.ix_( dconsidx[:,k+1], uidx[:,k] ) ] = - deltaT * dyndu
 
                 if( self.Ncons > 0 ):
@@ -433,11 +434,11 @@ class Problem:
 
             out = np.zeros( ( feuler.Ncons, feuler.N ), dtype=np.int )
 
-            out[ np.ix_( dconsidx[:,0], stidx[:,0] ) ] = np.identity( self.Nstates )
+            out[ dconsidx[:,0], stidx[:,0] ] = 1
             for k in range( Nsamples ):
                 out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] = ( np.identity( self.Nstates ) +
                                                                  self.vfielddxpattern )
-                out[ np.ix_( dconsidx[:,k+1], stidx[:,k+1] ) ] = np.identity( self.Nstates )
+                out[ dconsidx[:,k+1], stidx[:,k+1] ] = 1
                 out[ np.ix_( dconsidx[:,k+1], uidx[:,k] ) ] = self.vfielddupattern
 
                 if( self.Ncons > 0 ):
