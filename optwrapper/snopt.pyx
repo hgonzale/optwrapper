@@ -479,9 +479,11 @@ cdef class Solver( base.Solver ):
             self.allocate()
 
         ## copy box constraints limits
-        memcpy( self.xlow, utils.getPtr( utils.convFortran( prob.lb ) ),
+        tmp = utils.convFortran( prob.lb )
+        memcpy( self.xlow, utils.getPtr( tmp ),
                 prob.N * sizeof( doublereal ) )
-        memcpy( self.xupp, utils.getPtr( utils.convFortran( prob.ub ) ),
+        tmp = utils.convFortran( prob.ub )
+        memcpy( self.xupp, utils.getPtr( tmp ),
                 prob.N * sizeof( doublereal ) )
 
         ## copy index data of G
@@ -497,14 +499,12 @@ cdef class Solver( base.Solver ):
         Asparse.copyData( &self.A[0] )
 
         # print( "lenA: {0}, neA: {1}".format( self.lenA[0], self.neA[0] ) )
-        # print( "idx: (iAfun,jAvar) A" )
         # for k in range( self.lenA[0] ):
-        #     print( str(k) + ": " + "(" + str(self.iAfun[k]) + "," + str(self.jAvar[k]) + ") " + str(self.A[k]) )
+        #     print( "{0}: ({1},{2}) {3}".format( k, self.iAfun[k], self.jAvar[k], self.A[k] ) )
 
         # print( "lenG: {0}, neG: {1}".format( self.lenG[0], self.neG[0] ) )
-        # print( "idx: (iGfun,jGvar)" )
         # for k in range( self.lenG[0] ):
-        #     print( str(k) + ": " + "(" + str(self.iGfun[k]) + "," + str(self.jGvar[k]) + ")" )
+        #     print( "{0}: ({1},{2})".format( k, self.iGfun[k], self.jGvar[k] ) )
 
         ## copy general constraints limits
         ## objective function knows no limits (https://i.imgur.com/UuQbJ.gif)
@@ -512,19 +512,23 @@ cdef class Solver( base.Solver ):
         self.Fupp[0] = np.inf
         ## linear constraints limits
         if( prob.Nconslin > 0 ):
+            tmp = utils.convFortran( prob.conslinlb )
             memcpy( &self.Flow[1],
-                    utils.getPtr( utils.convFortran( prob.conslinlb ) ),
+                    utils.getPtr( tmp ),
                     prob.Nconslin * sizeof( doublereal ) )
+            tmp = utils.convFortran( prob.conslinub )
             memcpy( &self.Fupp[1],
-                    utils.getPtr( utils.convFortran( prob.conslinub ) ),
+                    utils.getPtr( tmp ),
                     prob.Nconslin * sizeof( doublereal ) )
         ## nonlinear constraints limits
         if( prob.Ncons > 0 ):
+            tmp = utils.convFortran( prob.conslb )
             memcpy( &self.Flow[1 + prob.Nconslin],
-                    utils.getPtr( utils.convFortran( prob.conslb ) ),
+                    utils.getPtr( tmp ),
                     prob.Ncons * sizeof( doublereal ) )
+            tmp = utils.convFortran( prob.consub )
             memcpy( &self.Fupp[1 + prob.Nconslin],
-                    utils.getPtr( utils.convFortran( prob.consub ) ),
+                    utils.getPtr( tmp ),
                     prob.Ncons * sizeof( doublereal ) )
 
         ## initialize other vectors with zeros
@@ -680,9 +684,11 @@ cdef class Solver( base.Solver ):
         if( not isinstance( self.prob.soln, Soln ) ):
             return False
 
-        memcpy( self.xstate, utils.getPtr( utils.convIntFortran( self.prob.soln.xstate ) ),
+        tmp = utils.convIntFortran( self.prob.soln.xstate )
+        memcpy( self.xstate, utils.getPtr( tmp ),
                 self.prob.N * sizeof( integer ) )
-        memcpy( self.Fstate, utils.getPtr( utils.convIntFortran( self.prob.soln.Fstate ) ),
+        tmp = utils.convIntFortran( self.prob.soln.Fstate )
+        memcpy( self.Fstate, utils.getPtr( tmp ),
                 self.nF[0] * sizeof( integer ) )
 
         self.Start[0] = 2

@@ -75,9 +75,11 @@ if( not nlpprob.checkPattern( debug=True ) ):
 
 solver = snopt.Solver( nlpprob )
 solver.debug = True
-solver.printOpts[ "summaryFile" ] = "debugs.txt"
+solver.printOpts[ "summaryFile" ] = "stdout"
 solver.printOpts[ "printFile" ] = "debugp.txt"
-solver.printOpts[ "printLevel" ] = 10
+solver.printOpts[ "printLevel" ] = 111111
+solver.printOpts[ "minorPrintLevel" ] = 10
+solver.solveOpts[ "verifyLevel" ] = 3
 
 solver.solve()
 print( "Status: " + nlpprob.soln.getStatus() )
