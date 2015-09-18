@@ -4,6 +4,7 @@
 from __future__ import division
 from libc.string cimport memcpy, memset
 from libc.stdlib cimport malloc, free
+from libc.stdio cimport printf
 cimport numpy as cnp
 import numpy as np
 import os
@@ -98,22 +99,22 @@ cdef class sMatrix:
 
         print( "rptr: [" ),
         for k in range( self.nrows+1 ):
-            print( self.rptr[k] ),
+            printf( "%d ", self.rptr[k] )
         print( "]" )
 
         print( "ridx: [" ),
         for k in range( self.nnz ):
-            print( self.ridx[k] ),
+            printf( "%d ", self.ridx[k] )
         print( "]" )
 
         print( "cidx: [" ),
         for k in range( self.nnz ):
-            print( self.cidx[k] ),
+            printf( "%d ", self.cidx[k] )
         print( "]" )
 
         print( "data: [" ),
         for k in range( self.nnz ):
-            print( self.data[k] ),
+            printf( "%d ", self.data[k] )
         print( "]" )
 
 
@@ -320,6 +321,7 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
 
 cdef class Solver( base.Solver ):
     cdef integer nF[1]
+    cdef integer n[1]
     cdef integer lenA[1]
     cdef integer neA[1]
     cdef integer lenG[1]
@@ -434,20 +436,21 @@ cdef class Solver( base.Solver ):
         ## New problems cannot be warm started
         self.Start[0] = 0 ## Cold start
 
-        ## Set nF
+        ## Set n, nF
+        self.n[0] = prob.N
         self.nF[0] = 1 + prob.Nconslin + prob.Ncons
 
         ## Create Asparse, set lenA
         if( prob.objmixedA is not None ):
             tmplist = ( prob.objmixedA, )
         else:
-            tmplist = ( np.zeros( ( 1, prob.N ) ), )
+            tmplist = ( np.zeros( ( 1, self.n[0] ) ), )
         if( prob.Nconslin > 0 ):
             tmplist += ( prob.conslinA, )
         if( prob.consmixedA is not None ):
             tmplist += ( prob.consmixedA, )
         else:
-            tmplist += ( np.zeros( ( prob.Ncons, prob.N ) ), )
+            tmplist += ( np.zeros( ( prob.Ncons, self.n[0] ) ), )
         Asparse = sMatrix( np.vstack( tmplist ), copy_data=True )
         if( Asparse.nnz > 0 ):
             self.lenA[0] = Asparse.nnz
@@ -460,12 +463,12 @@ cdef class Solver( base.Solver ):
         if( isinstance( prob, nlp.SparseProblem ) and prob.objgpattern is not None ):
             objGsparse = sMatrix( prob.objgpattern )
         else:
-            objGsparse = sMatrix( np.ones( ( 1, prob.N ) ) )
+            objGsparse = sMatrix( np.ones( ( 1, self.n[0] ) ) )
 
         if( isinstance( prob, nlp.SparseProblem ) and prob.consgpattern is not None ):
             consGsparse = sMatrix( prob.consgpattern )
         else:
-            consGsparse = sMatrix( np.ones( ( prob.Ncons, prob.N ) ) )
+            consGsparse = sMatrix( np.ones( ( prob.Ncons, self.n[0] ) ) )
         if( objGsparse.nnz + consGsparse.nnz > 0 ):
             self.lenG[0] = objGsparse.nnz + consGsparse.nnz
             self.neG[0] = self.lenG[0]
@@ -474,17 +477,24 @@ cdef class Solver( base.Solver ):
             self.neG[0] = 0
 
         ## Allocate if necessary
-        if( self.mustAllocate( prob.N, self.nF[0], self.lenA[0], self.lenG[0] ) ):
+        if( self.mustAllocate( self.n[0], self.nF[0], self.lenA[0], self.lenG[0] ) ):
             self.deallocate()
             self.allocate()
 
         ## copy box constraints limits
         tmp = utils.convFortran( prob.lb )
         memcpy( self.xlow, utils.getPtr( tmp ),
-                prob.N * sizeof( doublereal ) )
+                self.n[0] * sizeof( doublereal ) )
+        printf( "xlow: %d\n", self.n[0] )
+        for k in range( self.n[0] ):
+            printf( "%d: %f\n", k, self.xlow[k] )
+
         tmp = utils.convFortran( prob.ub )
         memcpy( self.xupp, utils.getPtr( tmp ),
-                prob.N * sizeof( doublereal ) )
+                self.n[0] * sizeof( doublereal ) )
+        printf( "xupp: %d\n", self.n[0] )
+        for k in range( self.n[0] ):
+            printf( "%d: %f\n", k, self.xupp[k] )
 
         ## copy index data of G
         ## row 0 of G belongs to objg
@@ -498,13 +508,13 @@ cdef class Solver( base.Solver ):
         ## copy matrix data of A
         Asparse.copyData( &self.A[0] )
 
-        # print( "lenA: {0}, neA: {1}".format( self.lenA[0], self.neA[0] ) )
-        # for k in range( self.lenA[0] ):
-        #     print( "{0}: ({1},{2}) {3}".format( k, self.iAfun[k], self.jAvar[k], self.A[k] ) )
+        print( "lenA: {0}, neA: {1}".format( self.lenA[0], self.neA[0] ) )
+        for k in range( self.lenA[0] ):
+            print( "{0}: ({1},{2}) {3}".format( k, self.iAfun[k], self.jAvar[k], self.A[k] ) )
 
-        # print( "lenG: {0}, neG: {1}".format( self.lenG[0], self.neG[0] ) )
-        # for k in range( self.lenG[0] ):
-        #     print( "{0}: ({1},{2})".format( k, self.iGfun[k], self.jGvar[k] ) )
+        print( "lenG: {0}, neG: {1}".format( self.lenG[0], self.neG[0] ) )
+        for k in range( self.lenG[0] ):
+            print( "{0}: ({1},{2})".format( k, self.iGfun[k], self.jGvar[k] ) )
 
         ## copy general constraints limits
         ## objective function knows no limits (https://i.imgur.com/UuQbJ.gif)
@@ -531,21 +541,37 @@ cdef class Solver( base.Solver ):
                     utils.getPtr( tmp ),
                     prob.Ncons * sizeof( doublereal ) )
 
+        printf( "Flow: %d\n", self.nF[0] )
+        for k in range( self.nF[0] ):
+            printf( "%d: %f\n", k, self.Flow[k] )
+        printf( "Fupp: %d\n", self.nF[0] )
+        for k in range( self.nF[0] ):
+            printf( "%d: %f\n", k, self.Fupp[k] )
+
         ## initialize other vectors with zeros
-        memset( self.xstate, 0, self.prob.N * sizeof( integer ) )
+        memset( self.xstate, 0, self.n[0] * sizeof( integer ) )
         memset( self.Fstate, 0, self.nF[0] * sizeof( integer ) )
         memset( self.Fmul, 0, self.nF[0] * sizeof( doublereal ) )
+        printf( "xstate: %d\n", self.n[0] )
+        for k in range( self.n[0] ):
+            printf( "%d: %d\n", k, self.xstate[k] )
+        printf( "Fstate: %d\n", self.nF[0] )
+        for k in range( self.nF[0] ):
+            printf( "%d: %d\n", k, self.Fstate[k] )
+        printf( "Fmul: %d\n", self.nF[0] )
+        for k in range( self.nF[0] ):
+            printf( "%d: %f\n", k, self.Fmul[k] )
 
 
     cdef int allocate( self ):
         if( self.mem_alloc ):
             return False
 
-        self.x = <doublereal *> malloc( self.prob.N * sizeof( doublereal ) )
-        self.xlow = <doublereal *> malloc( self.prob.N * sizeof( doublereal ) )
-        self.xupp = <doublereal *> malloc( self.prob.N * sizeof( doublereal ) )
-        self.xmul = <doublereal *> malloc( self.prob.N * sizeof( doublereal ) )
-        self.xstate = <integer *> malloc( self.prob.N * sizeof( integer ) )
+        self.x = <doublereal *> malloc( self.n[0] * sizeof( doublereal ) )
+        self.xlow = <doublereal *> malloc( self.n[0] * sizeof( doublereal ) )
+        self.xupp = <doublereal *> malloc( self.n[0] * sizeof( doublereal ) )
+        self.xmul = <doublereal *> malloc( self.n[0] * sizeof( doublereal ) )
+        self.xstate = <integer *> malloc( self.n[0] * sizeof( integer ) )
         self.F = <doublereal *> malloc( self.nF[0] * sizeof( doublereal ) )
         self.Flow = <doublereal *> malloc( self.nF[0] * sizeof( doublereal ) )
         self.Fupp = <doublereal *> malloc( self.nF[0] * sizeof( doublereal ) )
@@ -575,7 +601,7 @@ cdef class Solver( base.Solver ):
             raise MemoryError( "At least one memory allocation failed" )
 
         self.mem_alloc = True
-        self.setMemSize( self.prob.N, self.nF[0], self.lenA[0], self.lenG[0] )
+        self.setMemSize( self.n[0], self.nF[0], self.lenA[0], self.lenG[0] )
 
         return True
 
@@ -686,10 +712,16 @@ cdef class Solver( base.Solver ):
 
         tmp = utils.convIntFortran( self.prob.soln.xstate )
         memcpy( self.xstate, utils.getPtr( tmp ),
-                self.prob.N * sizeof( integer ) )
+                self.n[0] * sizeof( integer ) )
         tmp = utils.convIntFortran( self.prob.soln.Fstate )
         memcpy( self.Fstate, utils.getPtr( tmp ),
                 self.nF[0] * sizeof( integer ) )
+        printf( "xstate: %d\n", self.n[0] )
+        for k in range( self.n[0] ):
+            printf( "%d: %d\n", k, self.xstate[k] )
+        printf( "Fstate: %d\n", self.nF[0] )
+        for k in range( self.nF[0] ):
+            printf( "%d: %d\n", k, self.Fstate[k] )
 
         self.Start[0] = 2
         return True
@@ -798,7 +830,6 @@ cdef class Solver( base.Solver ):
         cdef doublereal tmprw[500]
         cdef integer summaryFileUnit[1]
         cdef integer printFileUnit[1]
-        cdef integer *n = [ self.prob.N ]
         cdef integer *nxname = [ 1 ] ## Do not provide vars names
         cdef integer *nFname = [ 1 ] ## Do not provide cons names
         cdef integer nS[1]
@@ -813,7 +844,10 @@ cdef class Solver( base.Solver ):
         ## Begin by setting up initial condition
         tmpinit = utils.convFortran( self.prob.init )
         memcpy( self.x, utils.getPtr( tmpinit ),
-                self.prob.N * sizeof( doublereal ) )
+                self.n[0] * sizeof( doublereal ) )
+        printf( "x: %d\n", self.n[0] )
+        for k in range( self.n[0] ):
+            printf( "%d: %f\n", k, self.x[k] )
 
         ## Handle debug files
         if( self.printOpts[ "printFile" ] is not None and
@@ -869,7 +903,7 @@ cdef class Solver( base.Solver ):
             ezseti( STR_SUPERBASICS_LIMIT, self.solveOpts[ "superbasicsLimit" ], True )
 
         ## Now we get to know how much memory we need
-        snopt.snmema_( inform_out, self.nF, n, nxname, nFname, self.lenA, self.lenG,
+        snopt.snmema_( inform_out, self.nF, self.n, nxname, nFname, self.lenA, self.lenG,
                        self.lencw, self.leniw, self.lenrw,
                        tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw,
                        ltmpcw[0]*8 )
@@ -881,10 +915,24 @@ cdef class Solver( base.Solver ):
             self.deallocateWS()
             self.allocateWS()
 
+        # zero out workspace
+        memset( self.cw, 0, self.lencw[0] * 8 * sizeof( char ) )
+        memset( self.iw, 0, self.leniw[0] * sizeof( integer ) )
+        memset( self.rw, 0, self.lenrw[0] * sizeof( doublereal ) )
+
         ## Copy content of temp workspace arrays to malloc'ed workspace arrays
         memcpy( self.cw, tmpcw, ltmpcw[0] * 8 * sizeof( char ) )
         memcpy( self.iw, tmpiw, ltmpiw[0] * sizeof( integer ) )
         memcpy( self.rw, tmprw, ltmprw[0] * sizeof( doublereal ) )
+        # printf( "cw: %d\n", self.lencw[0] )
+        # for k in range( self.lencw[0] * 8 ):
+        #     printf( "%d: %c\n", k, self.cw[k] )
+        # printf( "iw: %d\n", self.leniw[0] )
+        # for k in range( self.leniw[0] ):
+        #     printf( "%d: %d\n", k, self.iw[k] )
+        # printf( "rw: %d\n", self.lenrw )
+        # for k in range( self.lenrw[0] ):
+        #     printf( "%d: %f\n", k, self.rw[k] )
 
         inform_out[0] = 0 ## Reset inform_out before running snset* functions
 
@@ -1068,14 +1116,14 @@ cdef class Solver( base.Solver ):
             if( isinstance( self.prob, nlp.SparseProblem ) ):
                 if( self.prob.Nconslin > 0 ):
                     print( ">>> Sparsity of A: {0:.1%}".format(
-                           self.lenA[0] / ( self.prob.N * self.prob.Nconslin ) ) )
+                           self.lenA[0] / ( self.n[0] * self.prob.Nconslin ) ) )
                 if( self.prob.Ncons > 0 ):
                     print( ">>> Sparsity of gradient: {0:.1%}".format(
-                           self.lenG[0] / ( self.prob.N * ( 1 + self.prob.Ncons ) ) ) )
+                           self.lenG[0] / ( self.n[0] * ( 1 + self.prob.Ncons ) ) ) )
 
         ## Execute SNOPT
         snopt.snopta_( self.Start, self.nF,
-                       n, nxname, nFname,
+                       self.n, nxname, nFname,
                        ObjAdd, ObjRow, probname,
                        <snopt.usrfun_fp> usrfun,
                        self.iAfun, self.jAvar, self.lenA, self.neA, self.A,
@@ -1116,11 +1164,11 @@ cdef class Solver( base.Solver ):
         ## Save result to prob
         self.prob.soln = Soln()
         self.prob.soln.value = float( self.F[0] )
-        self.prob.soln.final = np.copy( utils.wrap1dPtr( self.x, self.prob.N,
+        self.prob.soln.final = np.copy( utils.wrap1dPtr( self.x, self.n[0],
                                                          utils.doublereal_type ) )
-        self.prob.soln.xstate = np.copy( utils.wrap1dPtr( self.xstate, self.prob.N,
+        self.prob.soln.xstate = np.copy( utils.wrap1dPtr( self.xstate, self.n[0],
                                                           utils.integer_type ) )
-        self.prob.soln.xmul = np.copy( utils.wrap1dPtr( self.xmul, self.prob.N,
+        self.prob.soln.xmul = np.copy( utils.wrap1dPtr( self.xmul, self.n[0],
                                                         utils.doublereal_type ) )
         self.prob.soln.Fstate = np.copy( utils.wrap1dPtr( self.Fstate, self.nF[0],
                                                           utils.integer_type ) )

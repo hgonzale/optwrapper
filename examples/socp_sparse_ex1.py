@@ -96,6 +96,7 @@ solver.printOpts[ "summaryFile" ] = "stdout"
 solver.printOpts[ "printFile" ] = "debugp.txt"
 solver.printOpts[ "printLevel" ] = 111111
 solver.printOpts[ "minorPrintLevel" ] = 10
+solver.solveOpts[ "verifyLevel" ] = 3
 
 solver.solve()
 print( "Status: " + nlpprob.soln.getStatus() )
