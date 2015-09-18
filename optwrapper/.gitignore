@@ -1,0 +1,2 @@
+## ignore cythonized files
+*.c
