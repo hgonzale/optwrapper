@@ -255,13 +255,18 @@ class Problem:
             raise StandardError( "Constraints must be set before gradients are checked." )
 
         if( point is None ):
-            ub = self.ub
-            ub[ np.isinf( ub ) ] = 1
-            lb = self.lb
-            lb[ np.isinf( lb ) ] = -1
+            if( self.ub is not None ):
+                ub = self.ub
+                ub[ np.isinf( ub ) ] = 1
+            else:
+                ub = np.ones( (self.N,) )
+            if( self.lb is not None ):
+                lb = self.lb
+                lb[ np.isinf( lb ) ] = -1
+            else:
+                lb = -np.ones( (self.N,) )
             point = np.random.rand( self.N ) * ( ub - lb ) + lb
         else:
-            Ntries = 1
             point = np.asfortranarray( point )
             if( point.shape != ( self.N, ) ):
                 raise ValueError( "Argument 'point' must have size (" + str(self.N) + ",)." )
@@ -403,24 +408,34 @@ class SparseProblem( Problem ):
             ( self.consg is None or self.consgpattern is None ) ):
             raise StandardError( "constraint gradient and pattern must be set before check" )
 
-        usrgrad = np.zeros( (self.Ncons + 1, self.N) )
         if( self.Ncons > 0 ):
             pattern = np.vstack( (self.objgpattern, self.consgpattern ) )
         else:
             pattern = self.objgpattern
 
+        if( self.ub is not None ):
+            ub = self.ub
+            ub[ np.isinf( ub ) ] = 1
+        else:
+            ub = np.ones( (self.N,) )
+        if( self.lb is not None ):
+            lb = self.lb
+            lb[ np.isinf( lb ) ] = -1
+        else:
+            lb = -np.ones( (self.N,) )
+
         for k in range( Ntries ):
-            point = np.random.randn( self.N )
+            usrgrad = np.zeros( (self.Ncons + 1, self.N) )
+            point = np.random.rand( self.N ) * ( ub - lb ) + lb
 
             self.objg( usrgrad[0,:], point )
             if( self.Ncons > 0 ):
                 self.consg( usrgrad[1:,:], point )
 
-            err = np.zeros( (self.Ncons + 1, self.N) )
-            err[ pattern == 0 ] = usrgrad[ pattern == 0 ]
-            if( np.any( err ) ):
+            usrgrad[ np.nonzero( pattern ) ] = 0
+            if( np.any( usrgrad ) ):
                 if( debug ):
-                    idx = np.unravel_index( np.argmax( np.abs(err) ), err.shape )
+                    idx = np.unravel_index( np.argmax( np.abs(usrgrad) ), usrgrad.shape )
                     if( idx[0] == 0 ):
                         print( ">>> Pattern check failed. Found wrong nonzero value in " +
                                "objg() at element {0}".format( idx[1] ) )
