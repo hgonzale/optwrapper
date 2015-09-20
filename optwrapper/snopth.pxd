@@ -4,7 +4,7 @@ ctypedef int (*usrfun_fp)( integer *Status, integer *n, doublereal *x,
                            integer *needf, integer *nF, doublereal *f,
                            integer *needG, integer *lenG, doublereal *G,
                            char *cu, integer *lencu, integer *iu, integer *leniu,
-                           doublereal *ru, integer *lenru, ftnlen cu_len )
+                           doublereal *ru, integer *lenru )
 
 
 cdef extern from "snopt.h":
