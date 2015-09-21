@@ -297,7 +297,6 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
 
     xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
 
-    print( "eval {0} {1}".format( needF[0], needG[0] ) )
     if( needF[0] > 0 ):
         ## we zero out all arrays in case the user does not modify all the values,
         ## e.g., in sparse problems.
@@ -485,16 +484,10 @@ cdef class Solver( base.Solver ):
         tmp = utils.convFortran( prob.lb )
         memcpy( self.xlow, utils.getPtr( tmp ),
                 self.n[0] * sizeof( doublereal ) )
-        printf( "xlow: %d\n", self.n[0] )
-        for k in range( self.n[0] ):
-            printf( "%d: %f\n", k, self.xlow[k] )
 
         tmp = utils.convFortran( prob.ub )
         memcpy( self.xupp, utils.getPtr( tmp ),
                 self.n[0] * sizeof( doublereal ) )
-        printf( "xupp: %d\n", self.n[0] )
-        for k in range( self.n[0] ):
-            printf( "%d: %f\n", k, self.xupp[k] )
 
         ## copy index data of G
         ## row 0 of G belongs to objg
@@ -507,14 +500,6 @@ cdef class Solver( base.Solver ):
         Asparse.copyFortranIdxs( &self.iAfun[0], &self.jAvar[0] )
         ## copy matrix data of A
         Asparse.copyData( &self.A[0] )
-
-        print( "lenA: {0}, neA: {1}".format( self.lenA[0], self.neA[0] ) )
-        for k in range( self.lenA[0] ):
-            print( "{0}: ({1},{2}) {3}".format( k, self.iAfun[k], self.jAvar[k], self.A[k] ) )
-
-        print( "lenG: {0}, neG: {1}".format( self.lenG[0], self.neG[0] ) )
-        for k in range( self.lenG[0] ):
-            print( "{0}: ({1},{2})".format( k, self.iGfun[k], self.jGvar[k] ) )
 
         ## copy general constraints limits
         ## objective function knows no limits (https://i.imgur.com/UuQbJ.gif)
@@ -541,26 +526,10 @@ cdef class Solver( base.Solver ):
                     utils.getPtr( tmp ),
                     prob.Ncons * sizeof( doublereal ) )
 
-        printf( "Flow: %d\n", self.nF[0] )
-        for k in range( self.nF[0] ):
-            printf( "%d: %f\n", k, self.Flow[k] )
-        printf( "Fupp: %d\n", self.nF[0] )
-        for k in range( self.nF[0] ):
-            printf( "%d: %f\n", k, self.Fupp[k] )
-
         ## initialize other vectors with zeros
         memset( self.xstate, 0, self.n[0] * sizeof( integer ) )
         memset( self.Fstate, 0, self.nF[0] * sizeof( integer ) )
         memset( self.Fmul, 0, self.nF[0] * sizeof( doublereal ) )
-        printf( "xstate: %d\n", self.n[0] )
-        for k in range( self.n[0] ):
-            printf( "%d: %d\n", k, self.xstate[k] )
-        printf( "Fstate: %d\n", self.nF[0] )
-        for k in range( self.nF[0] ):
-            printf( "%d: %d\n", k, self.Fstate[k] )
-        printf( "Fmul: %d\n", self.nF[0] )
-        for k in range( self.nF[0] ):
-            printf( "%d: %f\n", k, self.Fmul[k] )
 
 
     cdef int allocate( self ):
@@ -716,12 +685,6 @@ cdef class Solver( base.Solver ):
         tmp = utils.convIntFortran( self.prob.soln.Fstate )
         memcpy( self.Fstate, utils.getPtr( tmp ),
                 self.nF[0] * sizeof( integer ) )
-        printf( "xstate: %d\n", self.n[0] )
-        for k in range( self.n[0] ):
-            printf( "%d: %d\n", k, self.xstate[k] )
-        printf( "Fstate: %d\n", self.nF[0] )
-        for k in range( self.nF[0] ):
-            printf( "%d: %d\n", k, self.Fstate[k] )
 
         self.Start[0] = 2
         return True
@@ -845,9 +808,6 @@ cdef class Solver( base.Solver ):
         tmpinit = utils.convFortran( self.prob.init )
         memcpy( self.x, utils.getPtr( tmpinit ),
                 self.n[0] * sizeof( doublereal ) )
-        printf( "x: %d\n", self.n[0] )
-        for k in range( self.n[0] ):
-            printf( "%d: %f\n", k, self.x[k] )
 
         ## Handle debug files
         if( self.printOpts[ "printFile" ] is not None and
@@ -915,24 +875,15 @@ cdef class Solver( base.Solver ):
             self.deallocateWS()
             self.allocateWS()
 
-        # zero out workspace
-        memset( self.cw, 0, self.lencw[0] * 8 * sizeof( char ) )
-        memset( self.iw, 0, self.leniw[0] * sizeof( integer ) )
-        memset( self.rw, 0, self.lenrw[0] * sizeof( doublereal ) )
+        ## zero out workspace
+        # memset( self.cw, 0, self.lencw[0] * 8 * sizeof( char ) )
+        # memset( self.iw, 0, self.leniw[0] * sizeof( integer ) )
+        # memset( self.rw, 0, self.lenrw[0] * sizeof( doublereal ) )
 
         ## Copy content of temp workspace arrays to malloc'ed workspace arrays
         memcpy( self.cw, tmpcw, ltmpcw[0] * 8 * sizeof( char ) )
         memcpy( self.iw, tmpiw, ltmpiw[0] * sizeof( integer ) )
         memcpy( self.rw, tmprw, ltmprw[0] * sizeof( doublereal ) )
-        # printf( "cw: %d\n", self.lencw[0] )
-        # for k in range( self.lencw[0] * 8 ):
-        #     printf( "%d: %c\n", k, self.cw[k] )
-        # printf( "iw: %d\n", self.leniw[0] )
-        # for k in range( self.leniw[0] ):
-        #     printf( "%d: %d\n", k, self.iw[k] )
-        # printf( "rw: %d\n", self.lenrw )
-        # for k in range( self.lenrw[0] ):
-        #     printf( "%d: %f\n", k, self.rw[k] )
 
         inform_out[0] = 0 ## Reset inform_out before running snset* functions
 
