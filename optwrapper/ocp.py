@@ -240,7 +240,6 @@ class Problem:
             raise ValueError( "Arguments must have size (" + str(self.Ninputs) + ",)." )
 
 
-    ## TODO: use mixed constraints
     def discForwardEuler( self, Nsamples ):
         """
         transforms this optimal control problem into a nonlinear programming problem using the
@@ -352,7 +351,7 @@ class Problem:
             ( st, u ) = decode( s )
 
             for k in range( Nsamples ):
-                ( dx, du ) = self.icost( st[:,k], u[:,k] )[1:3]
+                ( dx, du ) = self.icost( st[:,k], u[:,k] )[1:]
                 out[ stidx[:,k] ] = dx * deltaT
                 out[ uidx[:,k] ] = du * deltaT
 
@@ -390,15 +389,29 @@ class Problem:
             ( st, u ) = decode( s )
 
             ## initial condition collocation constraint
-            out[ dconsidx[:,0] ] = st[:,0] - self.init
+            out[ dconsidx[:,0] ] = - self.init
             for k in range( Nsamples ):
                 ## Forward Euler collocation equality constraints
-                out[ dconsidx[:,k+1] ] = ( st[:,k+1] - st[:,k] -
-                                           deltaT * self.vfield( st[:,k], u[:,k], grad=False ) )
+                out[ dconsidx[:,k+1] ] = - deltaT * self.vfield( st[:,k], u[:,k], grad=False )
 
                 ## inequality constraints
                 if( self.Ncons > 0 ):
                     out[ iconsidx[:,k] ] = self.cons( st[:,k+1], grad=False )
+
+
+        def consA():
+            """
+            Linear mixed constraints
+
+            """
+            out = np.zeros( ( feuler.Ncons, feuler.N ) )
+
+            out[ dconsidx[:,0], stidx[:,0] ] = 1.0
+            for k in range( Nsamples ):
+                out[ dconsidx[:,k+1], stidx[:,k+1] ] = 1.0
+                out[ dconsidx[:,k+1], stidx[:,k] ] = -1.0
+
+            return out
 
 
         def consg( out, s ):
@@ -409,12 +422,9 @@ class Problem:
 
             ( st, u ) =  decode( s )
 
-            out[ dconsidx[:,0], stidx[:,0] ] = 1.0
             for k in range( Nsamples ):
-                ( dyndx, dyndu ) = self.vfield( st[:,k], u[:,k] )[1:3]
-                out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] = ( - np.identity( self.Nstates )
-                                                                 - deltaT * dyndx )
-                out[ dconsidx[:,k+1], stidx[:,k+1] ] = 1.0
+                ( dyndx, dyndu ) = self.vfield( st[:,k], u[:,k] )[1:]
+                out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] = - deltaT * dyndx
                 out[ np.ix_( dconsidx[:,k+1], uidx[:,k] ) ] = - deltaT * dyndu
 
                 if( self.Ncons > 0 ):
@@ -434,11 +444,8 @@ class Problem:
 
             out = np.zeros( ( feuler.Ncons, feuler.N ), dtype=np.int )
 
-            out[ dconsidx[:,0], stidx[:,0] ] = 1
             for k in range( Nsamples ):
-                out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] = ( np.identity( self.Nstates ) +
-                                                                 self.vfielddxpattern )
-                out[ dconsidx[:,k+1], stidx[:,k+1] ] = 1
+                out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] = self.vfielddxpattern
                 out[ np.ix_( dconsidx[:,k+1], uidx[:,k] ) ] = self.vfielddupattern
 
                 if( self.Ncons > 0 ):
@@ -455,14 +462,16 @@ class Problem:
         feuler.objGrad( objg, pattern=objgpattern() )
         if( self.Ncons > 0 ):
             feuler.consFctn( consf,
-                             np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
-                                               np.tile( self.conslb, ( Nsamples, ) ) ) ),
-                             np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
-                                               np.tile( self.consub, ( Nsamples, ) ) ) ) )
+                             lb=np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
+                                                  np.tile( self.conslb, ( Nsamples, ) ) ) ),
+                             ub=np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
+                                                  np.tile( self.consub, ( Nsamples, ) ) ) ),
+                             A=consA() )
         else:
             feuler.consFctn( consf,
-                             np.zeros( ( dconsidx.size, ) ),
-                             np.zeros( ( dconsidx.size, ) ) )
+                             lb=np.zeros( ( dconsidx.size, ) ),
+                             ub=np.zeros( ( dconsidx.size, ) ),
+                             A=consA() )
 
         feuler.consGrad( consg, pattern=consgpattern() )
 
