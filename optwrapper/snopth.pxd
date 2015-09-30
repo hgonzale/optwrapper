@@ -1,11 +1,16 @@
-from .typedefs cimport *
+# from .typedefs cimport *
+
+## A few typedef declarations from f2c.h
+cdef extern from "f2c.h":
+    ctypedef long int integer
+    ctypedef double doublereal
+    ctypedef long int ftnlen
 
 ctypedef int (*usrfun_fp)( integer *Status, integer *n, doublereal *x,
                            integer *needf, integer *nF, doublereal *f,
                            integer *needG, integer *lenG, doublereal *G,
                            char *cu, integer *lencu, integer *iu, integer *leniu,
                            doublereal *ru, integer *lenru )
-
 
 cdef extern from "snopt.h":
     int snopta_( integer *start, integer *nef, integer *n,

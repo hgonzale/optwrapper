@@ -4,7 +4,6 @@
 
 cdef extern from "f2c.h":
     ctypedef long int integer
-    ctypedef int integer
     ctypedef unsigned long int uinteger
     ctypedef char* address
     ctypedef short int shortint

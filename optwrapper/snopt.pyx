@@ -9,7 +9,7 @@ cimport numpy as cnp
 import numpy as np
 import os
 
-from .typedefs cimport *  ## typedefs from f2c.h
+from snopth cimport integer, doublereal, ftnlen
 cimport snopth as snopt
 cimport utils
 cimport base
@@ -97,24 +97,24 @@ cdef class sMatrix:
                                                                               self.nnz,
                                                                               self.data_alloc ) )
 
-        print( "rptr: [" ),
+        print( "rptr: [ " ),
         for k in range( self.nrows+1 ):
             printf( "%d ", self.rptr[k] )
         print( "]" )
 
-        print( "ridx: [" ),
+        print( "ridx: [ " ),
         for k in range( self.nnz ):
             printf( "%d ", self.ridx[k] )
         print( "]" )
 
-        print( "cidx: [" ),
+        print( "cidx: [ " ),
         for k in range( self.nnz ):
             printf( "%d ", self.cidx[k] )
         print( "]" )
 
-        print( "data: [" ),
+        print( "data: [ " ),
         for k in range( self.nnz ):
-            printf( "%d ", self.data[k] )
+            printf( "%f ", self.data[k] )
         print( "]" )
 
 
@@ -149,17 +149,43 @@ cdef class sMatrix:
 
 
     cdef doublereal get_elem_at( self, integer row, integer col ):
-        for k in range( self.rptr[row], self.rptr[row+1] ):
-            if( self.cidx[k] == col ):
-                return self.data[k]
+        cdef integer first, last, midpoint
+
+        ## binary search
+        first = self.rptr[row]
+        last = self.rptr[row+1]-1
+
+        while( first <= last ):
+            midpoint = (first + last)//2
+            if( self.cidx[midpoint] == col ):
+                return self.data[midpoint]
+            else:
+                if( col < self.cidx[midpoint] ):
+                    last = midpoint-1
+                else:
+                    first = midpoint+1
+
         return 0
 
 
-    cdef int set_elem_at( self, integer row, integer col, doublereal val ):
-        for k in range( self.rptr[row], self.rptr[row+1] ):
-            if( self.cidx[k] == col ):
-                self.data[k] = val
+    cdef bint set_elem_at( self, integer row, integer col, doublereal val ):
+        cdef integer first, last, midpoint
+
+        ## binary search
+        first = self.rptr[row]
+        last = self.rptr[row+1]-1
+
+        while( first <= last ):
+            midpoint = (first + last)//2
+            if( self.cidx[midpoint] == col ):
+                self.data[midpoint] = val
                 return True
+            else:
+                if( col < self.cidx[midpoint] ):
+                    last = midpoint-1
+                else:
+                    first = midpoint+1
+
         return False
 
 
@@ -313,9 +339,15 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
         if( objGsparse.nnz > 0 ):
             objGsparse.setDataPtr( &G[0] )
             extprob.objg( objGsparse, xarr )
+            objGsparse.print_debug()
         if( extprob.Ncons > 0 and consGsparse.nnz > 0 ):
             consGsparse.setDataPtr( &G[objGsparse.nnz] )
             extprob.consg( consGsparse, xarr )
+            consGsparse.print_debug()
+        print( "G: [" ),
+        for k in range( lenG[0] ):
+            printf( "%f ", G[k] )
+        print( "]" )
 
 
 cdef class Solver( base.Solver ):
@@ -451,6 +483,7 @@ cdef class Solver( base.Solver ):
         else:
             tmplist += ( np.zeros( ( prob.Ncons, self.n[0] ) ), )
         Asparse = sMatrix( np.vstack( tmplist ), copy_data=True )
+        print( Asparse[:] )
         if( Asparse.nnz > 0 ):
             self.lenA[0] = Asparse.nnz
             self.neA[0] = self.lenA[0]
