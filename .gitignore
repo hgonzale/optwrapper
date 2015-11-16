@@ -68,6 +68,19 @@ Thumbs.db
 .#*
 *~
 
+## AutoTools
+autom4te.cache
+aclocal.m4
+compile
+missing
+stamp-h1
+autoscan.log
+configure.scan
+Makefile
+config.log
+config.status
+libtool
+
 ## Fortran
 fort.*
 
