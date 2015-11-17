@@ -76,10 +76,13 @@ missing
 stamp-h1
 autoscan.log
 configure.scan
-Makefile
 config.log
 config.status
 libtool
+
+## SCons
+.sconsign.dblite
+.sconf_temp
 
 ## Fortran
 fort.*
