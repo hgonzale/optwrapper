@@ -6,34 +6,37 @@ import numpy as np
 major = "0"
 minor = "5+"
 
-## @CYTHON@
+extensions = []
+extensions.append( Extension( "optwrapper.utils",
+                              sources = [ "optwrapper/utils.pyx" ],
+                              include_dirs = [ np.get_include(), "." ] ) )
+extensions.append( Extension( "optwrapper.base",
+                              sources = [ "optwrapper/base.pyx" ],
+                              include_dirs = [ np.get_include(), "." ] ) )
 
-extensions = [ Extension( "optwrapper.utils",
-                          sources = [ "optwrapper/utils.pyx" ],
-                          include_dirs = [ np.get_include(), "." ] ),
-               Extension( "optwrapper.base",
-                          sources = [ "optwrapper/base.pyx" ],
-                          include_dirs = [ np.get_include(), "." ] ),
-               Extension( "optwrapper.lssol",
-                          sources = [ "optwrapper/lssol.pyx" ],
-                          include_dirs = [ np.get_include(), "." ],
-                          libraries = [ "lssol",
-                                        "blas",
-                                        "m" ] ),
-               Extension( "optwrapper.npsol",
-                          sources = [ "optwrapper/npsol.pyx" ],
-                          include_dirs = [ np.get_include(), "." ],
-                          libraries = [ "npsol",
-                                        "lssol",
-                                        "blas",
-                                        "m" ] ),
-               Extension( "optwrapper.snopt",
-                          sources = [ "optwrapper/snopt.pyx" ],
-                          include_dirs = [ np.get_include(), "." ],
-                          libraries = [ "snopt",
-                                        "snprint",
-                                        "blas",
-                                        "m" ] ) ]
+if( @lssol@ ):
+    extensions.append( Extension( "optwrapper.lssol",
+                                  sources = [ "optwrapper/lssol.pyx" ],
+                                  include_dirs = [ np.get_include(), "." ],
+                                  libraries = [ "lssol",
+                                                "blas",
+                                                "m" ] ) )
+if( @npsol@ ):
+    extensions.append( Extension( "optwrapper.npsol",
+                                  sources = [ "optwrapper/npsol.pyx" ],
+                                  include_dirs = [ np.get_include(), "." ],
+                                  libraries = [ "npsol",
+                                                "lssol",
+                                                "blas",
+                                                "m" ] ) )
+if( @snopt@ ):
+    extensions.append( Extension( "optwrapper.snopt",
+                                  sources = [ "optwrapper/snopt.pyx" ],
+                                  include_dirs = [ np.get_include(), "." ],
+                                  libraries = [ "snopt",
+                                                "snprint",
+                                                "blas",
+                                                "m" ] ) )
 
 setup( name = "OptWrapper",
        version = "{0}.{1}".format( major, minor ),
