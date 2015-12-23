@@ -27,7 +27,8 @@ conf = Configure( env,
 
 ### Configure
 repl = {}
-if( not env.GetOption( "clean" ) ):
+if( not env.GetOption( "clean" ) or
+    not env.GetOption( "help" ) ):
     if( not conf.CheckLib( "blas" ) or
         not conf.CheckLib( "m" ) or
         not conf.CheckPythonLib( "numpy" ) or
@@ -49,7 +50,6 @@ AddOption( "--manifest",
            action = "store",
            default = "install_manifest.txt",
            help = "Manifest to record installed files" )
-
 AddOption( "--local",
            dest = "install_local",
            default = False,
@@ -86,5 +86,3 @@ if( FindFile( GetOption( "manifest_file" ), "." ) ):
 env.Depends( spy_build, spy )
 env.Depends( spy_inst, spy_build )
 env.Default( spy_build )
-
-

@@ -21,9 +21,10 @@ If you want to tweak the optional parameters in any of the solvers then you will
 Requirements
 ------------
 
+- SCons
 - Python (either 2.x or 3.x)
 - Cython
-- NumPy + SciPy
+- NumPy
 - NPSOL 6 or SNOPT 7
 
 
