@@ -17,16 +17,10 @@ def CheckPythonLib( context, lib ):
     context.Result( result )
     return result
 
-def uninstall( target, manifest, env ):
-    print( "hola" )
-
-
 
 ### Main
-uninst = Builder( action = uninstall, suffix = None, src_suffix = ".txt" )
 env = Environment( ENV = os.environ,
-                   tools = [ "default", "textfile" ],
-                   BUILDERS = { "Uninstall": uninstall } )
+                   tools = [ "default", "textfile" ] )
 conf = Configure( env,
                   custom_tests = { "CheckProg": CheckProg,
                                    "CheckPythonLib": CheckPythonLib } )
@@ -40,6 +34,7 @@ if( not env.GetOption( "clean" ) ):
         not conf.CheckProg( "cython" ) ):
         Exit(1)
 
+    ## List of shared libraries to check, these define the string substitutions in setup.py.in
     libs = ( "lssol", "npsol", "snopt", "ipopt" )
     for lib in libs:
         repl[ "@{0}@".format( lib ) ] = conf.CheckLib( lib )
@@ -53,36 +48,43 @@ AddOption( "--manifest",
            nargs = 1,
            action = "store",
            default = "install_manifest.txt",
-           help = "Install manifest file" )
+           help = "Manifest to record installed files" )
+
+AddOption( "--local",
+           dest = "install_local",
+           default = False,
+           action = "store_true",
+           help = "Install locally in user's home directory" )
 
 args = []
 if( env.GetOption( "no_exec" ) ):
     args.append( "--dry-run" )
-
 if( env.GetOption( "silent" ) ):
     args.append( "--quiet" )
 
+spy_str = "python setup.py {0}".format( " ".join( args ) )
+spy_build_str = spy_str + " build"
+spy_install_str = spy_str + " install --record={0}".format( GetOption( "manifest_file" ) )
+if( GetOption( "install_local" ) ):
+    spy_install_str += " --user"
+
 ### Create targets
-str = "python setup.py {0} ".format( " ".join( args ) )
 spy = env.Substfile( "setup.py.in", SUBST_DICT=repl )
-spy_build = env.Command( "spy_build", None,
-                         str + "build" )
-spy_inst = env.Command( "spy_install", None,
-                        str + "install --record={1}".format( " ".join( args ),
-                                                             GetOption( "manifest_file" ) ) )
-spy_inst_loc = env.Command( "spy_install", None,
-                            str +
-                            "install --record={1} --user".format( " ".join( args ),
-                                                                  GetOption( "manifest_file" ) ) )
+spy_build = env.Command( "build", None, spy_build_str ) ## target "build" is *not* a file
+spy_inst = env.Command( "install", None, spy_install_str ) ## target "install" is *not* a file
 
-env.Depends( spy_build, spy )
-env.Depends( spy_inst, spy_build )
-env.Depends( spy_inst_loc, spy_build )
-env.Uninstall( "uninst", GetOption( "manifest_file" ) )
-env.Default( spy_build )
-
+### Determine cleans
 env.Clean( spy_build, "./build" )
 
-env.Alias( "install", spy_inst )
-env.Alias( "install_local", spy_inst_loc )
-env.Alias( "uninstall", uninst )
+if( FindFile( GetOption( "manifest_file" ), "." ) ):
+    with open( GetOption( "manifest_file" ) ) as mfile:
+        for line in mfile:
+            env.Clean( spy_inst, line.rstrip( "\n" ) )
+    env.Clean( spy_inst, GetOption( "manifest_file" ) )
+
+### Hierarchy
+env.Depends( spy_build, spy )
+env.Depends( spy_inst, spy_build )
+env.Default( spy_build )
+
+

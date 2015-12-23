@@ -24,18 +24,17 @@ Requirements
 - Python (either 2.x or 3.x)
 - Cython
 - NumPy + SciPy
-- NPSOL 6
-- SNOPT 7
+- NPSOL 6 or SNOPT 7
 
 
 Installation
 ------------
 
 To install locally for your user only (recommended) run:
-% make install_local
+% scons --local install
 
 To install for all users run:
-% (sudo) make install
+% (sudo) scons install
 
 To uninstall run:
-% make uninstall
+% scons -c install
