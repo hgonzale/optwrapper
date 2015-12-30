@@ -1,25 +1,9 @@
 import numpy as np
 cimport numpy as np
-from .typedefs cimport *
 
 ## Numpy must be initialized. When using numpy from C or Cython you must
 ## _always_ do that, or you will have segfaults
 np.import_array()
-
-## Match f2c data types with python data types
-if( sizeof( integer ) == 8 ):
-    integer_type = np.NPY_INT64
-# elif( sizeof( integer ) == 4 ):
-#     integer_type = np.NPY_INT32
-else:
-    raise TypeError( "C data type 'long int' has size " + str( sizeof( integer ) ) )
-
-if( sizeof( doublereal ) == 8 ):
-    doublereal_type = np.NPY_FLOAT64
-else:
-    raise TypeError( "C data type 'double' has size " + str( sizeof( doublereal ) ) )
-
-
 
 cdef np.ndarray wrapPtr( void* array, np.ndarray dims, int typenum ):
     if( not dims.flags["C_CONTIGUOUS"] or

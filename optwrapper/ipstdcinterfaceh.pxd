@@ -36,6 +36,8 @@ cdef extern from "coin/IpStdCInterface.h":
     ctypedef int Index;
     ctypedef int Int;
     ctypedef int Bool;
+    ctypedef void* UserDataPtr;
+
     struct IpoptProblemInfo;
 
     ctypedef struct IpoptProblemInfo* IpoptProblem;

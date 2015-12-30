@@ -13,47 +13,65 @@ cimport utils
 cimport base
 import nlp
 
-
-##########################
-##########################
-
-
-
+cdef int Number_type = cnp.NPY_FLOAT64
+cdef int Int_type = cnp.NPY_INT64
+if( sizeof( Int ) == 4 ):
+    Int_type = cnp.NPY_INT32
 
 ## The functions funobj and funcon should be static methods in npsol.Solver,
 ## but it appears that Cython doesn't support static cdef methods yet.
 ## Instead, this is a reasonable hack.
 cdef object extprob
 
-## pg. 17, Section 7.1
-cdef int funobj( integer* mode, integer* n,
-                 doublereal* x, doublereal* f, doublereal* g,
-                 integer* nstate ):
+cdef Bool eval_objf( Index n, Number* x, Bool new_x,
+                     Number* obj_value, UserDataPtr user_data )
+    xarr = utils.wrap1dPtr( x, n, Number_type )
+    obj_value[0] = 0.0
+    farr = utils.wrap1dPtr( obj_value, 1, Number_type )
+    extprob.objf( farr, xarr )
+    if( extprob.objmixedA is not None ):
+        farr += extprob.objmixedA.dot( xarr )
+
+cdef Bool eval_objg( Index n, Number* x, Bool new_x,
+                     Number* grad_f, UserDataPtr user_data )
+    xarr = utils.wrap1dPtr( x, n, Number_type )
+    memset( grad_f, 0, n * sizeof( Number ) )
+    garr = utils.wrap1dPtr( grad_f, n, Number_type )
+    extprob.objg( garr, xarr )
+    if( extprob.objmixedA is not None ):
+        garr += extprob.objmixedA
+
+cdef Bool eval_consf( Index n, Number* x, Bool new_x,
+                      Index m, Number* g, UserDataPtr user_data )
+    xarr = utils.wrap1dPtr( x, n, Number_type )
+    memset( g, 0, m * sizeof( Number ) )
+    garr = utils.wrap1dPtr( g, m, Number_type )
+    extprob.consf( garr, xarr )
+    if( extprob.consmixedA is not None ):
+        garr += extprob.consmixedA.dot( xarr )
+
+cdef Bool eval_consg( Index n, Number *x, Bool new_x,
+                      Index m, Index nele_jac,
+                      Index *iRow, Index *jCol, Number *values,
+                      UserDataPtr user_data )
+######### Must use sMatrix here
+
     xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
+    memset( cJac, 0, ncnln[0] * n[0] * sizeof( doublereal ) )
+    cJacarr = utils.wrap2dPtr( cJac, ncnln[0], n[0], utils.doublereal_type )
+    extprob.consg( cJacarr, xarr )
+    if( extprob.consmixedA is not None ):
+        cJacarr += extprob.consmixedA
 
-    ## we zero out all arrays in case the user does not modify all the values,
-    ## e.g., in sparse problems.
-    if( mode[0] != 1 ):
-        f[0] = 0.0
-        farr = utils.wrap1dPtr( f, 1, utils.doublereal_type )
-        extprob.objf( farr, xarr )
-        if( extprob.objmixedA is not None ):
-            farr += extprob.objmixedA.dot( xarr )
 
-    if( mode[0] != 0 ):
-        memset( g, 0, n[0] * sizeof( doublereal ) )
-        garr = utils.wrap1dPtr( g, n[0], utils.doublereal_type )
-        extprob.objg( garr, xarr )
-        if( extprob.objmixedA is not None ):
-            garr += extprob.objmixedA
-
+##########################
+##########################
 
 ## pg. 18, Section 7.2
 cdef int funcon( integer* mode, integer* ncnln,
                  integer* n, integer* ldJ, integer* needc,
                  doublereal* x, doublereal* c, doublereal* cJac,
                  integer* nstate ):
-    xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
 
     ## we zero out all arrays in case the user does not modify all the values,
     ## e.g., in sparse problems.

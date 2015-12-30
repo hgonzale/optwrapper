@@ -7,12 +7,16 @@ cimport numpy as cnp
 import numpy as np
 import os
 
-from .typedefs cimport *  ## typedefs from f2c.h
+from .typedefs cimport *
 cimport npsolh as npsol   ## import every function exposed in npsol.h
 cimport utils
 cimport base
 import nlp
 
+## we use these definitions to wrap C arrays in numpy arrays
+## we can safely assume 64-bit values since we already checked using scons
+cdef int doublereal_type = cnp.NPY_FLOAT64
+cdef int integer_type = cnp.NPY_INT64
 
 ## The functions funobj and funcon should be static methods in npsol.Solver,
 ## but it appears that Cython doesn't support static cdef methods yet.
@@ -23,20 +27,20 @@ cdef object extprob
 cdef int funobj( integer* mode, integer* n,
                  doublereal* x, doublereal* f, doublereal* g,
                  integer* nstate ):
-    xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
+    xarr = utils.wrap1dPtr( x, n[0], doublereal_type )
 
     ## we zero out all arrays in case the user does not modify all the values,
     ## e.g., in sparse problems.
     if( mode[0] != 1 ):
         f[0] = 0.0
-        farr = utils.wrap1dPtr( f, 1, utils.doublereal_type )
+        farr = utils.wrap1dPtr( f, 1, doublereal_type )
         extprob.objf( farr, xarr )
         if( extprob.objmixedA is not None ):
             farr += extprob.objmixedA.dot( xarr )
 
     if( mode[0] != 0 ):
         memset( g, 0, n[0] * sizeof( doublereal ) )
-        garr = utils.wrap1dPtr( g, n[0], utils.doublereal_type )
+        garr = utils.wrap1dPtr( g, n[0], doublereal_type )
         extprob.objg( garr, xarr )
         if( extprob.objmixedA is not None ):
             garr += extprob.objmixedA
@@ -47,20 +51,20 @@ cdef int funcon( integer* mode, integer* ncnln,
                  integer* n, integer* ldJ, integer* needc,
                  doublereal* x, doublereal* c, doublereal* cJac,
                  integer* nstate ):
-    xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
+    xarr = utils.wrap1dPtr( x, n[0], doublereal_type )
 
     ## we zero out all arrays in case the user does not modify all the values,
     ## e.g., in sparse problems.
     if( mode[0] != 1 ):
         memset( c, 0, ncnln[0] * sizeof( doublereal ) )
-        carr = utils.wrap1dPtr( c, ncnln[0], utils.doublereal_type )
+        carr = utils.wrap1dPtr( c, ncnln[0], doublereal_type )
         extprob.consf( carr, xarr )
         if( extprob.consmixedA is not None ):
             carr += extprob.consmixedA.dot( xarr )
 
     if( mode[0] > 0 ):
         memset( cJac, 0, ncnln[0] * n[0] * sizeof( doublereal ) )
-        cJacarr = utils.wrap2dPtr( cJac, ncnln[0], n[0], utils.doublereal_type )
+        cJacarr = utils.wrap2dPtr( cJac, ncnln[0], n[0], doublereal_type )
         extprob.consg( cJacarr, xarr )
         if( extprob.consmixedA is not None ):
             cJacarr += extprob.consmixedA
@@ -490,13 +494,13 @@ cdef class Solver( base.Solver ):
         self.prob.soln = Soln()
         self.prob.soln.value = float( objf_val[0] )
         self.prob.soln.final = np.copy( utils.wrap1dPtr( self.x, self.prob.N,
-                                                         utils.doublereal_type ) )
+                                                         doublereal_type ) )
         self.prob.soln.istate = np.copy( utils.wrap1dPtr( self.istate, self.nctotl,
-                                                          utils.integer_type ) )
+                                                          integer_type ) )
         self.prob.soln.clamda = np.copy( utils.wrap1dPtr( self.clamda, self.nctotl,
-                                                          utils.doublereal_type ) )
+                                                          doublereal_type ) )
         self.prob.soln.R = np.copy( utils.wrap2dPtr( self.R, self.prob.N, self.prob.N,
-                                                     utils.doublereal_type ) )
+                                                     doublereal_type ) )
         self.prob.soln.Niters = int( iter_out[0] )
         self.prob.soln.retval = int( inform_out[0] )
 

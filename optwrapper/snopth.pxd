@@ -1,10 +1,4 @@
-# from .typedefs cimport *
-
-## A few typedef declarations from f2c.h
-cdef extern from "f2c.h":
-    ctypedef long int integer
-    ctypedef double doublereal
-    ctypedef long int ftnlen
+from .typedefs cimport *
 
 ctypedef int (*usrfun_fp)( integer *Status, integer *n, doublereal *x,
                            integer *needf, integer *nF, doublereal *f,

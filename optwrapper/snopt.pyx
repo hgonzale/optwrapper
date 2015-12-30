@@ -9,12 +9,17 @@ cimport numpy as cnp
 import numpy as np
 import os
 
+from .typedefs cimport *
 from snopth cimport integer, doublereal, ftnlen
 cimport snopth as snopt
 cimport utils
 cimport base
 import nlp
 
+## we use these definitions to wrap C arrays in numpy arrays
+## we can safely assume 64-bit values since we already checked using scons
+cdef int doublereal_type = cnp.NPY_FLOAT64
+cdef int integer_type = cnp.NPY_INT64
 
 ## sMatrix helper to create arrays with valid indices out of keys with heterogeneous data types
 cdef cnp.ndarray key_to_array( object key, integer limit ):
@@ -321,13 +326,13 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
     if( status[0] >= 2 ): ## Final call, do nothing
         return 0
 
-    xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
+    xarr = utils.wrap1dPtr( x, n[0], doublereal_type )
 
     if( needF[0] > 0 ):
         ## we zero out all arrays in case the user does not modify all the values,
         ## e.g., in sparse problems.
         memset( f, 0, nF[0] * sizeof( doublereal ) )
-        farr = utils.wrap1dPtr( f, nF[0], utils.doublereal_type )
+        farr = utils.wrap1dPtr( f, nF[0], doublereal_type )
         extprob.objf( farr[0:1], xarr )
         if( extprob.Ncons > 0 ):
             extprob.consf( farr[1+extprob.Nconslin:], xarr )
@@ -1149,15 +1154,15 @@ cdef class Solver( base.Solver ):
         self.prob.soln = Soln()
         self.prob.soln.value = float( self.F[0] )
         self.prob.soln.final = np.copy( utils.wrap1dPtr( self.x, self.n[0],
-                                                         utils.doublereal_type ) )
+                                                         doublereal_type ) )
         self.prob.soln.xstate = np.copy( utils.wrap1dPtr( self.xstate, self.n[0],
-                                                          utils.integer_type ) )
+                                                          integer_type ) )
         self.prob.soln.xmul = np.copy( utils.wrap1dPtr( self.xmul, self.n[0],
-                                                        utils.doublereal_type ) )
+                                                        doublereal_type ) )
         self.prob.soln.Fstate = np.copy( utils.wrap1dPtr( self.Fstate, self.nF[0],
-                                                          utils.integer_type ) )
+                                                          integer_type ) )
         self.prob.soln.Fmul = np.copy( utils.wrap1dPtr( self.Fmul, self.nF[0],
-                                                        utils.doublereal_type ) )
+                                                        doublereal_type ) )
         self.prob.soln.nS = int( nS[0] )
         self.prob.soln.retval = int( inform_out[0] )
 

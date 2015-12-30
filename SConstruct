@@ -1,6 +1,19 @@
 from subprocess import call
 import os
 
+clibs = ( "lssol", "npsol", "snopt", "ipopt" )
+srcfolder = "./optwrapper"
+srcfiles = ( "base.pxd", "base.pyx",
+             "ipstdcinterfaceh.pxd", "ipopt.pyx",
+             "lssolh.pxd", "lssol.pyx",
+             "nlp.py",
+             "npsolh.pxd", "npsol.pyx",
+             "ocp.py", "qp.py",
+             "snopth.pxd", "snopt.pyx",
+             "socp.py",
+             "typedefs.pxd",
+             "utils.pxd", "utils.pyx" )
+
 def CheckProg( context, cmd ):
     context.Message( "Checking for {0} command... ".format( cmd ) )
     result = WhereIs( cmd )
@@ -11,19 +24,35 @@ def CheckProg( context, cmd ):
 def CheckPythonLib( context, lib ):
     context.Message( "Checking for Python {0} library... ".format( lib ) )
     fp = open( os.devnull, "w" )
-    result = call( [ "python", "-c", "import {0}".format( lib ) ], stdout=fp, stderr=fp )
+    result = call( ( "python", "-c", "import {0}".format( lib ) ),
+                   stdout=fp, stderr=fp )
     fp.close()
     result = ( result == 0 )
     context.Result( result )
     return result
 
+def CheckSizeOf( context, dtype ):
+    context.Message( "Getting size of " + dtype + "... " )
+    program = """
+      #include <stdlib.h>
+      #include <stdio.h>
+      int main() {
+        printf( "%d", (int) sizeof( """ + dtype + """ ) );
+        return 0;
+      }
+      """
+    ret = context.TryRun( program, ".c" )
+    context.Result( ret[0] )
+    return int( ret[1] )
+
 
 ### Main
 env = Environment( ENV = os.environ,
-                   tools = [ "default", "textfile" ] )
+                   tools = ( "default", "textfile" ) )
 conf = Configure( env,
                   custom_tests = { "CheckProg": CheckProg,
-                                   "CheckPythonLib": CheckPythonLib } )
+                                   "CheckPythonLib": CheckPythonLib,
+                                   "CheckSizeOf": CheckSizeOf } )
 
 ### Configure
 repl = {}
@@ -35,9 +64,13 @@ if( not env.GetOption( "clean" ) or
         not conf.CheckProg( "cython" ) ):
         Exit(1)
 
+    ## Check sizes of integer and doublereal from typedefs.pxd
+    if( conf.CheckSizeOf( "long int" ) != 8 or
+        conf.CheckSizeOf( "double" ) != 8 ):
+        Exit(1)
+
     ## List of shared libraries to check, these define the string substitutions in setup.py.in
-    libs = ( "lssol", "npsol", "snopt", "ipopt" )
-    for lib in libs:
+    for lib in clibs:
         repl[ "@{0}@".format( lib ) ] = conf.CheckLib( lib )
 
 env = conf.Finish()
@@ -83,6 +116,8 @@ if( FindFile( GetOption( "manifest_file" ), "." ) ):
     env.Clean( spy_inst, GetOption( "manifest_file" ) )
 
 ### Hierarchy
+for file in srcfiles:
+    env.Depends( spy_build, srcfolder + "/" + file )
 env.Depends( spy_build, spy )
 env.Depends( spy_inst, spy_build )
 env.Default( spy_build )
