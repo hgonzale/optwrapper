@@ -5,12 +5,12 @@ from __future__ import division
 from libc.string cimport memcpy, memset
 from libc.stdlib cimport malloc, free
 from libc.stdio cimport printf
+from libc.stdint cimport int64_t
 cimport numpy as cnp
 import numpy as np
 import os
 
 from .typedefs cimport *
-from snopth cimport integer, doublereal, ftnlen
 cimport snopth as snopt
 cimport utils
 cimport base
@@ -20,254 +20,6 @@ import nlp
 ## we can safely assume 64-bit values since we already checked using scons
 cdef int doublereal_type = cnp.NPY_FLOAT64
 cdef int integer_type = cnp.NPY_INT64
-
-## sMatrix helper to create arrays with valid indices out of keys with heterogeneous data types
-cdef cnp.ndarray key_to_array( object key, integer limit ):
-    if( isinstance( key, slice ) ):
-        return np.arange( *key.indices( limit ), dtype=np.int_ )
-    else:
-        try:
-            key = np.asarray( key, dtype=np.int_ )
-        except:
-            raise TypeError( "key cannot be converted to an integer array" )
-        ## http://docs.scipy.org/doc/numpy/reference/arrays.nditer.html#modifying-array-values
-        for val in np.nditer( key, op_flags=[ "readwrite" ] ):
-            if( val >= limit or val < -limit ):
-                raise IndexError( "index {0} is out of bounds, limit is {1}".format( val, limit ) )
-            if( val < 0 ):
-                val[...] = limit + val
-        return key
-
-
-cdef class sMatrix:
-    cdef doublereal *data
-    cdef integer *rptr
-    cdef integer *ridx
-    cdef integer *cidx
-    cdef readonly integer nnz
-    cdef readonly integer nrows
-    cdef readonly integer ncols
-    cdef readonly tuple shape
-    cdef int data_alloc
-
-    def __cinit__( self, arr, int copy_data=False ):
-        self.data_alloc = True
-
-        try:
-            arr = np.atleast_2d( np.asarray( arr, dtype=np.float64 ) )
-        except:
-            raise TypeError( "argument must be an array" )
-
-        if( arr.ndim > 2 ):
-            raise ValueError( "argument can have at most two dimensions" )
-
-        ( self.nrows, self.ncols ) = self.shape = arr.shape
-        self.nnz = np.count_nonzero( arr )
-
-        self.data = <doublereal *> malloc( self.nnz * sizeof( doublereal ) )
-        self.rptr = <integer *> malloc( ( self.nrows + 1 ) * sizeof( integer ) )
-        self.ridx = <integer *> malloc( self.nnz * sizeof( integer ) )
-        self.cidx = <integer *> malloc( self.nnz * sizeof( integer ) )
-
-        ## populate ridx, cidx, and rptr by walking through arr in C order
-        cdef integer row, col, k
-        cdef doublereal tmp
-        k = 0
-        self.rptr[0] = 0
-        for row in range( self.nrows ):
-            for col in range( self.ncols ):
-                tmp = arr[row,col]
-                if( tmp != 0.0 ):
-                    self.ridx[k] = row
-                    self.cidx[k] = col
-                    if( copy_data ):
-                        self.data[k] = tmp
-                    k += 1
-            self.rptr[row+1] = k
-
-        ## zero out data if we didn't copy
-        if( not copy_data ):
-            memset( self.data, 0, self.nnz * sizeof( doublereal ) )
-
-
-    def print_debug( self ):
-        """
-        print internal C arrays containing representation data of this sparse matrix, which
-        cannot be accessed using Python
-
-        """
-
-        print( "nrows: {0} - ncols: {1} - nnz: {2} - data_alloc: {3}".format( self.nrows,
-                                                                              self.ncols,
-                                                                              self.nnz,
-                                                                              self.data_alloc ) )
-
-        print( "rptr: [ " ),
-        for k in range( self.nrows+1 ):
-            printf( "%d ", self.rptr[k] )
-        print( "]" )
-
-        print( "ridx: [ " ),
-        for k in range( self.nnz ):
-            printf( "%d ", self.ridx[k] )
-        print( "]" )
-
-        print( "cidx: [ " ),
-        for k in range( self.nnz ):
-            printf( "%d ", self.cidx[k] )
-        print( "]" )
-
-        print( "data: [ " ),
-        for k in range( self.nnz ):
-            printf( "%f ", self.data[k] )
-        print( "]" )
-
-
-    def __dealloc__( self ):
-        if( self.data_alloc ):
-            free( self.data )
-        free( self.rptr )
-        free( self.ridx )
-        free( self.cidx )
-
-
-    cdef void setDataPtr( self, void *ptr ):
-        if( self.data_alloc ):
-            free( self.data )
-            self.data_alloc = False
-
-        self.data = <doublereal *> ptr
-
-
-    cdef void copyFortranIdxs( self, integer* ridx, integer* cidx,
-                               integer roffset=0, integer coffset=0 ):
-        memcpy( ridx, self.ridx, self.nnz * sizeof( integer ) )
-        memcpy( cidx, self.cidx, self.nnz * sizeof( integer ) )
-
-        for k in range( self.nnz ): ## have to add one because Fortran
-            ridx[k] += roffset + 1
-            cidx[k] += coffset + 1
-
-
-    cdef void copyData( self, doublereal* data ):
-        memcpy( data, self.data, self.nnz * sizeof( doublereal ) )
-
-
-    cdef doublereal get_elem_at( self, integer row, integer col ):
-        cdef integer first, last, midpoint
-
-        ## binary search
-        first = self.rptr[row]
-        last = self.rptr[row+1]-1
-
-        while( first <= last ):
-            midpoint = (first + last)//2
-            if( self.cidx[midpoint] == col ):
-                return self.data[midpoint]
-            else:
-                if( col < self.cidx[midpoint] ):
-                    last = midpoint-1
-                else:
-                    first = midpoint+1
-
-        return 0
-
-
-    cdef bint set_elem_at( self, integer row, integer col, doublereal val ):
-        cdef integer first, last, midpoint
-
-        ## binary search
-        first = self.rptr[row]
-        last = self.rptr[row+1]-1
-
-        while( first <= last ):
-            midpoint = (first + last)//2
-            if( self.cidx[midpoint] == col ):
-                self.data[midpoint] = val
-                return True
-            else:
-                if( col < self.cidx[midpoint] ):
-                    last = midpoint-1
-                else:
-                    first = midpoint+1
-
-        return False
-
-
-    cdef cnp.broadcast key_to_bcast( self, object key ):
-        if( self.nrows > 1 ):
-            if( isinstance( key, tuple ) and len(key) == 2 ):
-                rowiter = key_to_array( key[0], self.nrows )
-                coliter = key_to_array( key[1], self.ncols )
-                if( ( isinstance( key[0], slice ) and isinstance( key[1], slice ) ) or
-                    ( isinstance( key[0], slice ) and coliter.size > 1 ) or
-                    ( isinstance( key[1], slice ) and rowiter.size > 1 ) ): ## slices form meshes
-                    ( rowiter, coliter ) = np.ix_( rowiter, coliter )
-            else:
-                rowiter = key_to_array( key, self.nrows )
-                coliter = key_to_array( slice( None, None, None ), self.ncols )
-                if( rowiter.size > 1 ):  ## slices form meshes
-                    ( rowiter, coliter ) = np.ix_( rowiter, coliter )
-
-        elif( self.nrows == 1 ):
-            rowiter = np.array( 0 )
-            coliter = key_to_array( key, self.ncols )
-        else:
-            raise TypeError( "key cannot be applied to this sMatrix" )
-
-        ## here is where all the magic happens to figure out new dimensions
-        return np.broadcast( rowiter, coliter )
-
-
-    def __setitem__( self, key, value ):
-        try:
-            value = np.asarray( value, dtype=np.float64 )
-        except:
-            raise TypeError( "value cannot be converted into a float array" )
-
-        bcast = self.key_to_bcast( key )
-        origshape = value.shape
-
-        ## this algorithm follow the rules listed here:
-        ## http://docs.scipy.org/doc/numpy/reference/ufuncs.html#broadcasting
-
-        ## shave extra dimensions we can't deal with
-        while( len( bcast.shape ) < len( value.shape ) ):
-            if( value.shape[0] > 1 ):
-                raise ValueError( "could not broadcast value array from shape " +
-                                  "{0} into shape {1}".format( origshape, bcast.shape ) )
-            value = np.squeeze( value, axis=0 )
-
-        ## add size 1 dimensions to the left
-        while( len( bcast.shape ) > len( value.shape ) ):
-            value = value[np.newaxis]
-
-        ## now try to match different dimensions
-        for k in range( len( value.shape ) ):
-            if( bcast.shape[-k-1] != value.shape[-k-1] ):
-                if( value.shape[-k-1] != 1 ):
-                    raise ValueError( "could not broadcast value array from shape " +
-                                      "{0} into shape {1}".format( origshape, bcast.shape ) )
-                value = np.tile( value, (bcast.shape[-k-1],) + (1,) * k )
-
-        ## finally set values, assuming (!) bcast is C-ordered
-        for ( (row,col), val ) in zip( bcast, np.nditer( value, order='C' ) ):
-            self.set_elem_at( row, col, val )
-
-
-    def __getitem__( self, key ):
-        bcast = self.key_to_bcast( key )
-
-        ## cool trick copied from
-        ## http://docs.scipy.org/doc/numpy/reference/generated/numpy.broadcast.html
-        out = np.empty( bcast.shape )
-        out.flat = [ self.get_elem_at( row, col ) for (row,col) in bcast ]
-
-        return out
-
-
-    def __str__( self ):
-        return str( self[:] )
 
 
 cdef class Soln( base.Soln ):
@@ -310,10 +62,10 @@ cdef class Soln( base.Soln ):
             return statusInfo[ int( self.retval / 10 ) ]
 
 
-## helper static function usrfun used to evaluate user defined functions in Solver.prob
+## helper static function usrfun that evaluate user-defined functions in Solver.prob
 cdef object extprob
-cdef sMatrix objGsparse
-cdef sMatrix consGsparse
+cdef utils.sMatrix objGsparse
+cdef utils.sMatrix consGsparse
 
 cdef int usrfun( integer *status, integer *n, doublereal *x,
                  integer *needF, integer *nF, doublereal *f,
@@ -344,15 +96,15 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
         if( objGsparse.nnz > 0 ):
             objGsparse.setDataPtr( &G[0] )
             extprob.objg( objGsparse, xarr )
-            objGsparse.print_debug()
+            # objGsparse.print_debug()
         if( extprob.Ncons > 0 and consGsparse.nnz > 0 ):
             consGsparse.setDataPtr( &G[objGsparse.nnz] )
             extprob.consg( consGsparse, xarr )
-            consGsparse.print_debug()
-        print( "G: [" ),
-        for k in range( lenG[0] ):
-            printf( "%f ", G[k] )
-        print( "]" )
+            # consGsparse.print_debug()
+        # print( "G: [" ),
+        # for k in range( lenG[0] ):
+        #     printf( "%f ", G[k] )
+        # print( "]" )
 
 
 cdef class Solver( base.Solver ):
@@ -457,7 +209,7 @@ cdef class Solver( base.Solver ):
 
 
     def setupProblem( self, prob ):
-        cdef sMatrix Asparse
+        cdef utils.sMatrix Asparse
 
         global extprob
         global objGsparse
@@ -487,7 +239,7 @@ cdef class Solver( base.Solver ):
             tmplist += ( prob.consmixedA, )
         else:
             tmplist += ( np.zeros( ( prob.Ncons, self.n[0] ) ), )
-        Asparse = sMatrix( np.vstack( tmplist ), copy_data=True )
+        Asparse = utils.sMatrix( np.vstack( tmplist ), copy_data=True )
         print( Asparse[:] )
         if( Asparse.nnz > 0 ):
             self.lenA[0] = Asparse.nnz
@@ -498,14 +250,14 @@ cdef class Solver( base.Solver ):
 
         ## Create objGsparse and consGsparse, set lenG
         if( isinstance( prob, nlp.SparseProblem ) and prob.objgpattern is not None ):
-            objGsparse = sMatrix( prob.objgpattern )
+            objGsparse = utils.sMatrix( prob.objgpattern )
         else:
-            objGsparse = sMatrix( np.ones( ( 1, self.n[0] ) ) )
+            objGsparse = utils.sMatrix( np.ones( ( 1, self.n[0] ) ) )
 
         if( isinstance( prob, nlp.SparseProblem ) and prob.consgpattern is not None ):
-            consGsparse = sMatrix( prob.consgpattern )
+            consGsparse = utils.sMatrix( prob.consgpattern )
         else:
-            consGsparse = sMatrix( np.ones( ( prob.Ncons, self.n[0] ) ) )
+            consGsparse = utils.sMatrix( np.ones( ( prob.Ncons, self.n[0] ) ) )
         if( objGsparse.nnz + consGsparse.nnz > 0 ):
             self.lenG[0] = objGsparse.nnz + consGsparse.nnz
             self.neG[0] = self.lenG[0]
@@ -529,13 +281,16 @@ cdef class Solver( base.Solver ):
 
         ## copy index data of G
         ## row 0 of G belongs to objg
-        objGsparse.copyFortranIdxs( &self.iGfun[0], &self.jGvar[0] )
+        objGsparse.copyFortranIdxs( <int64_t *> &self.iGfun[0],
+                                    <int64_t *> &self.jGvar[0] )
         ## rows 1:(1 + prob.Nconslin) of G are empty, these are pure linear constraints
         ## rows (1 + prob.Nconslin):(1 + prob.Nconslin + prob.Ncons) of G belong to consg
-        consGsparse.copyFortranIdxs( &self.iGfun[objGsparse.nnz], &self.jGvar[objGsparse.nnz],
+        consGsparse.copyFortranIdxs( <int64_t *> &self.iGfun[objGsparse.nnz],
+                                     <int64_t *> &self.jGvar[objGsparse.nnz],
                                      roffset = 1 + prob.Nconslin )
         ## copy index data of A
-        Asparse.copyFortranIdxs( &self.iAfun[0], &self.jAvar[0] )
+        Asparse.copyFortranIdxs( <int64_t *> &self.iAfun[0],
+                                 <int64_t *> &self.jAvar[0] )
         ## copy matrix data of A
         Asparse.copyData( &self.A[0] )
 

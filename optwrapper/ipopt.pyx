@@ -3,6 +3,7 @@
 
 from libc.string cimport memcpy, memset
 from libc.stdlib cimport malloc, free
+from libc.stdint cimport int32_t
 cimport numpy as cnp
 import numpy as np
 import os
@@ -13,18 +14,18 @@ cimport utils
 cimport base
 import nlp
 
+## Match numpy's datatypes to those of the architecture
 cdef int Number_type = cnp.NPY_FLOAT64
 cdef int Int_type = cnp.NPY_INT64
 if( sizeof( Int ) == 4 ):
     Int_type = cnp.NPY_INT32
 
-## The functions funobj and funcon should be static methods in npsol.Solver,
-## but it appears that Cython doesn't support static cdef methods yet.
-## Instead, this is a reasonable hack.
+## helper static function usrfun that evaluate user-defined functions in Solver.prob
 cdef object extprob
+cdef utils.sMatrix consGsparse
 
 cdef Bool eval_objf( Index n, Number* x, Bool new_x,
-                     Number* obj_value, UserDataPtr user_data )
+                     Number* obj_value, UserDataPtr user_data ):
     xarr = utils.wrap1dPtr( x, n, Number_type )
     obj_value[0] = 0.0
     farr = utils.wrap1dPtr( obj_value, 1, Number_type )
@@ -33,7 +34,7 @@ cdef Bool eval_objf( Index n, Number* x, Bool new_x,
         farr += extprob.objmixedA.dot( xarr )
 
 cdef Bool eval_objg( Index n, Number* x, Bool new_x,
-                     Number* grad_f, UserDataPtr user_data )
+                     Number* grad_f, UserDataPtr user_data ):
     xarr = utils.wrap1dPtr( x, n, Number_type )
     memset( grad_f, 0, n * sizeof( Number ) )
     garr = utils.wrap1dPtr( grad_f, n, Number_type )
@@ -42,7 +43,7 @@ cdef Bool eval_objg( Index n, Number* x, Bool new_x,
         garr += extprob.objmixedA
 
 cdef Bool eval_consf( Index n, Number* x, Bool new_x,
-                      Index m, Number* g, UserDataPtr user_data )
+                      Index m, Number* g, UserDataPtr user_data ):
     xarr = utils.wrap1dPtr( x, n, Number_type )
     memset( g, 0, m * sizeof( Number ) )
     garr = utils.wrap1dPtr( g, m, Number_type )
@@ -53,15 +54,17 @@ cdef Bool eval_consf( Index n, Number* x, Bool new_x,
 cdef Bool eval_consg( Index n, Number *x, Bool new_x,
                       Index m, Index nele_jac,
                       Index *iRow, Index *jCol, Number *values,
-                      UserDataPtr user_data )
-######### Must use sMatrix here
-
-    xarr = utils.wrap1dPtr( x, n[0], utils.doublereal_type )
-    memset( cJac, 0, ncnln[0] * n[0] * sizeof( doublereal ) )
-    cJacarr = utils.wrap2dPtr( cJac, ncnln[0], n[0], utils.doublereal_type )
-    extprob.consg( cJacarr, xarr )
-    if( extprob.consmixedA is not None ):
-        cJacarr += extprob.consmixedA
+                      UserDataPtr user_data ):
+    if( values == NULL ):
+        consGsparse.copyIdxs( <int32_t *> &self.iRow[0],
+                              <int32_t *> &self.jCol[0] )
+    else:
+        xarr = utils.wrap1dPtr( x, n, Number_type )
+        memset( values, 0, nele_jac * sizeof( Number ) )
+        consGsparse.setDataPtr( values )
+        extprob.consg( consGsparse, xarr )
+        if( extprob.consmixedA is not None ):
+            consGsparse += extprob.consmixedA
 
 
 ##########################
