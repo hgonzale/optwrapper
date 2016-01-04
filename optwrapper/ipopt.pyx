@@ -16,151 +16,153 @@ import nlp
 
 ## Match numpy's datatypes to those of the architecture
 cdef int Number_type = cnp.NPY_FLOAT64
-cdef int Int_type = cnp.NPY_INT64
-if( sizeof( Int ) == 4 ):
-    Int_type = cnp.NPY_INT32
+cdef int Index_type = cnp.NPY_INT64
+if( sizeof( Index ) == 4 ):
+    Index_type = cnp.NPY_INT32
 
 ## helper static function usrfun that evaluate user-defined functions in Solver.prob
 cdef object extprob
 cdef utils.sMatrix consGsparse
 
+
+## These evaluation functions are detailed under "C++ Interface" at:
+## http://www.coin-or.org/Ipopt/documentation/
 cdef Bool eval_objf( Index n, Number* x, Bool new_x,
                      Number* obj_value, UserDataPtr user_data ):
     xarr = utils.wrap1dPtr( x, n, Number_type )
     obj_value[0] = 0.0
     farr = utils.wrap1dPtr( obj_value, 1, Number_type )
+
     extprob.objf( farr, xarr )
     if( extprob.objmixedA is not None ):
         farr += extprob.objmixedA.dot( xarr )
+
+    return True
 
 cdef Bool eval_objg( Index n, Number* x, Bool new_x,
                      Number* grad_f, UserDataPtr user_data ):
     xarr = utils.wrap1dPtr( x, n, Number_type )
     memset( grad_f, 0, n * sizeof( Number ) )
     garr = utils.wrap1dPtr( grad_f, n, Number_type )
+
     extprob.objg( garr, xarr )
     if( extprob.objmixedA is not None ):
         garr += extprob.objmixedA
+
+    return True
 
 cdef Bool eval_consf( Index n, Number* x, Bool new_x,
                       Index m, Number* g, UserDataPtr user_data ):
     xarr = utils.wrap1dPtr( x, n, Number_type )
     memset( g, 0, m * sizeof( Number ) )
     garr = utils.wrap1dPtr( g, m, Number_type )
+
     extprob.consf( garr, xarr )
     if( extprob.consmixedA is not None ):
         garr += extprob.consmixedA.dot( xarr )
+
+    return True
 
 cdef Bool eval_consg( Index n, Number *x, Bool new_x,
                       Index m, Index nele_jac,
                       Index *iRow, Index *jCol, Number *values,
                       UserDataPtr user_data ):
     if( values == NULL ):
-        consGsparse.copyIdxs( <int32_t *> &self.iRow[0],
-                              <int32_t *> &self.jCol[0] )
+        if( sizeof( Index ) == 4 ):
+            consGsparse.copyIdxs32( <int32_t *> self.iRow,
+                                    <int32_t *> self.jCol )
+        else:
+            consGsparse.copyIdxs( <int64_t *> self.iRow,
+                                  <int64_t *> self.jCol )
     else:
         xarr = utils.wrap1dPtr( x, n, Number_type )
         memset( values, 0, nele_jac * sizeof( Number ) )
         consGsparse.setDataPtr( values )
+
         extprob.consg( consGsparse, xarr )
         if( extprob.consmixedA is not None ):
             consGsparse += extprob.consmixedA
 
+    return True
 
-##########################
-##########################
 
-## pg. 18, Section 7.2
-cdef int funcon( integer* mode, integer* ncnln,
-                 integer* n, integer* ldJ, integer* needc,
-                 doublereal* x, doublereal* c, doublereal* cJac,
-                 integer* nstate ):
-
-    ## we zero out all arrays in case the user does not modify all the values,
-    ## e.g., in sparse problems.
-    if( mode[0] != 1 ):
-        memset( c, 0, ncnln[0] * sizeof( doublereal ) )
-        carr = utils.wrap1dPtr( c, ncnln[0], utils.doublereal_type )
-        extprob.consf( carr, xarr )
-        if( extprob.consmixedA is not None ):
-            carr += extprob.consmixedA.dot( xarr )
-
-    if( mode[0] > 0 ):
-        memset( cJac, 0, ncnln[0] * n[0] * sizeof( doublereal ) )
-        cJacarr = utils.wrap2dPtr( cJac, ncnln[0], n[0], utils.doublereal_type )
-        extprob.consg( cJacarr, xarr )
-        if( extprob.consmixedA is not None ):
-            cJacarr += extprob.consmixedA
+cdef Bool eval_lagrangianh( Index n, const Number* x, Bool new_x,
+                            Number obj_factor, Index m, const Number* lambda_,
+                            Bool new_lambda, Index nele_hess, Index* iRow,
+                            Index* jCol, Number* values ):
+    return False
 
 
 cdef class Soln( base.Soln ):
-    cdef public cnp.ndarray istate
-    cdef public cnp.ndarray clamda
-    cdef public cnp.ndarray R
-    cdef public int Niters
+    cdef public cnp.ndarray mult_x_L
+    cdef public cnp.ndarray mult_x_U
+    cdef public cnp.ndarray mult_g
 
     def __init__( self ):
         super().__init__()
-        self.retval = 100
+        self.retval = -666
 
     def getStatus( self ):
-        cdef tuple statusInfo = ( "Optimality conditions satisfied", ## 0
-                                  "Optimality conditions satisfied, but sequence has not converged", ## 1
-                                  "Linear constraints could not be satisfied", ## 2
-                                  "Nonlinear constraints could not be satisfied", ## 3
-                                  "Iteration limit reached", ## 4
-                                  "N/A",
-                                  "Optimality conditions not satisfied, no improvement can be made", ## 6
-                                  "Derivatives appear to be incorrect", ## 7
-                                  "N/A",
-                                  "Invalid input parameter" ) ## 9
+        cdef dict statusInfo = { 0: "Solve Succeeded",
+                                 1: "Solved To Acceptable Level",
+                                 2: "Infeasible Problem Detected",
+                                 3: "Search Direction Becomes Too Small",
+                                 4: "Diverging Iterates",
+                                 5: "User Requested Stop",
+                                 6: "Feasible Point Found",
+                                 -1: "Maximum Iterations Exceeded",
+                                 -2: "Restoration Failed",
+                                 -3: "Error In Step Computation",
+                                 -4: "Maximum CpuTime Exceeded",
+                                 -10: "Not Enough Degrees Of Freedom",
+                                 -11: "Invalid Problem Definition",
+                                 -12: "Invalid Option",
+                                 -13: "Invalid Number Detected",
+                                 -100: "Unrecoverable Exception",
+                                 -101: "NonIpopt Exception Thrown",
+                                 -102: "Insufficient Memory",
+                                 -199: "Internal Error" }
 
-        if( self.retval == 100 ):
+        if( self.retval == -666 ):
             return "Return information is not defined yet"
 
-        if( self.retval < 0 ):
-            return "Execution terminated by user defined function (should not occur)"
-        elif( self.retval >= 10 ):
-            return "Invalid return value"
-        else:
-            return statusInfo[ self.retval ]
+        if( self.retval not in statusInfo ):
+            return "Undefined return information"
+
+        return statusInfo[ self.retval ]
 
 
 cdef class Solver( base.Solver ):
-    cdef integer ldA[1]
-    cdef integer ldJ[1]
-    cdef integer ldR[1]
-    cdef integer leniw[1]
-    cdef integer lenw[1]
-    cdef doublereal *x
-    cdef doublereal *bl
-    cdef doublereal *bu
-    cdef doublereal *objg_val
-    cdef doublereal *consf_val
-    cdef doublereal *consg_val
-    cdef doublereal *clamda
-    cdef integer *istate
-    cdef integer *iw
-    cdef doublereal *w
-    cdef doublereal *A
-    cdef doublereal *R
+    cdef Number *x
+    cdef Number *x_L
+    cdef Number *x_U
+    cdef Number *mult_x_L
+    cdef Number *mult_x_U
+    cdef Number *g
+    cdef Number *g_L
+    cdef Number *g_U
+    cdef Number *mult_g
+    cdef Number obj
+    cdef ipopt.IpoptProblem nlp
+    cdef ipopt.ApplicationReturnStatus status
+    cdef Index Ntotcons
 
-    cdef int nctotl
     cdef int warm_start
     cdef int mem_alloc
-    cdef int mem_size[3] ## { N, Nconslin, Ncons }
+    cdef int mem_size[2] ## { N, Ntotcons }
 
 
     def __init__( self, prob=None ):
         super().__init__()
 
         self.mem_alloc = False
-        self.mem_size[0] = self.mem_size[1] = self.mem_size[2] = 0
+        self.mem_size[0] = self.mem_size[1] = 0
         self.prob = None
 
         if( prob ):
             self.setupProblem( prob )
 
+        ######################################
         ## Set print options
         self.printOpts[ "summaryFile" ] = None
         self.printOpts[ "printLevel" ] = None
@@ -183,6 +185,7 @@ cdef class Solver( base.Solver ):
 
     def setupProblem( self, prob ):
         global extprob
+        global consGsparse
 
         if( not isinstance( prob, nlp.Problem ) ):
             raise TypeError( "Argument 'prob' must be of type 'nlp.Problem'" )
@@ -194,27 +197,14 @@ cdef class Solver( base.Solver ):
         self.warm_start = False
 
         ## Set size-dependent constants
-        self.nctotl = prob.N + prob.Nconslin + prob.Ncons
-        if( prob.Nconslin == 0 ): ## pg. 5, ldA >= 1 even if nclin = 0
-            self.ldA[0] = 1
-        else:
-            self.ldA[0] = prob.Nconslin
-        if( prob.Ncons == 0 ): ## pg. 5, ldJ >= 1 even if ncnln = 0
-            self.ldJ[0] = 1
-        else:
-            self.ldJ[0] = prob.Ncons
-        self.ldR[0] = prob.N
-        self.leniw[0] = 3 * prob.N + prob.Nconslin + 2 * prob.Ncons ## pg. 7
-        self.lenw[0] = ( 2 * prob.N * prob.N + prob.N * prob.Nconslin
-                         + 2 * prob.N * prob.Ncons + 20 * prob.N + 11 * prob.Nconslin
-                         + 21 * prob.Ncons ) ## pg. 7
+        self.N = prob.N
+        self.Ntotcons = prob.Ncons + prob.Nconslin
 
         ## Allocate if necessary
         if( not self.mem_alloc ):
             self.allocate()
-        elif( self.mem_size[0] < prob.N or
-              self.mem_size[1] < prob.Nconslin or
-              self.mem_size[2] < prob.Ncons ):
+        elif( self.mem_size[0] < self.N or
+              self.mem_size[1] < self.Ntotcons ):
             self.deallocate()
             self.allocate()
 
@@ -246,36 +236,30 @@ cdef class Solver( base.Solver ):
         if( self.mem_alloc ):
             return False
 
-        self.x = <doublereal *> malloc( self.prob.N * sizeof( doublereal ) )
-        self.bl = <doublereal *> malloc( self.nctotl * sizeof( doublereal ) )
-        self.bu = <doublereal *> malloc( self.nctotl * sizeof( doublereal ) )
-        self.objg_val = <doublereal *> malloc( self.prob.N * sizeof( doublereal ) )
-        self.consf_val = <doublereal *> malloc( self.prob.Ncons * sizeof( doublereal ) )
-        self.consg_val = <doublereal *> malloc( self.ldJ[0] * self.prob.N * sizeof( doublereal ) )
-        self.clamda = <doublereal *> malloc( self.nctotl * sizeof( doublereal ) )
-        self.istate = <integer *> malloc( self.nctotl * sizeof( integer ) )
-        self.iw = <integer *> malloc( self.leniw[0] * sizeof( integer ) )
-        self.w = <doublereal *> malloc( self.lenw[0] * sizeof( doublereal ) )
-        self.A = <doublereal *> malloc( self.ldA[0] * self.prob.N * sizeof( doublereal ) )
-        self.R = <doublereal *> malloc( self.prob.N * self.prob.N * sizeof( doublereal ) )
+        self.x = <Number *> malloc( self.N * sizeof( Number ) )
+        self.x_L = <Number *> malloc( self.N * sizeof( Number ) )
+        self.x_U = <Number *> malloc( self.N * sizeof( Number ) )
+        self.mult_x_L = <Number *> malloc( self.N * sizeof( Number ) )
+        self.mult_x_U = <Number *> malloc( self.N * sizeof( Number ) )
+        self.g = <Number *> malloc( self.Ntotcons * sizeof( Number ) )
+        self.g_L = <Number *> malloc( self.Ntotcons * sizeof( Number ) )
+        self.g_U = <Number *> malloc( self.Ntotcons * sizeof( Number ) )
+        self.mult_g = <Number *> malloc( self.Ntotcons * sizeof( Number ) )
+
         if( self.x == NULL or
-            self.bl == NULL or
-            self.bu == NULL or
-            self.objg_val == NULL or
-            self.consf_val == NULL or
-            self.consg_val == NULL or
-            self.clamda == NULL or
-            self.istate == NULL or
-            self.iw == NULL or
-            self.w == NULL or
-            self.A == NULL or
-            self.R == NULL ):
+            self.x_L == NULL or
+            self.x_U == NULL or
+            self.mult_x_L == NULL or
+            self.mult_x_U == NULL or
+            self.g == NULL or
+            self.g_L == NULL or
+            self.g_U == NULL or
+            self.mult_g == NULL ):
             raise MemoryError( "At least one memory allocation failed" )
 
         self.mem_alloc = True
-        self.mem_size[0] = self.prob.N
-        self.mem_size[1] = self.prob.Nconslin
-        self.mem_size[2] = self.prob.Ncons
+        self.mem_size[0] = self.N
+        self.mem_size[1] = self.Ntotcons
         return True
 
 
@@ -284,17 +268,14 @@ cdef class Solver( base.Solver ):
             return False
 
         free( self.x )
-        free( self.bl )
-        free( self.bu )
-        free( self.objg_val )
-        free( self.consf_val )
-        free( self.consg_val )
-        free( self.clamda )
-        free( self.istate )
-        free( self.iw )
-        free( self.w )
-        free( self.A )
-        free( self.R )
+        free( self.x_L )
+        free( self.x_U )
+        free( self.mult_x_L )
+        free( self.mult_x_U )
+        free( self.g )
+        free( self.g_L )
+        free( self.g_U )
+        free( self.mult_g )
 
         self.mem_alloc = False
         return True

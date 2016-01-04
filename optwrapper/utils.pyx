@@ -158,28 +158,36 @@ cdef class sMatrix:
         free( self.cidx )
 
 
-    cdef void setDataPtr( self, void *ptr ):
+    cdef void setDataPtr( self, double* ptr ):
         if( self.data_alloc ):
             free( self.data )
             self.data_alloc = False
 
-        self.data = <double *> ptr
+        self.data = ptr
 
 
-    cdef void copyFortranIdxs( self, int64_t* ridx, int64_t* cidx,
-                               int64_t roffset=0, int64_t coffset=0 ):
+    cdef inline void copyFortranIdxs( self, int64_t* ridx, int64_t* cidx,
+                                      int64_t roffset=0, int64_t coffset=0 ):
+        ## have to add one to offsets because Fortran
+        self.copyIdxs( ridx, cidx, roffset + 1, coffset + 1 )
+
+
+    cdef void copyIdxs( self, int64_t* ridx, int64_t* cidx,
+                        int64_t roffset=0, int64_t coffset=0 ):
         memcpy( ridx, self.ridx, self.nnz * sizeof( int64_t ) )
         memcpy( cidx, self.cidx, self.nnz * sizeof( int64_t ) )
-        for k in range( self.nnz ): ## have to add one because Fortran
-            ridx[k] += roffset + 1
-            cidx[k] += coffset + 1
+
+        if( roffset > 0 or coffset > 0 ):
+            for k in range( self.nnz ):
+                ridx[k] += roffset
+                cidx[k] += coffset
 
 
-    cdef void copyFortranIdxs32( self, int32_t* ridx, int32_t* cidx,
-                                 int32_t roffset=0, int32_t coffset=0 ):
-        for k in range( self.nnz ): ## have to add one because Fortran
-            ridx[k] = ( <int32_t> self.ridx[k] ) + roffset + 1
-            cidx[k] = ( <int32_t> self.cidx[k] ) + coffset + 1
+    cdef void copyIdxs32( self, int32_t* ridx, int32_t* cidx,
+                          int32_t roffset=0, int32_t coffset=0 ):
+        for k in range( self.nnz ):
+            ridx[k] = ( <int32_t> self.ridx[k] ) + roffset
+            cidx[k] = ( <int32_t> self.cidx[k] ) + coffset
 
 
     cdef void copyData( self, double* data ):
