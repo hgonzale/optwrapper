@@ -85,13 +85,19 @@ cdef cnp.ndarray key_to_array( object key, int64_t limit ):
 
 
 cdef class sMatrix:
-    def __cinit__( self, arr, int copy_data=False ):
+    def __cinit__( self, object arr, int copy_data=False ):
         self.data_alloc = True
+
+        if( arr is None ):
+            arr = np.empty( (1,0), dtype=np.float64 )
 
         try:
             arr = np.atleast_2d( np.asarray( arr, dtype=np.float64 ) )
         except:
             raise TypeError( "argument must be an array" )
+
+        if( not np.all( np.isfinite( arr ) ) ):
+            raise ValueError( "argument must have finite elements" )
 
         if( arr.ndim > 2 ):
             raise ValueError( "argument can have at most two dimensions" )
@@ -318,5 +324,14 @@ cdef class sMatrix:
         return out
 
 
+    def dot( cnp.ndarray x ):
+        ## TODO
+        return self[:].dot( x )
+
+
+    def toarray( self ):
+        return self[:]
+
+
     def __str__( self ):
-        return str( self[:] )
+        return str( self.toarray() )

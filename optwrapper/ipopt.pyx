@@ -26,6 +26,7 @@ if( sizeof( Index ) == 4 ):
 ## helper static function usrfun that evaluate user-defined functions in Solver.prob
 cdef object extprob
 cdef utils.sMatrix consGsparse
+cdef utils.sMatrix Asparse
 
 
 ## These evaluation functions are detailed under "C++ Interface" at:
@@ -58,11 +59,16 @@ cdef Bool eval_consf( Index n, Number* x, Bool new_x,
                       Index m, Number* g, UserDataPtr user_data ):
     xarr = utils.wrap1dPtr( x, n, Number_type )
     memset( g, 0, m * sizeof( Number ) )
-    garr = utils.wrap1dPtr( g, m, Number_type )
 
-    extprob.consf( garr, xarr )
-    if( extprob.consmixedA is not None ):
-        garr += extprob.consmixedA.dot( xarr )
+    if( extprob.Nconslin > 0 ):
+        garrlin = utils.wrap1dPtr( &g[0], extprob.Nconslin, Number_type )
+        garrlin[:] = Asparse.dot( xarr )
+
+    if( extprob.Ncons > 0 ):
+        garr = utils.wrap1dPtr( &g[extprob.Nconslin], extprob.Ncons, Number_type )
+        extprob.consf( garr, xarr )
+        if( extprob.consmixedA is not None ):
+            garr += extprob.consmixedA.dot( xarr )
 
     return True
 
@@ -72,19 +78,32 @@ cdef Bool eval_consg( Index n, Number *x, Bool new_x,
                       UserDataPtr user_data ):
     if( values == NULL ):
         if( sizeof( Index ) == 4 ):
-            consGsparse.copyIdxs32( <int32_t *> self.iRow,
-                                    <int32_t *> self.jCol )
+            if( Asparse.nnz > 0 ):
+                Asparse.copyIdxs32( <int32_t *> &self.iRow[0],
+                                    <int32_t *> &self.jCol[0] )
+            if( consGsparse.nnz > 0 ):
+                consGsparse.copyIdxs32( <int32_t *> &self.iRow[Asparse.nnz],
+                                        <int32_t *> &self.jCol[Asparse.nnz],
+                                        roffset = extprob.Nconslin )
         else:
-            consGsparse.copyIdxs( <int64_t *> self.iRow,
-                                  <int64_t *> self.jCol )
+            if( Asparse.nnz > 0 ):
+                Asparse.copyIdxs( <int64_t *> &self.iRow[0],
+                                  <int64_t *> &self.jCol[0] )
+            if( consGsparse.nnz > 0 ):
+                consGsparse.copyIdxs( <int64_t *> &self.iRow[Asparse.nnz],
+                                      <int64_t *> &self.jCol[Asparse.nnz],
+                                      roffset = extprob.Nconslin )
     else:
         xarr = utils.wrap1dPtr( x, n, Number_type )
-        memset( values, 0, nele_jac * sizeof( Number ) )
-        consGsparse.setDataPtr( values )
+        if( Asparse.nnz > 0 ):
+            memcpy( &values[0], Asparse.data, Asparse.nnz * sizeof( Number ) )
 
-        extprob.consg( consGsparse, xarr )
-        if( extprob.consmixedA is not None ):
-            consGsparse += extprob.consmixedA
+        if( consGsparse.nnz > 0 ):
+            memset( &values[Asparse.nnz], 0, consGsparse.nnz * sizeof( Number ) )
+            consGsparse.setDataPtr( &values[Asparse.nnz] )
+            extprob.consg( consGsparse, xarr )
+            if( extprob.consmixedA is not None ):
+                consGsparse += extprob.consmixedA
 
     return True
 
@@ -188,6 +207,7 @@ cdef class Solver( base.Solver ):
 
     def setupProblem( self, prob ):
         global extprob
+        global Asparse
         global consGsparse
         cdef cnp.ndarray tmparr
 
@@ -231,17 +251,28 @@ cdef class Solver( base.Solver ):
         if( prob.Ncons > 0 ):
             tmparr = utils.arraySanitize( prob.conslb, dtype=Number_dtype )
             memcpy( &self.g_L[prob.Nconslin], utils.getPtr( tmparr ),
-                    prob.Ncons * sizeof( doublereal ) )
+                    prob.Ncons * sizeof( Number ) )
 
             tmparr = utils.arraySanitize( prob.consub, dtype=Number_dtype )
             memcpy( &self.g_U[prob.Nconslin], utils.getPtr( tmparr ),
-                    prob.Ncons * sizeof( doublereal ) )
+                    prob.Ncons * sizeof( Number ) )
+
+        Asparse = utils.sMatrix( prob.conslinA, copy_data=True )
 
         if( isinstance( prob, nlp.SparseProblem ) and prob.consgpattern is not None ):
-            ###
-        
-        self.nlp = ipopt.CreateIpoptProblem( self.N, self.x_L, self.x_U, self.Ntotcons,
-                                             self.g_L, self.g_U,
+            consGsparse = utils.sMatrix( prob.consgpattern )
+        else:
+            consGsparse = utils.sMatrix( np.ones( ( prob.Ncons, self.N ) ) )
+
+
+        self.nlp = ipopt.CreateIpoptProblem( self.N, self.x_L, self.x_U,
+                                             self.Ntotcons, self.g_L, self.g_U,
+                                             Asparse.nnz + consGsparse.nnz, 0, 0
+                                             <ipopt.Eval_F_CB> eval_objf,
+                                             <ipopt.Eval_Grad_F_CB> eval_objg,
+                                             <ipopt.Eval_G_CB> eval_consf,
+                                             <ipopt.Eval_Jac_G_CB> eval_consg,
+                                             <ipopt.Eval_H_CB> eval_lagrangianh )
 
 
     cdef allocate( self ):
@@ -297,22 +328,23 @@ cdef class Solver( base.Solver ):
         self.deallocate()
 
 
-    def warmStart( self ):
-        if( not isinstance( self.prob.soln, Soln ) ):
-            return False
+    # def warmStart( self ):
+    #     if( not isinstance( self.prob.soln, Soln ) ):
+    #         return False
 
-        memcpy( self.istate,
-                utils.getPtr( utils.convIntFortran( self.prob.soln.istate ) ),
-                self.nctotl * sizeof( integer ) )
-        memcpy( self.clamda,
-                utils.getPtr( utils.convFortran( self.prob.soln.clamda ) ),
-                self.nctotl * sizeof( doublereal ) )
-        memcpy( self.R,
-                utils.getPtr( utils.convFortran( self.prob.soln.R ) ),
-                self.prob.N * self.prob.N * sizeof( doublereal ) )
+    #     memcpy( self.istate,
+    #             utils.getPtr( utils.convIntFortran( self.prob.soln.istate ) ),
+    #             self.nctotl * sizeof( integer ) )
+    #     memcpy( self.clamda,
+    #             utils.getPtr( utils.convFortran( self.prob.soln.clamda ) ),
+    #             self.nctotl * sizeof( doublereal ) )
+    #     memcpy( self.R,
+    #             utils.getPtr( utils.convFortran( self.prob.soln.R ) ),
+    #             self.prob.N * self.prob.N * sizeof( doublereal ) )
 
-        self.warm_start = True
-        return True
+    #     self.warm_start = True
+    #     return True
+
 
 
     def solve( self ):
