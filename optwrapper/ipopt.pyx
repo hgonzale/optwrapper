@@ -16,9 +16,12 @@ import nlp
 
 ## Match numpy's datatypes to those of the architecture
 cdef int Number_type = cnp.NPY_FLOAT64
+cdef type Number_dtype = np.float64
 cdef int Index_type = cnp.NPY_INT64
+cdef type Index_dtype = np.int64
 if( sizeof( Index ) == 4 ):
     Index_type = cnp.NPY_INT32
+    Index_dtype = np.int32
 
 ## helper static function usrfun that evaluate user-defined functions in Solver.prob
 cdef object extprob
@@ -186,6 +189,7 @@ cdef class Solver( base.Solver ):
     def setupProblem( self, prob ):
         global extprob
         global consGsparse
+        cdef cnp.ndarray tmparr
 
         if( not isinstance( prob, nlp.Problem ) ):
             raise TypeError( "Argument 'prob' must be of type 'nlp.Problem'" )
@@ -209,27 +213,35 @@ cdef class Solver( base.Solver ):
             self.allocate()
 
         ## Copy information from prob to NPSOL's working arrays
-        memcpy( &self.bl[0], utils.getPtr( utils.convFortran( prob.lb ) ),
-                prob.N * sizeof( doublereal ) )
-        memcpy( &self.bu[0], utils.getPtr( utils.convFortran( prob.ub ) ),
-                prob.N * sizeof( doublereal ) )
+        tmparr = utils.arraySanitize( prob.lb, dtype=Number_dtype )
+        memcpy( self.x_L, utils.getPtr( tmparr ), self.N * sizeof( Number ) )
+
+        tmparr = utils.arraySanitize( prob.ub, dtype=Number_dtype )
+        memcpy( self.x_U, utils.getPtr( tmparr ), self.N * sizeof( Number ) )
+
         if( prob.Nconslin > 0 ):
-            memcpy( &self.bl[prob.N],
-                    utils.getPtr( utils.convFortran( prob.conslinlb ) ),
-                    prob.Nconslin * sizeof( doublereal ) )
-            memcpy( &self.bu[prob.N],
-                    utils.getPtr( utils.convFortran( prob.conslinub ) ),
-                    prob.Nconslin * sizeof( doublereal ) )
-            memcpy( &self.A[0],
-                    utils.getPtr( utils.convFortran( prob.conslinA ) ),
-                    self.ldA[0] * prob.N * sizeof( doublereal ) )
+            tmparr = utils.arraySanitize( prob.conslinlb, dtype=Number_dtype )
+            memcpy( &self.g_L[0], utils.getPtr( tmparr ),
+                    prob.Nconslin * sizeof( Number ) )
+
+            tmparr = utils.arraySanitize( prob.conslinub, dtype=Number_dtype )
+            memcpy( &self.g_U[0], utils.getPtr( tmparr ),
+                    prob.Nconslin * sizeof( Number ) )
+
         if( prob.Ncons > 0 ):
-            memcpy( &self.bl[prob.N+prob.Nconslin],
-                    utils.getPtr( utils.convFortran( prob.conslb ) ),
+            tmparr = utils.arraySanitize( prob.conslb, dtype=Number_dtype )
+            memcpy( &self.g_L[prob.Nconslin], utils.getPtr( tmparr ),
                     prob.Ncons * sizeof( doublereal ) )
-            memcpy( &self.bu[prob.N+prob.Nconslin],
-                    utils.getPtr( utils.convFortran( prob.consub ) ),
+
+            tmparr = utils.arraySanitize( prob.consub, dtype=Number_dtype )
+            memcpy( &self.g_U[prob.Nconslin], utils.getPtr( tmparr ),
                     prob.Ncons * sizeof( doublereal ) )
+
+        if( isinstance( prob, nlp.SparseProblem ) and prob.consgpattern is not None ):
+            ###
+        
+        self.nlp = ipopt.CreateIpoptProblem( self.N, self.x_L, self.x_U, self.Ntotcons,
+                                             self.g_L, self.g_U,
 
 
     cdef allocate( self ):

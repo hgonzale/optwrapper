@@ -10,10 +10,10 @@ from libc.stdio cimport printf
 cnp.import_array()
 
 cdef cnp.ndarray wrapPtr( void* array, cnp.ndarray dims, int typenum ):
-    if( not dims.flags["C_CONTIGUOUS"] or
-        not dims.flags["ALIGNED"] or
+    if( not dims.flags[ "C_CONTIGUOUS" ] or
+        not dims.flags[ "ALIGNED" ] or
         dims.dtype != np.intp ):
-        dims = np.require( dims.flat, dtype=np.intp, requirements=['C', 'A'] )
+        dims = np.require( dims.flat, dtype=np.intp, requirements=[ "C", "A" ] )
 
     return cnp.PyArray_SimpleNewFromData( dims.size,
                                           <cnp.npy_intp *> cnp.PyArray_GETPTR1( dims, 0 ),
@@ -27,19 +27,23 @@ cdef cnp.ndarray wrap1dPtr( void* array, int length, int typenum ):
     return cnp.PyArray_SimpleNewFromData( 1, dims, typenum, array )
 
 
-cdef cnp.ndarray wrap2dPtr( void* array, int rows, int cols, int typenum ):
+cdef cnp.ndarray wrap2dPtr( void* array, int rows, int cols, int typenum, int fortran=False ):
     cdef cnp.npy_intp dims[2]
+    cdef cnp.ndarray arr
+
     dims[0] = <cnp.npy_intp> cols
     dims[1] = <cnp.npy_intp> rows
+    arr = cnp.PyArray_SimpleNewFromData( 2, dims, typenum, array )
 
-    ## hack to return fortran-ordered array by transposing the c-ordered one
-    return cnp.PyArray_SimpleNewFromData( 2, dims, typenum, array ).T
+    if( fortran ): ## hack to return fortran-ordered array by transposing the c-ordered one
+        return np.transpose( arr )
+    return arr
 
 
 cdef void* getPtr( cnp.ndarray array ):
-    if( not array.flags["F_CONTIGUOUS"] or
-        not array.flags["ALIGNED"] ):
-        raise ValueError( "Array array must be 'F_CONTIGUOUS' and 'ALIGNED'" )
+    if( not array.flags[ "FORC" ] or
+        not array.flags[ "ALIGNED" ] ):
+        raise ValueError( "Array array must be contiguous and aligned" )
 
     if( array.ndim == 1 ):
         return cnp.PyArray_GETPTR1( array, 0 )
@@ -49,12 +53,17 @@ cdef void* getPtr( cnp.ndarray array ):
         raise ValueError( "Array array must be at most 2-dimensional" )
 
 
-cpdef cnp.ndarray convFortran( cnp.ndarray array ):
-    return np.require( array, dtype=np.float64, requirements=['F', 'A'] )
+cdef cnp.ndarray arraySanitize( cnp.ndarray array, type dtype=None,
+                                int fortran=False, int writtable=False ):
+    reqs = [ "A" ]
+    if( fortran ):
+        reqs.append( "F" )
+    else:
+        reqs.append( "C" )
+    if( writtable ):
+        reqs.append( "W" )
 
-
-cpdef cnp.ndarray convIntFortran( cnp.ndarray array ):
-    return np.require( array, dtype=np.int64, requirements=['F', 'A'] )
+    return np.require( array, dtype=dtype, requirements=reqs )
 
 
 ## sMatrix helper to create arrays with valid indices out of keys with heterogeneous datatypes

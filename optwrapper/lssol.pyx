@@ -5,14 +5,20 @@ from libc.string cimport memcpy, memset
 from libc.stdlib cimport malloc, free
 cimport numpy as cnp
 import numpy as np
-import sys
 import os
 
-from .typedefs cimport *  ## typedefs from f2c.h
+from .typedefs cimport *
 cimport lssolh as lssol   ## import every function exposed in lssol.h
 cimport utils
 cimport base
 import qp
+
+## we use these definitions to wrap C arrays in numpy arrays
+## we can safely assume 64-bit values since we already checked using scons
+cdef int doublereal_type = cnp.NPY_FLOAT64
+cdef int integer_type = cnp.NPY_INT64
+cdef type doublereal_dtype = np.float64
+cdef type integer_dtype = np.int64
 
 
 cdef class Soln( base.Soln ):
@@ -94,6 +100,8 @@ cdef class Solver( base.Solver ):
 
 
     def setupProblem( self, prob ):
+        cdef cnp.ndarray tmparr
+
         if( not isinstance( prob, qp.Problem ) ):
             raise TypeError( "prob must be of type qp.Problem" )
 
@@ -127,22 +135,27 @@ cdef class Solver( base.Solver ):
             self.allocate()
 
         ## Copy information from prob to NPSOL's working arrays
-        memcpy( &self.bl[0], utils.getPtr( utils.convFortran( prob.lb ) ),
-                prob.N * sizeof( doublereal ) )
-        memcpy( &self.bu[0], utils.getPtr( utils.convFortran( prob.ub ) ),
-                prob.N * sizeof( doublereal ) )
+        tmparr = utils.arraySanitize( prob.lb, dtype=doublereal_dtype, fortran=True )
+        memcpy( &self.bl[0], utils.getPtr( tmparr ), prob.N * sizeof( doublereal ) )
+
+        tmparr = utils.arraySanitize( prob.ub, dtype=doublereal_dtype, fortran=True )
+        memcpy( &self.bu[0], utils.getPtr( tmparr ), prob.N * sizeof( doublereal ) )
+
         if( prob.objL is not None ):
-            memcpy( &self.cVec[0], utils.getPtr( utils.convFortran( prob.objL ) ),
-                    prob.N * sizeof( doublereal ) )
+            tmparr = utils.arraySanitize( prob.objL, dtype=doublereal_dtype, fortran=True )
+            memcpy( &self.cVec[0], utils.getPtr( tmparr ), prob.N * sizeof( doublereal ) )
+
         if( prob.Nconslin > 0 ):
-            memcpy( &self.bl[prob.N],
-                    utils.getPtr( utils.convFortran( prob.conslinlb ) ),
+            tmparr = utils.arraySanitize( prob.conslinlb, dtype=doublereal_dtype, fortran=True )
+            memcpy( &self.bl[prob.N], utils.getPtr( tmparr ),
                     prob.Nconslin * sizeof( doublereal ) )
-            memcpy( &self.bu[prob.N],
-                    utils.getPtr( utils.convFortran( prob.conslinub ) ),
+
+            tmparr = utils.arraySanitize( prob.conslinub, dtype=doublereal_dtype, fortran=True )
+            memcpy( &self.bu[prob.N], utils.getPtr( tmparr ),
                     prob.Nconslin * sizeof( doublereal ) )
-            memcpy( &self.C[0],
-                    utils.getPtr( utils.convFortran( prob.conslinA ) ),
+
+            tmparr = utils.arraySanitize( prob.conslinA, dtype=doublereal_dtype, fortran=True )
+            memcpy( &self.C[0], utils.getPtr( tmparr ),
                     prob.Nconslin * prob.N * sizeof( doublereal ) )
 
 
@@ -207,11 +220,13 @@ cdef class Solver( base.Solver ):
 
 
     def warmStart( self ):
+        cdef cnp.ndarray tmparr
+
         if( not isinstance( self.prob.soln, Soln ) ):
             return False
 
-        memcpy( self.istate,
-                utils.getPtr( utils.convIntFortran( self.prob.soln.istate ) ),
+        tmparr = utils.arraySanitize( self.prob.soln.istate, dtype=integer_dtype, fortran=True )
+        memcpy( self.istate, utils.getPtr( tmparr ),
                 ( self.prob.N + self.prob.Nconslin ) * sizeof( integer ) )
 
         self.warm_start = True
@@ -252,15 +267,16 @@ cdef class Solver( base.Solver ):
         cdef integer iter_out[1]
         cdef integer inform_out[1]
         cdef doublereal objf_val[1]
+        cdef cnp.ndarray tmparr
 
         ## Begin by setting up initial condition
-        memcpy( self.x, utils.getPtr( utils.convFortran( self.prob.init ) ),
-                self.prob.N * sizeof( doublereal ) )
+        tmparr = utils.arraySanitize( self.prob.init, dtype=doublereal_dtype, fortran=True )
+        memcpy( self.x, utils.getPtr( tmparr ), self.prob.N * sizeof( doublereal ) )
 
         ## Set quadratic obj term if available, it is overwritten after each run, pg. 9
         if( self.prob.objQ is not None ):
-            memcpy( &self.A[0],
-                    utils.getPtr( utils.convFortran( self.prob.objQ ) ),
+            tmparr = utils.arraySanitize( self.prob.objQ, dtype=doublereal_dtype, fortran=True )
+            memcpy( &self.A[0], utils.getPtr( tmparr ),
                     self.prob.N * self.prob.N * sizeof( doublereal ) )
 
         ## Supress echo options and reset optional values, pg. 13
@@ -368,16 +384,16 @@ cdef class Solver( base.Solver ):
         self.prob.soln = Soln()
         self.prob.soln.value = float( objf_val[0] )
         self.prob.soln.final = np.copy( utils.wrap1dPtr( self.x, self.prob.N,
-                                                         utils.doublereal_type ) )
+                                                         doublereal_type ) )
         self.prob.soln.istate = np.copy( utils.wrap1dPtr( self.istate,
                                                           self.prob.N + self.prob.Nconslin,
-                                                          utils.integer_type ) )
+                                                          integer_type ) )
         self.prob.soln.clamda = np.copy( utils.wrap1dPtr( self.clamda,
                                                           self.prob.N + self.prob.Nconslin,
-                                                          utils.doublereal_type ) )
+                                                          doublereal_type ) )
         self.prob.soln.R = np.copy( utils.wrap2dPtr( self.A,
                                                      self.prob.N, self.prob.N,
-                                                     utils.doublereal_type ) )
+                                                     doublereal_type, fortran=True ) )
         self.prob.soln.Niters = int( iter_out[0] )
         self.prob.soln.retval = int( inform_out[0] )
 

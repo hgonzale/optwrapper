@@ -17,6 +17,8 @@ import nlp
 ## we can safely assume 64-bit values since we already checked using scons
 cdef int doublereal_type = cnp.NPY_FLOAT64
 cdef int integer_type = cnp.NPY_INT64
+cdef type doublereal_dtype = np.float64
+cdef type integer_dtype = np.int64
 
 ## The functions funobj and funcon should be static methods in npsol.Solver,
 ## but it appears that Cython doesn't support static cdef methods yet.
@@ -64,7 +66,7 @@ cdef int funcon( integer* mode, integer* ncnln,
 
     if( mode[0] > 0 ):
         memset( cJac, 0, ncnln[0] * n[0] * sizeof( doublereal ) )
-        cJacarr = utils.wrap2dPtr( cJac, ncnln[0], n[0], doublereal_type )
+        cJacarr = utils.wrap2dPtr( cJac, ncnln[0], n[0], doublereal_type, fortran=True )
         extprob.consg( cJacarr, xarr )
         if( extprob.consmixedA is not None ):
             cJacarr += extprob.consmixedA
@@ -160,6 +162,7 @@ cdef class Solver( base.Solver ):
 
     def setupProblem( self, prob ):
         global extprob
+        cdef cnp.ndarray tmparr
 
         if( not isinstance( prob, nlp.Problem ) ):
             raise TypeError( "Argument 'prob' must be of type 'nlp.Problem'" )
@@ -196,26 +199,30 @@ cdef class Solver( base.Solver ):
             self.allocate()
 
         ## Copy information from prob to NPSOL's working arrays
-        memcpy( &self.bl[0], utils.getPtr( utils.convFortran( prob.lb ) ),
-                prob.N * sizeof( doublereal ) )
-        memcpy( &self.bu[0], utils.getPtr( utils.convFortran( prob.ub ) ),
-                prob.N * sizeof( doublereal ) )
+        tmparr = utils.arraySanitize( prob.lb, dtype=doublereal_dtype, fortran=True )
+        memcpy( &self.bl[0], utils.getPtr( tmparr ), prob.N * sizeof( doublereal ) )
+
+        tmparr = utils.arraySanitize( prob.ub, dtype=doublereal_dtype, fortran=True )
+        memcpy( &self.bu[0], utils.getPtr( tmparr ), prob.N * sizeof( doublereal ) )
+
         if( prob.Nconslin > 0 ):
-            memcpy( &self.bl[prob.N],
-                    utils.getPtr( utils.convFortran( prob.conslinlb ) ),
-                    prob.Nconslin * sizeof( doublereal ) )
-            memcpy( &self.bu[prob.N],
-                    utils.getPtr( utils.convFortran( prob.conslinub ) ),
-                    prob.Nconslin * sizeof( doublereal ) )
-            memcpy( &self.A[0],
-                    utils.getPtr( utils.convFortran( prob.conslinA ) ),
+            tmparr = utils.arraySanitize( prob.conslinlb, dtype=doublereal_dtype, fortran=True )
+            memcpy( &self.bl[prob.N], utils.getPtr( tmparr ), prob.Nconslin * sizeof( doublereal ) )
+
+            tmparr = utils.arraySanitize( prob.conslinub, dtype=doublereal_dtype, fortran=True )
+            memcpy( &self.bu[prob.N], utils.getPtr( tmparr ), prob.Nconslin * sizeof( doublereal ) )
+
+            tmparr = utils.arraySanitize( prob.conslinA, dtype=doublereal_dtype, fortran=True )
+            memcpy( &self.A[0], utils.getPtr( tmparr ),
                     self.ldA[0] * prob.N * sizeof( doublereal ) )
+
         if( prob.Ncons > 0 ):
-            memcpy( &self.bl[prob.N+prob.Nconslin],
-                    utils.getPtr( utils.convFortran( prob.conslb ) ),
+            tmparr = utils.arraySanitize( prob.conslb, dtype=doublereal_dtype, fortran=True )
+            memcpy( &self.bl[prob.N+prob.Nconslin], utils.getPtr( tmparr ),
                     prob.Ncons * sizeof( doublereal ) )
-            memcpy( &self.bu[prob.N+prob.Nconslin],
-                    utils.getPtr( utils.convFortran( prob.consub ) ),
+
+            tmparr = utils.arraySanitize( prob.consub, dtype=doublereal_dtype, fortran=True )
+            memcpy( &self.bu[prob.N+prob.Nconslin], utils.getPtr( tmparr ),
                     prob.Ncons * sizeof( doublereal ) )
 
 
@@ -282,18 +289,19 @@ cdef class Solver( base.Solver ):
 
 
     def warmStart( self ):
+        cdef cnp.ndarray tmparr
+
         if( not isinstance( self.prob.soln, Soln ) ):
             return False
 
-        memcpy( self.istate,
-                utils.getPtr( utils.convIntFortran( self.prob.soln.istate ) ),
-                self.nctotl * sizeof( integer ) )
-        memcpy( self.clamda,
-                utils.getPtr( utils.convFortran( self.prob.soln.clamda ) ),
-                self.nctotl * sizeof( doublereal ) )
-        memcpy( self.R,
-                utils.getPtr( utils.convFortran( self.prob.soln.R ) ),
-                self.prob.N * self.prob.N * sizeof( doublereal ) )
+        tmparr = utils.arraySanitize( self.prob.soln.istate, dtype=integer_dtype, fortran=True )
+        memcpy( self.istate, utils.getPtr( tmparr ), self.nctotl * sizeof( integer ) )
+
+        tmparr = utils.arraySanitize( self.prob.soln.clamda, dtype=doublereal_dtype, fortran=True )
+        memcpy( self.clamda, utils.getPtr( tmparr ), self.nctotl * sizeof( doublereal ) )
+
+        tmparr = utils.arraySanitize( self.prob.soln.R, dtype=doublereal_dtype, fortran=True )
+        memcpy( self.R, utils.getPtr( tmparr ), self.prob.N * self.prob.N * sizeof( doublereal ) )
 
         self.warm_start = True
         return True
@@ -351,10 +359,11 @@ cdef class Solver( base.Solver ):
         cdef integer iter_out[1]
         cdef integer inform_out[1]
         cdef doublereal objf_val[1]
+        cdef cnp.ndarray tmparr
 
         ## Begin by setting up initial condition
-        memcpy( self.x, utils.getPtr( utils.convFortran( self.prob.init ) ),
-                self.prob.N * sizeof( doublereal ) )
+        tmparr = utils.arraySanitize( self.prob.init, dtype=doublereal_dtype, fortran=True )
+        memcpy( self.x, utils.getPtr( tmparr ), self.prob.N * sizeof( doublereal ) )
 
         ## Supress echo options and reset optional values, pg. 21
         npsol.npoptn_( STR_NOLIST, len( STR_NOLIST ) )
@@ -500,7 +509,7 @@ cdef class Solver( base.Solver ):
         self.prob.soln.clamda = np.copy( utils.wrap1dPtr( self.clamda, self.nctotl,
                                                           doublereal_type ) )
         self.prob.soln.R = np.copy( utils.wrap2dPtr( self.R, self.prob.N, self.prob.N,
-                                                     doublereal_type ) )
+                                                     doublereal_type, fortran=True ) )
         self.prob.soln.Niters = int( iter_out[0] )
         self.prob.soln.retval = int( inform_out[0] )
 

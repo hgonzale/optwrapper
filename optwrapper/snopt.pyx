@@ -20,6 +20,8 @@ import nlp
 ## we can safely assume 64-bit values since we already checked using scons
 cdef int doublereal_type = cnp.NPY_FLOAT64
 cdef int integer_type = cnp.NPY_INT64
+cdef type doublereal_dtype = np.float64
+cdef type integer_dtype = np.int64
 
 
 cdef class Soln( base.Soln ):
@@ -210,6 +212,7 @@ cdef class Solver( base.Solver ):
 
     def setupProblem( self, prob ):
         cdef utils.sMatrix Asparse
+        cdef cnp.ndarray tmparr
 
         global extprob
         global objGsparse
@@ -271,13 +274,11 @@ cdef class Solver( base.Solver ):
             self.allocate()
 
         ## copy box constraints limits
-        tmp = utils.convFortran( prob.lb )
-        memcpy( self.xlow, utils.getPtr( tmp ),
-                self.n[0] * sizeof( doublereal ) )
+        tmparr = utils.arraySanitize( prob.lb, dtype=doublereal_dtype, fortran=True )
+        memcpy( self.xlow, utils.getPtr( tmparr ), self.n[0] * sizeof( doublereal ) )
 
-        tmp = utils.convFortran( prob.ub )
-        memcpy( self.xupp, utils.getPtr( tmp ),
-                self.n[0] * sizeof( doublereal ) )
+        tmparr = utils.arraySanitize( prob.ub, dtype=doublereal_dtype, fortran=True )
+        memcpy( self.xupp, utils.getPtr( tmparr ), self.n[0] * sizeof( doublereal ) )
 
         ## copy index data of G
         ## row 0 of G belongs to objg
@@ -300,23 +301,21 @@ cdef class Solver( base.Solver ):
         self.Fupp[0] = np.inf
         ## linear constraints limits
         if( prob.Nconslin > 0 ):
-            tmp = utils.convFortran( prob.conslinlb )
-            memcpy( &self.Flow[1],
-                    utils.getPtr( tmp ),
+            tmparr = utils.arraySanitize( prob.conslinlb, dtype=doublereal_dtype, fortran=True )
+            memcpy( &self.Flow[1], utils.getPtr( tmparr ),
                     prob.Nconslin * sizeof( doublereal ) )
-            tmp = utils.convFortran( prob.conslinub )
-            memcpy( &self.Fupp[1],
-                    utils.getPtr( tmp ),
+
+            tmparr = utils.arraySanitize( prob.conslinub, dtype=doublereal_dtype, fortran=True )
+            memcpy( &self.Fupp[1], utils.getPtr( tmparr ),
                     prob.Nconslin * sizeof( doublereal ) )
         ## nonlinear constraints limits
         if( prob.Ncons > 0 ):
-            tmp = utils.convFortran( prob.conslb )
-            memcpy( &self.Flow[1 + prob.Nconslin],
-                    utils.getPtr( tmp ),
+            tmparr = utils.arraySanitize( prob.conslb, dtype=doublereal_dtype, fortran=True )
+            memcpy( &self.Flow[1 + prob.Nconslin], utils.getPtr( tmparr ),
                     prob.Ncons * sizeof( doublereal ) )
-            tmp = utils.convFortran( prob.consub )
-            memcpy( &self.Fupp[1 + prob.Nconslin],
-                    utils.getPtr( tmp ),
+
+            tmparr = utils.arraySanitize( prob.consub, dtype=doublereal_dtype, fortran=True )
+            memcpy( &self.Fupp[1 + prob.Nconslin], utils.getPtr( tmparr ),
                     prob.Ncons * sizeof( doublereal ) )
 
         ## initialize other vectors with zeros
@@ -469,14 +468,17 @@ cdef class Solver( base.Solver ):
 
 
     def warmStart( self ):
+        cdef cnp.ndarray tmparr
+
         if( not isinstance( self.prob.soln, Soln ) ):
             return False
 
-        tmp = utils.convIntFortran( self.prob.soln.xstate )
-        memcpy( self.xstate, utils.getPtr( tmp ),
+        tmparr = utils.arraySanitize( self.prob.soln.xstate, dtype=integer_dtype, fortran=True )
+        memcpy( self.xstate, utils.getPtr( tmparr ),
                 self.n[0] * sizeof( integer ) )
-        tmp = utils.convIntFortran( self.prob.soln.Fstate )
-        memcpy( self.Fstate, utils.getPtr( tmp ),
+
+        tmparr = utils.arraySanitize( self.prob.soln.Fstate, dtype=integer_dtype, fortran=True )
+        memcpy( self.Fstate, utils.getPtr( tmparr ),
                 self.nF[0] * sizeof( integer ) )
 
         self.Start[0] = 2
@@ -596,10 +598,11 @@ cdef class Solver( base.Solver ):
         cdef char *probname = "optwrapp" ## Must have 8 characters
         cdef char *xnames = "dummy"
         cdef char *Fnames = "dummy"
+        cdef cnp.ndarray tmparr
 
         ## Begin by setting up initial condition
-        tmpinit = utils.convFortran( self.prob.init )
-        memcpy( self.x, utils.getPtr( tmpinit ),
+        tmparr = utils.arraySanitize( self.prob.init, dtype=doublereal_dtype, fortran=True )
+        memcpy( self.x, utils.getPtr( tmparr ),
                 self.n[0] * sizeof( doublereal ) )
 
         ## Handle debug files
