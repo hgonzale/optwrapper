@@ -36,7 +36,7 @@ cdef extern from "coin/IpStdCInterface.h":
 
     struct IpoptProblemInfo
 
-    ctypedef struct IpoptProblemInfo* IpoptProblem
+    ctypedef IpoptProblemInfo* IpoptProblem
 
     ctypedef Bool (*Eval_F_CB)( Index n, Number* x, Bool new_x,
                                 Number* obj_value, UserDataPtr user_data )
@@ -53,11 +53,11 @@ cdef extern from "coin/IpStdCInterface.h":
                                     UserDataPtr user_data )
 
     ctypedef Bool (*Eval_H_CB)( Index n, Number *x, Bool new_x, Number obj_factor,
-                                Index m, Number *lambda, Bool new_lambda,
+                                Index m, Number *lamda, Bool new_lambda,
                                 Index nele_hess, Index *iRow, Index *jCol,
                                 Number *values, UserDataPtr user_data )
 
-    ctypedef Bool (*Intermediate_CB)( Index alg_mod, /* 0 is regular, 1 is resto */
+    ctypedef Bool (*Intermediate_CB)( Index alg_mod,
 				                      Index iter_count, Number obj_value,
 				                      Number inf_pr, Number inf_du,
 				                      Number mu, Number d_norm,

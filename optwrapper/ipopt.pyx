@@ -3,12 +3,12 @@
 
 from libc.string cimport memcpy, memset
 from libc.stdlib cimport malloc, free
-from libc.stdint cimport int32_t
+from libc.stdint cimport int32_t, int64_t
 cimport numpy as cnp
 import numpy as np
 import os
 
-from ipstdcinterfaceh import Number, Index, Int, Bool
+from ipstdcinterfaceh cimport Number, Index, Int, Bool, UserDataPtr
 cimport ipstdcinterfaceh as ipopt ## import functions exposed in IpStdCInterface.h
 cimport utils
 cimport base
@@ -25,8 +25,8 @@ if( sizeof( Index ) == 4 ):
 
 ## helper static function usrfun that evaluate user-defined functions in Solver.prob
 cdef object extprob
-cdef utils.sMatrix consGsparse
 cdef utils.sMatrix Asparse
+cdef utils.sMatrix consGsparse
 
 
 ## These evaluation functions are detailed under "C++ Interface" at:
@@ -79,19 +79,19 @@ cdef Bool eval_consg( Index n, Number *x, Bool new_x,
     if( values == NULL ):
         if( sizeof( Index ) == 4 ):
             if( Asparse.nnz > 0 ):
-                Asparse.copyIdxs32( <int32_t *> &self.iRow[0],
-                                    <int32_t *> &self.jCol[0] )
+                Asparse.copyIdxs32( <int32_t *> &iRow[0],
+                                    <int32_t *> &jCol[0] )
             if( consGsparse.nnz > 0 ):
-                consGsparse.copyIdxs32( <int32_t *> &self.iRow[Asparse.nnz],
-                                        <int32_t *> &self.jCol[Asparse.nnz],
+                consGsparse.copyIdxs32( <int32_t *> &iRow[Asparse.nnz],
+                                        <int32_t *> &jCol[Asparse.nnz],
                                         roffset = extprob.Nconslin )
         else:
             if( Asparse.nnz > 0 ):
-                Asparse.copyIdxs( <int64_t *> &self.iRow[0],
-                                  <int64_t *> &self.jCol[0] )
+                Asparse.copyIdxs( <int64_t *> &iRow[0],
+                                  <int64_t *> &jCol[0] )
             if( consGsparse.nnz > 0 ):
-                consGsparse.copyIdxs( <int64_t *> &self.iRow[Asparse.nnz],
-                                      <int64_t *> &self.jCol[Asparse.nnz],
+                consGsparse.copyIdxs( <int64_t *> &iRow[Asparse.nnz],
+                                      <int64_t *> &jCol[Asparse.nnz],
                                       roffset = extprob.Nconslin )
     else:
         xarr = utils.wrap1dPtr( x, n, Number_type )
@@ -251,10 +251,10 @@ cdef class Solver( base.Solver ):
 
         self.nlp = ipopt.CreateIpoptProblem( self.N, self.x_L, self.x_U,
                                              self.Ntotcons, self.g_L, self.g_U,
-                                             Asparse.nnz + consGsparse.nnz, 0, 0
+                                             Asparse.nnz + consGsparse.nnz, 0, 0,
                                              <ipopt.Eval_F_CB> eval_objf,
-                                             <ipopt.Eval_Grad_F_CB> eval_objg,
                                              <ipopt.Eval_G_CB> eval_consf,
+                                             <ipopt.Eval_Grad_F_CB> eval_objg,
                                              <ipopt.Eval_Jac_G_CB> eval_consg,
                                              <ipopt.Eval_H_CB> eval_lagrangianh )
         self.nlp_alloc = True
@@ -335,11 +335,12 @@ cdef class Solver( base.Solver ):
 
 
     cdef int processOptions( self ):
+        cdef bytes tmpb
         if( not self.nlp_alloc ):
             return False
 
         ## Manage legacy keys
-        if( ( "output_file" is not in self.options or
+        if( ( "output_file" not in self.options or
               self.options["output_file"] is None ) and
             "printFile" in self.options ):
             self.options["output_file"] = self.options["printFile"]
@@ -350,8 +351,8 @@ cdef class Solver( base.Solver ):
             elif( isinstance( self.options[key], float ) ):
                 ipopt.AddIpoptNumOption( self.nlp, key, self.options[key] )
             elif( isinstance( self.options[key], str ) ):
-                ipopt.AddIpoptStrOption( self.nlp, key,
-                                         <char*> self.options[key].encode( "latin_1" ) )
+                tmpb = self.options[key].encode( "latin_1" )
+                ipopt.AddIpoptStrOption( self.nlp, key, <char*> tmpb )
             else:
                 raise TypeError( "Could not process option " +
                                  "'{0}': '{1}' with type '{2}'".format( key, self.options[key],
@@ -371,7 +372,7 @@ cdef class Solver( base.Solver ):
         self.processOptions()
 
         ## Call Ipopt
-        status = ipopt.IpoptSolve( self.nlp, self.x self.g, obj_val, self.mult_g,
+        status = ipopt.IpoptSolve( self.nlp, self.x, self.g, obj_val, self.mult_g,
                                    self.mult_x_L, self.mult_x_U, NULL )
 
         ## Save result to prob

@@ -38,6 +38,12 @@ if( @snopt@ ):
                                                 "blas",
                                                 "m" ] ) )
 
+if( @ipopt@ ):
+    extensions.append( Extension( "optwrapper.ipopt",
+                                  sources = [ "optwrapper/ipopt.pyx" ],
+                                  include_dirs = [ np.get_include(), "." ],
+                                  libraries = [ "ipopt" ] ) )
+
 setup( name = "OptWrapper",
        version = "{0}.{1}".format( major, minor ),
        description = "Common interface for numerical optimization solvers",
