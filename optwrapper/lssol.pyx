@@ -88,15 +88,15 @@ cdef class Solver( base.Solver ):
             self.setupProblem( prob )
 
         ## Set print options
-        self.printOpts[ "summaryFile" ] = None
-        self.printOpts[ "printLevel" ] = None
+        self.options[ "summaryFile" ] = None
+        self.options[ "printLevel" ] = None
         ## Set solve options
-        self.solveOpts[ "crashTol" ] = None
-        self.solveOpts[ "iterLimit" ] = None
-        self.solveOpts[ "feasibilityTol" ] = None
-        self.solveOpts[ "infBoundSize" ] = None
-        self.solveOpts[ "infStepSize" ] = None
-        self.solveOpts[ "rankTol" ] = None
+        self.options[ "crashTol" ] = None
+        self.options[ "iterLimit" ] = None
+        self.options[ "feasibilityTol" ] = None
+        self.options[ "infBoundSize" ] = None
+        self.options[ "infStepSize" ] = None
+        self.options[ "rankTol" ] = None
 
 
     def setupProblem( self, prob ):
@@ -284,15 +284,15 @@ cdef class Solver( base.Solver ):
         lssol.lsoptn_( STR_DEFAULTS, len( STR_DEFAULTS ) )
 
         ## Handle debug files
-        if( self.printOpts[ "printFile" ] is not None and
-            self.printOpts[ "printFile" ] != "" ):
+        if( self.options[ "printFile" ] is not None and
+            self.options[ "printFile" ] != "" ):
             printFileUnit[0] = 90 ## Hardcoded since nobody cares
         else:
             printFileUnit[0] = 0 ## disabled by default, pg. 27
 
-        if( self.printOpts[ "summaryFile" ] is not None and
-              self.printOpts[ "summaryFile" ] != "" ):
-            if( self.printOpts[ "summaryFile" ].lower() == "stdout" ):
+        if( self.options[ "summaryFile" ] is not None and
+              self.options[ "summaryFile" ] != "" ):
+            if( self.options[ "summaryFile" ].lower() == "stdout" ):
                 summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
             else:
                 summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
@@ -307,36 +307,36 @@ cdef class Solver( base.Solver ):
             lssol.lsoptn_( STR_WARM_START, len( STR_WARM_START ) )
             self.warm_start = False ## Reset variable
 
-        if( self.solveOpts[ "crashTol" ] is not None ):
-            crashTol[0] = self.solveOpts[ "crashTol" ]
+        if( self.options[ "crashTol" ] is not None ):
+            crashTol[0] = self.options[ "crashTol" ]
             lssol.lsoptr_( STR_CRASH_TOLERANCE, crashTol, len( STR_CRASH_TOLERANCE ) )
 
-        if( self.solveOpts[ "iterLimit" ] is not None ):
-            iterLimit[0] = self.solveOpts[ "iterLimit" ]
+        if( self.options[ "iterLimit" ] is not None ):
+            iterLimit[0] = self.options[ "iterLimit" ]
             lssol.lsopti_( STR_FEASIBILITY_PHASE_ITERATION_LIMIT, iterLimit,
                            len( STR_FEASIBILITY_PHASE_ITERATION_LIMIT ) )
             lssol.lsopti_( STR_OPTIMALITY_PHASE_ITERATION_LIMIT, iterLimit,
                            len( STR_OPTIMALITY_PHASE_ITERATION_LIMIT ) )
 
-        if( self.solveOpts[ "feasibilityTol" ] is not None ):
-            feasibilityTol[0] = self.solveOpts[ "feasibilityTol" ]
+        if( self.options[ "feasibilityTol" ] is not None ):
+            feasibilityTol[0] = self.options[ "feasibilityTol" ]
             lssol.lsoptr_( STR_FEASIBILITY_TOLERANCE, feasibilityTol,
                            len( STR_FEASIBILITY_TOLERANCE ) )
 
-        if( self.solveOpts[ "infBoundSize" ] is not None ):
-            infBoundSize[0] = self.solveOpts[ "infBoundSize" ]
+        if( self.options[ "infBoundSize" ] is not None ):
+            infBoundSize[0] = self.options[ "infBoundSize" ]
             lssol.lsoptr_( STR_INFINITE_BOUND_SIZE, infBoundSize, len( STR_INFINITE_BOUND_SIZE ) )
 
-        if( self.solveOpts[ "infStepSize" ] is not None ):
-            infStepSize[0] = self.solveOpts[ "infStepSize" ]
+        if( self.options[ "infStepSize" ] is not None ):
+            infStepSize[0] = self.options[ "infStepSize" ]
             lssol.lsoptr_( STR_INFINITE_STEP_SIZE, infStepSize, len( STR_INFINITE_STEP_SIZE ) )
 
-        if( self.printOpts[ "printLevel" ] is not None ):
-            printLevel[0] = self.printOpts[ "printLevel" ]
+        if( self.options[ "printLevel" ] is not None ):
+            printLevel[0] = self.options[ "printLevel" ]
             lssol.lsopti_( STR_PRINT_LEVEL, printLevel, len( STR_PRINT_LEVEL ) )
 
-        if( self.solveOpts[ "rankTol" ] is not None ):
-            rankTol[0] = self.solveOpts[ "rankTol" ]
+        if( self.options[ "rankTol" ] is not None ):
+            rankTol[0] = self.options[ "rankTol" ]
             lssol.lsoptr_( STR_RANK_TOLERANCE, rankTol, len( STR_RANK_TOLERANCE ) )
 
         if( self.prob_type == fp ):
@@ -357,20 +357,20 @@ cdef class Solver( base.Solver ):
                       self.iw, self.leniw, self.w, self.lenw )
 
         ## Try to rename fortran print and summary files
-        if( self.printOpts[ "printFile" ] is not None and
-            self.printOpts[ "printFile" ] != "" ):
+        if( self.options[ "printFile" ] is not None and
+            self.options[ "printFile" ] != "" ):
             try:
                 os.rename( "fort.{0}".format( printFileUnit[0] ),
-                           self.printOpts[ "printFile" ] )
+                           self.options[ "printFile" ] )
             except:
                 pass
 
-        if( self.printOpts[ "summaryFile" ] is not None and
-            self.printOpts[ "summaryFile" ] != "" and
-            self.printOpts[ "summaryFile" ].lower() != "stdout" ):
+        if( self.options[ "summaryFile" ] is not None and
+            self.options[ "summaryFile" ] != "" and
+            self.options[ "summaryFile" ].lower() != "stdout" ):
             try:
                 os.rename( "fort.{0}".format( summaryFileUnit[0] ),
-                           self.printOpts[ "summaryFile" ] )
+                           self.options[ "summaryFile" ] )
             except:
                 pass
 

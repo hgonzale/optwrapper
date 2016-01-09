@@ -139,7 +139,6 @@ cdef class Solver( base.Solver ):
     cdef integer lenrw[1]
     cdef integer Start[1]
 
-    cdef int warm_start
     cdef int mem_alloc
     cdef integer mem_size[4]
     cdef int mem_alloc_ws
@@ -158,56 +157,56 @@ cdef class Solver( base.Solver ):
             self.setupProblem( prob )
 
         ## Set options
-        self.printOpts[ "summaryFile" ] = None
-        self.printOpts[ "printLevel" ] = None
-        self.printOpts[ "minorPrintLevel" ] = None
-        self.printOpts[ "printFreq" ] = None
-        self.printOpts[ "scalePrint" ] = None
-        self.printOpts[ "solutionPrint" ] = None
-        self.printOpts[ "systemInfo" ] = None
-        self.printOpts[ "timingLevel" ] = None
+        self.options[ "summaryFile" ] = None
+        self.options[ "printLevel" ] = None
+        self.options[ "minorPrintLevel" ] = None
+        self.options[ "printFreq" ] = None
+        self.options[ "scalePrint" ] = None
+        self.options[ "solutionPrint" ] = None
+        self.options[ "systemInfo" ] = None
+        self.options[ "timingLevel" ] = None
 
-        self.solveOpts[ "centralDiffInterval" ] = None
-        self.solveOpts[ "checkFreq" ] = None
-        self.solveOpts[ "crashOpt" ] = None
-        self.solveOpts[ "crashTol" ] = None
-        self.solveOpts[ "nonderivLinesearch"] = None
-        self.solveOpts[ "diffInterval" ] = None
-        self.solveOpts[ "elasticWeight" ] = None
-        self.solveOpts[ "expandFreq" ] = None
-        self.solveOpts[ "factorizationFreq" ] = None
-        self.solveOpts[ "feasiblePoint" ] = None
-        self.solveOpts[ "fctnPrecision" ] = None
-        self.solveOpts[ "hessianFreq" ] = None
-        self.solveOpts[ "hessianMemory" ] = None
-        self.solveOpts[ "hessianUpdates" ] = None
-        self.solveOpts[ "infBound" ] = None
-        self.solveOpts[ "iterLimit" ] = None
-        self.solveOpts[ "linesearchTol" ] = None
-        self.solveOpts[ "luFactorTol" ] = None
-        self.solveOpts[ "luUpdateTol" ] = None
-        self.solveOpts[ "luPivoting" ] = None
-        self.solveOpts[ "luDensityTol" ] = None
-        self.solveOpts[ "luSingularityTol" ] = None
-        self.solveOpts[ "majorFeasibilityTol" ] = None
-        self.solveOpts[ "majorIterLimit" ] = None
-        self.solveOpts[ "majorOptimalityTol" ] = None
-        self.solveOpts[ "majorStepLimit" ] = None
-        self.solveOpts[ "minorIterLimit" ] = None
-        self.solveOpts[ "minorFeasibilityTol" ] = None
-        self.solveOpts[ "newSuperbasicsLimit" ] = None
-        self.solveOpts[ "partialPrice" ] = None
-        self.solveOpts[ "pivotTol" ] = None
-        self.solveOpts[ "proximalPointMethod" ] = None
-        self.solveOpts[ "qpSolver" ] = None
-        self.solveOpts[ "reducedHessianDim" ] = None
-        self.solveOpts[ "scaleOption" ] = None
-        self.solveOpts[ "scaleTol" ] = None
-        self.solveOpts[ "superbasicsLimit" ] = None
-        self.solveOpts[ "unboundedObjValue" ] = None
-        self.solveOpts[ "unboundedStepSize" ] = None
-        self.solveOpts[ "verifyLevel" ] = None
-        self.solveOpts[ "violationLimit" ] = None
+        self.options[ "centralDiffInterval" ] = None
+        self.options[ "checkFreq" ] = None
+        self.options[ "crashOpt" ] = None
+        self.options[ "crashTol" ] = None
+        self.options[ "nonderivLinesearch"] = None
+        self.options[ "diffInterval" ] = None
+        self.options[ "elasticWeight" ] = None
+        self.options[ "expandFreq" ] = None
+        self.options[ "factorizationFreq" ] = None
+        self.options[ "feasiblePoint" ] = None
+        self.options[ "fctnPrecision" ] = None
+        self.options[ "hessianFreq" ] = None
+        self.options[ "hessianMemory" ] = None
+        self.options[ "hessianUpdates" ] = None
+        self.options[ "infBound" ] = None
+        self.options[ "iterLimit" ] = None
+        self.options[ "linesearchTol" ] = None
+        self.options[ "luFactorTol" ] = None
+        self.options[ "luUpdateTol" ] = None
+        self.options[ "luPivoting" ] = None
+        self.options[ "luDensityTol" ] = None
+        self.options[ "luSingularityTol" ] = None
+        self.options[ "majorFeasibilityTol" ] = None
+        self.options[ "majorIterLimit" ] = None
+        self.options[ "majorOptimalityTol" ] = None
+        self.options[ "majorStepLimit" ] = None
+        self.options[ "minorIterLimit" ] = None
+        self.options[ "minorFeasibilityTol" ] = None
+        self.options[ "newSuperbasicsLimit" ] = None
+        self.options[ "partialPrice" ] = None
+        self.options[ "pivotTol" ] = None
+        self.options[ "proximalPointMethod" ] = None
+        self.options[ "qpSolver" ] = None
+        self.options[ "reducedHessianDim" ] = None
+        self.options[ "scaleOption" ] = None
+        self.options[ "scaleTol" ] = None
+        self.options[ "superbasicsLimit" ] = None
+        self.options[ "unboundedObjValue" ] = None
+        self.options[ "unboundedStepSize" ] = None
+        self.options[ "verifyLevel" ] = None
+        self.options[ "violationLimit" ] = None
 
 
     def setupProblem( self, prob ):
@@ -606,26 +605,26 @@ cdef class Solver( base.Solver ):
                 self.n[0] * sizeof( doublereal ) )
 
         ## Handle debug files
-        if( self.printOpts[ "printFile" ] is not None and
-            self.printOpts[ "printFile" ] != "" ):
+        if( self.options[ "printFile" ] is not None and
+            self.options[ "printFile" ] != "" ):
             printFileUnit[0] = 90 ## Hardcoded since nobody cares
             if( self.debug ):
-                print( ">>> Sending print file to " + self.printOpts[ "printFile" ] )
+                print( ">>> Sending print file to " + self.options[ "printFile" ] )
         else:
             printFileUnit[0] = 0 ## disabled by default, pg. 27
             if( self.debug ):
                 print( ">>> Print file is disabled" )
 
-        if( self.printOpts[ "summaryFile" ] is not None and
-            self.printOpts[ "summaryFile" ] != "" ):
-            if( self.printOpts[ "summaryFile" ].lower() == "stdout" ):
+        if( self.options[ "summaryFile" ] is not None and
+            self.options[ "summaryFile" ] != "" ):
+            if( self.options[ "summaryFile" ].lower() == "stdout" ):
                 summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
                 if( self.debug ):
                     print( ">>> Sending summary to stdout" )
             else:
                 summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
                 if( self.debug ):
-                    print( ">>> Sending summary to " + self.printOpts[ "summaryFile" ] )
+                    print( ">>> Sending summary to " + self.options[ "summaryFile" ] )
         else:
             summaryFileUnit[0] = 0 ## disabled by default, pg. 28
             if( self.debug ):
@@ -643,20 +642,20 @@ cdef class Solver( base.Solver ):
             ezset( STR_SUPPRESS_PARAMETERS, True )
 
         ## The following settings change the outcome of snmema, pg. 29
-        if( self.solveOpts[ "hessianMemory" ] is not None ):
-            if( self.solveOpts[ "hessianMemory" ].lower() == "full" ):
+        if( self.options[ "hessianMemory" ] is not None ):
+            if( self.options[ "hessianMemory" ].lower() == "full" ):
                 ezset( STR_HESSIAN_FULL_MEMORY, True )
-            elif( self.solveOpts[ "hessianMemory" ].lower() == "limited" ):
+            elif( self.options[ "hessianMemory" ].lower() == "limited" ):
                 ezset( STR_HESSIAN_LIMITED_MEMORY, True )
 
-        if( self.solveOpts[ "hessianUpdates" ] is not None ):
-            ezseti( STR_HESSIAN_UPDATES, self.solveOpts[ "hessianUpdates" ], True )
+        if( self.options[ "hessianUpdates" ] is not None ):
+            ezseti( STR_HESSIAN_UPDATES, self.options[ "hessianUpdates" ], True )
 
-        if( self.solveOpts[ "reducedHessianDim" ] is not None ):
-            ezseti( STR_REDUCED_HESSIAN_DIMENSION, self.solveOpts[ "reducedHessianDim" ], True )
+        if( self.options[ "reducedHessianDim" ] is not None ):
+            ezseti( STR_REDUCED_HESSIAN_DIMENSION, self.options[ "reducedHessianDim" ], True )
 
-        if( self.solveOpts[ "superbasicsLimit" ] is not None ):
-            ezseti( STR_SUPERBASICS_LIMIT, self.solveOpts[ "superbasicsLimit" ], True )
+        if( self.options[ "superbasicsLimit" ] is not None ):
+            ezseti( STR_SUPERBASICS_LIMIT, self.options[ "superbasicsLimit" ], True )
 
         ## Now we get to know how much memory we need
         snopt.snmema_( inform_out, self.nF, self.n, nxname, nFname, self.lenA, self.lenG,
@@ -700,147 +699,147 @@ cdef class Solver( base.Solver ):
             raise Exception( "Could not set workspace lengths" )
 
         ## Set rest of the parameters
-        if( self.solveOpts[ "centralDiffInterval" ] is not None ):
-            ezsetr( STR_CENTRAL_DIFFERENCE_INTERVAL, self.solveOpts[ "centralDiffInterval" ] )
+        if( self.options[ "centralDiffInterval" ] is not None ):
+            ezsetr( STR_CENTRAL_DIFFERENCE_INTERVAL, self.options[ "centralDiffInterval" ] )
 
-        if( self.solveOpts[ "checkFreq" ] is not None ):
-            ezseti( STR_CHECK_FREQUENCY, self.solveOpts[ "checkFreq" ] )
+        if( self.options[ "checkFreq" ] is not None ):
+            ezseti( STR_CHECK_FREQUENCY, self.options[ "checkFreq" ] )
 
-        if( self.solveOpts[ "crashOpt" ] is not None ):
-            ezseti( STR_CRASH_OPTION, self.solveOpts[ "crashOpt" ] )
+        if( self.options[ "crashOpt" ] is not None ):
+            ezseti( STR_CRASH_OPTION, self.options[ "crashOpt" ] )
 
-        if( self.solveOpts[ "crashTol" ] is not None ):
-            ezseti( STR_CRASH_TOLERANCE, self.solveOpts[ "crashTol" ] )
+        if( self.options[ "crashTol" ] is not None ):
+            ezseti( STR_CRASH_TOLERANCE, self.options[ "crashTol" ] )
 
-        if( self.solveOpts[ "nonderivLinesearch"] is not None ):
+        if( self.options[ "nonderivLinesearch"] is not None ):
             ezset( STR_NONDERIVATIVE_LINESEARCH )
 
-        if( self.solveOpts[ "diffInterval" ] is not None ):
-            ezsetr( STR_DIFFERENCE_INTERVAL, self.solveOpts[ "diffInterval" ] )
+        if( self.options[ "diffInterval" ] is not None ):
+            ezsetr( STR_DIFFERENCE_INTERVAL, self.options[ "diffInterval" ] )
 
-        if( self.solveOpts[ "elasticWeight" ] is not None ):
-            ezsetr( STR_ELASTIC_WEIGHT, self.solveOpts[ "elasticWeight" ] )
+        if( self.options[ "elasticWeight" ] is not None ):
+            ezsetr( STR_ELASTIC_WEIGHT, self.options[ "elasticWeight" ] )
 
-        if( self.solveOpts[ "expandFreq" ] is not None ):
-            ezseti( STR_EXPAND_FREQUENCY, self.solveOpts[ "expandFreq" ] )
+        if( self.options[ "expandFreq" ] is not None ):
+            ezseti( STR_EXPAND_FREQUENCY, self.options[ "expandFreq" ] )
 
-        if( self.solveOpts[ "factorizationFreq" ] is not None ):
-            ezseti( STR_FACTORIZATION_FREQUENCY, self.solveOpts[ "factorizationFreq" ] )
+        if( self.options[ "factorizationFreq" ] is not None ):
+            ezseti( STR_FACTORIZATION_FREQUENCY, self.options[ "factorizationFreq" ] )
 
-        if( self.solveOpts[ "feasiblePoint" ] is not None ):
+        if( self.options[ "feasiblePoint" ] is not None ):
             ezset( STR_FEASIBLE_POINT )
 
-        if( self.solveOpts[ "fctnPrecision" ] is not None ):
-            ezsetr( STR_FUNCTION_PRECISION, self.solveOpts[ "fctnPrecision" ] )
+        if( self.options[ "fctnPrecision" ] is not None ):
+            ezsetr( STR_FUNCTION_PRECISION, self.options[ "fctnPrecision" ] )
 
-        if( self.solveOpts[ "hessianFreq" ] is not None ):
-            ezseti( STR_HESSIAN_FREQUENCY, self.solveOpts[ "hessianFreq" ] )
+        if( self.options[ "hessianFreq" ] is not None ):
+            ezseti( STR_HESSIAN_FREQUENCY, self.options[ "hessianFreq" ] )
 
-        if( self.solveOpts[ "infBound" ] is not None ):
-            ezsetr( STR_INFINITE_BOUND, self.solveOpts[ "infBound" ] )
+        if( self.options[ "infBound" ] is not None ):
+            ezsetr( STR_INFINITE_BOUND, self.options[ "infBound" ] )
 
-        if( self.solveOpts[ "iterLimit" ] is not None ):
-            ezseti( STR_ITERATIONS_LIMIT, self.solveOpts[ "iterLimit" ] )
+        if( self.options[ "iterLimit" ] is not None ):
+            ezseti( STR_ITERATIONS_LIMIT, self.options[ "iterLimit" ] )
 
-        if( self.solveOpts[ "linesearchTol" ] is not None ):
-            ezsetr( STR_LINESEARCH_TOLERANCE, self.solveOpts[ "linesearchTol" ] )
+        if( self.options[ "linesearchTol" ] is not None ):
+            ezsetr( STR_LINESEARCH_TOLERANCE, self.options[ "linesearchTol" ] )
 
-        if( self.solveOpts[ "luFactorTol" ] is not None ):
-            ezsetr( STR_LU_FACTOR_TOLERANCE, self.solveOpts[ "luFactorTol" ] )
+        if( self.options[ "luFactorTol" ] is not None ):
+            ezsetr( STR_LU_FACTOR_TOLERANCE, self.options[ "luFactorTol" ] )
 
-        if( self.solveOpts[ "luUpdateTol" ] is not None ):
-            ezsetr( STR_LU_UPDATE_TOLERANCE, self.solveOpts[ "luUpdateTol" ] )
+        if( self.options[ "luUpdateTol" ] is not None ):
+            ezsetr( STR_LU_UPDATE_TOLERANCE, self.options[ "luUpdateTol" ] )
 
-        if( self.solveOpts[ "luPivoting" ] is not None ):
-            if( self.solveOpts[ "luPivoting" ].lower() == "rook" ):
+        if( self.options[ "luPivoting" ] is not None ):
+            if( self.options[ "luPivoting" ].lower() == "rook" ):
                 ezset( STR_LU_ROOK_PIVOTING )
-            elif( self.solveOpts[ "luPivoting" ].lower() == "complete" ):
+            elif( self.options[ "luPivoting" ].lower() == "complete" ):
                 ezset( STR_LU_COMPLETE_PIVOTING )
 
-        if( self.solveOpts[ "luDensityTol" ] is not None ):
-            ezsetr( STR_LU_DENSITY_TOLERANCE, self.solveOpts[ "luDensityTol" ] )
+        if( self.options[ "luDensityTol" ] is not None ):
+            ezsetr( STR_LU_DENSITY_TOLERANCE, self.options[ "luDensityTol" ] )
 
-        if( self.solveOpts[ "luSingularityTol" ] is not None ):
-            ezsetr( STR_LU_SINGULARITY_TOLERANCE, self.solveOpts[ "luSingularityTol" ] )
+        if( self.options[ "luSingularityTol" ] is not None ):
+            ezsetr( STR_LU_SINGULARITY_TOLERANCE, self.options[ "luSingularityTol" ] )
 
-        if( self.solveOpts[ "majorFeasibilityTol" ] is not None ):
-            ezsetr( STR_MAJOR_FEASIBILITY_TOLERANCE, self.solveOpts[ "majorFeasibilityTol" ] )
+        if( self.options[ "majorFeasibilityTol" ] is not None ):
+            ezsetr( STR_MAJOR_FEASIBILITY_TOLERANCE, self.options[ "majorFeasibilityTol" ] )
 
-        if( self.solveOpts[ "majorIterLimit" ] is not None ):
-            ezseti( STR_MAJOR_ITERATIONS_LIMIT, self.solveOpts[ "majorIterLimit" ] )
+        if( self.options[ "majorIterLimit" ] is not None ):
+            ezseti( STR_MAJOR_ITERATIONS_LIMIT, self.options[ "majorIterLimit" ] )
 
-        if( self.solveOpts[ "majorOptimalityTol" ] is not None ):
-            ezsetr( STR_MAJOR_OPTIMALITY_TOLERANCE, self.solveOpts[ "majorOptimalityTol" ] )
+        if( self.options[ "majorOptimalityTol" ] is not None ):
+            ezsetr( STR_MAJOR_OPTIMALITY_TOLERANCE, self.options[ "majorOptimalityTol" ] )
 
-        if( self.printOpts[ "printLevel" ] is not None ):
-            ezseti( STR_MAJOR_PRINT_LEVEL, self.printOpts[ "printLevel" ] )
+        if( self.options[ "printLevel" ] is not None ):
+            ezseti( STR_MAJOR_PRINT_LEVEL, self.options[ "printLevel" ] )
 
-        if( self.solveOpts[ "majorStepLimit" ] is not None ):
-            ezsetr( STR_MAJOR_STEP_LIMIT, self.solveOpts[ "majorStepLimit" ] )
+        if( self.options[ "majorStepLimit" ] is not None ):
+            ezsetr( STR_MAJOR_STEP_LIMIT, self.options[ "majorStepLimit" ] )
 
-        if( self.solveOpts[ "minorIterLimit" ] is not None ):
-            ezseti( STR_MINOR_ITERATIONS_LIMIT, self.solveOpts[ "minorIterLimit" ] )
+        if( self.options[ "minorIterLimit" ] is not None ):
+            ezseti( STR_MINOR_ITERATIONS_LIMIT, self.options[ "minorIterLimit" ] )
 
-        if( self.solveOpts[ "minorFeasibilityTol" ] is not None ):
-            ezsetr( STR_MINOR_FEASIBILITY_TOLERANCE, self.solveOpts[ "minorFeasibilityTol" ] )
+        if( self.options[ "minorFeasibilityTol" ] is not None ):
+            ezsetr( STR_MINOR_FEASIBILITY_TOLERANCE, self.options[ "minorFeasibilityTol" ] )
 
-        if( self.printOpts[ "minorPrintLevel" ] is not None ):
-            ezseti( STR_MINOR_PRINT_LEVEL, self.printOpts[ "minorPrintLevel" ] )
+        if( self.options[ "minorPrintLevel" ] is not None ):
+            ezseti( STR_MINOR_PRINT_LEVEL, self.options[ "minorPrintLevel" ] )
 
-        if( self.solveOpts[ "newSuperbasicsLimit" ] is not None ):
-            ezseti( STR_NEW_SUPERBASICS_LIMIT, self.solveOpts[ "newSuperbasicsLimit" ] )
+        if( self.options[ "newSuperbasicsLimit" ] is not None ):
+            ezseti( STR_NEW_SUPERBASICS_LIMIT, self.options[ "newSuperbasicsLimit" ] )
 
-        if( self.solveOpts[ "partialPrice" ] is not None ):
-            ezseti( STR_PARTIAL_PRICE, self.solveOpts[ "partialPrice" ] )
+        if( self.options[ "partialPrice" ] is not None ):
+            ezseti( STR_PARTIAL_PRICE, self.options[ "partialPrice" ] )
 
-        if( self.solveOpts[ "pivotTol" ] is not None ):
-            ezsetr( STR_PIVOT_TOLERANCE, self.solveOpts[ "pivotTol" ] )
+        if( self.options[ "pivotTol" ] is not None ):
+            ezsetr( STR_PIVOT_TOLERANCE, self.options[ "pivotTol" ] )
 
-        if( self.printOpts[ "printFreq" ] is not None ):
-            ezseti( STR_PRINT_FREQUENCY, self.printOpts[ "printFreq" ] )
+        if( self.options[ "printFreq" ] is not None ):
+            ezseti( STR_PRINT_FREQUENCY, self.options[ "printFreq" ] )
 
-        if( self.solveOpts[ "proximalPointMethod" ] is not None ):
-            ezseti( STR_PROXIMAL_POINT_METHOD, self.solveOpts[ "proximalPointMethod" ] )
+        if( self.options[ "proximalPointMethod" ] is not None ):
+            ezseti( STR_PROXIMAL_POINT_METHOD, self.options[ "proximalPointMethod" ] )
 
-        if( self.solveOpts[ "qpSolver" ] is not None ):
-            if( self.solveOpts[ "qpSolver" ].lower() == "cg" ):
+        if( self.options[ "qpSolver" ] is not None ):
+            if( self.options[ "qpSolver" ].lower() == "cg" ):
                 ezset( STR_QPSOLVER_CG )
-            elif( self.solveOpts[ "qpSolver" ].lower() == "qn" ):
+            elif( self.options[ "qpSolver" ].lower() == "qn" ):
                 ezset( STR_QPSOLVER_QN )
 
-        if( self.solveOpts[ "scaleOption" ] is not None ):
-            ezseti( STR_SCALE_OPTION, self.solveOpts[ "scaleOption" ] )
+        if( self.options[ "scaleOption" ] is not None ):
+            ezseti( STR_SCALE_OPTION, self.options[ "scaleOption" ] )
 
-        if( self.solveOpts[ "scaleTol" ] is not None ):
-            ezsetr( STR_SCALE_TOLERANCE, self.solveOpts[ "scaleTol" ] )
+        if( self.options[ "scaleTol" ] is not None ):
+            ezsetr( STR_SCALE_TOLERANCE, self.options[ "scaleTol" ] )
 
-        if( self.printOpts[ "scalePrint" ] is not None ):
+        if( self.options[ "scalePrint" ] is not None ):
             ezset( STR_SCALE_PRINT )
 
-        if( self.printOpts[ "solutionPrint" ] == True ):
+        if( self.options[ "solutionPrint" ] == True ):
             ezset( STR_SOLUTION_YES )
         else:
             ezset( STR_SOLUTION_NO ) ## changed default value! we don't print soln unless requested
 
-        if( self.printOpts[ "systemInfo" ] is not None ):
+        if( self.options[ "systemInfo" ] is not None ):
             ezset( STR_SYSTEM_INFORMATION_YES )
 
-        if( self.printOpts[ "timingLevel" ] is not None ):
-            ezseti( STR_TIMING_LEVEL, self.printOpts[ "timingLevel" ] )
+        if( self.options[ "timingLevel" ] is not None ):
+            ezseti( STR_TIMING_LEVEL, self.options[ "timingLevel" ] )
 
-        if( self.solveOpts[ "unboundedObjValue" ] is not None ):
-            ezsetr( STR_UNBOUNDED_OBJECTIVE_VALUE, self.solveOpts[ "unboundedObjValue" ] )
+        if( self.options[ "unboundedObjValue" ] is not None ):
+            ezsetr( STR_UNBOUNDED_OBJECTIVE_VALUE, self.options[ "unboundedObjValue" ] )
 
-        if( self.solveOpts[ "unboundedStepSize" ] is not None ):
-            ezsetr( STR_UNBOUNDED_STEP_SIZE, self.solveOpts[ "unboundedStepSize" ] )
+        if( self.options[ "unboundedStepSize" ] is not None ):
+            ezsetr( STR_UNBOUNDED_STEP_SIZE, self.options[ "unboundedStepSize" ] )
 
-        if( self.solveOpts[ "verifyLevel" ] is not None ):
-            ezseti( STR_VERIFY_LEVEL, self.solveOpts[ "verifyLevel" ] )
+        if( self.options[ "verifyLevel" ] is not None ):
+            ezseti( STR_VERIFY_LEVEL, self.options[ "verifyLevel" ] )
         else:
             ezseti( STR_VERIFY_LEVEL, -1 ) ## changed default value! disabled by default, pg. 84
 
-        if( self.solveOpts[ "violationLimit" ] is not None ):
-            ezsetr( STR_VIOLATION_LIMIT, self.solveOpts[ "violationLimit" ] )
+        if( self.options[ "violationLimit" ] is not None ):
+            ezsetr( STR_VIOLATION_LIMIT, self.options[ "violationLimit" ] )
 
         ## Checkout if we had any errors before we run SNOPT
         if( inform_out[0] != 0 ):
@@ -888,20 +887,20 @@ cdef class Solver( base.Solver ):
                        self.lencw[0]*8, self.lencw[0]*8 )
 
         ## Try to rename fortran print and summary files
-        if( self.printOpts[ "printFile" ] is not None and
-            self.printOpts[ "printFile" ] != "" ):
+        if( self.options[ "printFile" ] is not None and
+            self.options[ "printFile" ] != "" ):
             try:
                 os.rename( "fort.{0}".format( printFileUnit[0] ),
-                           self.printOpts[ "printFile" ] )
+                           self.options[ "printFile" ] )
             except:
                 pass
 
-        if( self.printOpts[ "summaryFile" ] is not None and
-            self.printOpts[ "summaryFile" ] != "" and
-            self.printOpts[ "summaryFile" ].lower() != "stdout" ):
+        if( self.options[ "summaryFile" ] is not None and
+            self.options[ "summaryFile" ] != "" and
+            self.options[ "summaryFile" ].lower() != "stdout" ):
             try:
                 os.rename( "fort.{0}".format( summaryFileUnit[0] ),
-                           self.printOpts[ "summaryFile" ] )
+                           self.options[ "summaryFile" ] )
             except:
                 pass
 

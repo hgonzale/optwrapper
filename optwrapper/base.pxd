@@ -9,6 +9,5 @@ cdef class Soln:
 cdef class Solver:
     cdef public object prob
 
-    cdef public dict printOpts
-    cdef public dict solveOpts
+    cdef public dict options
     cdef public int debug

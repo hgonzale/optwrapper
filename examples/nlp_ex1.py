@@ -1,7 +1,7 @@
 import numpy as np
 import math
 import sys
-from optwrapper import nlp, npsol, snopt
+import optwrapper as ow
 
 def objf( out, x ):
     out[0] = x[1]
@@ -18,7 +18,7 @@ def consg( out, x ):
     out[0] = [ -1, 8*x[1] ]
     out[1] = [ 2*(x[0]-2), 2*x[1] ]
 
-prob = nlp.Problem( N=2, Ncons=2 )
+prob = ow.nlp.Problem( N=2, Ncons=2 )
 prob.initPoint( [1.0, -2.0] )
 prob.consBox( [0, -10], [5, 2] )
 
@@ -30,11 +30,8 @@ prob.consGrad( consg )
 if( not prob.checkGrad( debug=True ) ):
     sys.exit( "Gradient check failed." )
 
-solver = snopt.Solver( prob ) ## change this line to use another solver
-solver.debug = True
-solver.printOpts[ "summaryFile" ] = "debugs.txt"
-solver.printOpts[ "printFile" ] = "debugp.txt"
-solver.printOpts[ "printLevel" ] = 10
+print( dir( ow ) )
+solver = ow.ipopt.Solver( prob ) ## change this line to use another solver
 
 print( "First run..." )
 solver.solve()

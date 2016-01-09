@@ -6,7 +6,6 @@ from libc.stdlib cimport malloc, free
 from libc.stdint cimport int32_t, int64_t
 cimport numpy as cnp
 import numpy as np
-import os
 
 from ipstdcinterfaceh cimport Number, Index, Int, Bool, UserDataPtr
 cimport ipstdcinterfaceh as ipopt ## import functions exposed in IpStdCInterface.h
@@ -27,7 +26,6 @@ if( sizeof( Index ) == 4 ):
 cdef object extprob
 cdef utils.sMatrix Asparse
 cdef utils.sMatrix consGsparse
-
 
 ## These evaluation functions are detailed under "C++ Interface" at:
 ## http://www.coin-or.org/Ipopt/documentation/
@@ -76,6 +74,8 @@ cdef Bool eval_consg( Index n, Number *x, Bool new_x,
                       Index m, Index nele_jac,
                       Index *iRow, Index *jCol, Number *values,
                       UserDataPtr user_data ):
+    global consGsparse ## we are assigning consGsparse using extprob.consmixedA
+
     if( values == NULL ):
         if( sizeof( Index ) == 4 ):
             if( Asparse.nnz > 0 ):
@@ -106,7 +106,6 @@ cdef Bool eval_consg( Index n, Number *x, Bool new_x,
                 consGsparse += extprob.consmixedA
 
     return True
-
 
 cdef Bool eval_lagrangianh( Index n, const Number* x, Bool new_x,
                             Number obj_factor, Index m, const Number* lambda_,
@@ -167,8 +166,9 @@ cdef class Solver( base.Solver ):
     cdef Number *mult_g
     cdef ipopt.IpoptProblem nlp
     cdef ipopt.ApplicationReturnStatus status
-    cdef Index Ntotcons
 
+    cdef int N
+    cdef int Ntotcons
     cdef int warm_start
     cdef int mem_alloc
     cdef int nlp_alloc
@@ -197,7 +197,7 @@ cdef class Solver( base.Solver ):
             raise TypeError( "Argument 'prob' must be of type 'nlp.Problem'" )
 
         self.prob = prob ## Save a copy of prob's pointer
-        extprob = prob ## Save a global copy prob's pointer for funcon and funobj
+        extprob = prob
 
         ## New problems cannot be warm started
         self.warm_start = False
@@ -259,6 +259,8 @@ cdef class Solver( base.Solver ):
                                              <ipopt.Eval_H_CB> eval_lagrangianh )
         self.nlp_alloc = True
 
+        self.options["hessian_approximation"] = "limited-memory"
+
 
     cdef allocate( self ):
         if( self.mem_alloc ):
@@ -316,22 +318,23 @@ cdef class Solver( base.Solver ):
         self.deallocate()
 
 
-    # def warmStart( self ):
-    #     if( not isinstance( self.prob.soln, Soln ) ):
-    #         return False
+    def warmStart( self ):
+        if( not isinstance( self.prob.soln, Soln ) ):
+            return False
 
-    #     memcpy( self.istate,
-    #             utils.getPtr( utils.convIntFortran( self.prob.soln.istate ) ),
-    #             self.nctotl * sizeof( integer ) )
-    #     memcpy( self.clamda,
-    #             utils.getPtr( utils.convFortran( self.prob.soln.clamda ) ),
-    #             self.nctotl * sizeof( doublereal ) )
-    #     memcpy( self.R,
-    #             utils.getPtr( utils.convFortran( self.prob.soln.R ) ),
-    #             self.prob.N * self.prob.N * sizeof( doublereal ) )
+        tmparr = utils.arraySanitize( self.prob.soln.mult_g, dtype=Number_dtype )
+        memcpy( self.mult_g, utils.getPtr( tmparr ), self.Ntotcons * sizeof( Number ) )
 
-    #     self.warm_start = True
-    #     return True
+        tmparr = utils.arraySanitize( self.prob.soln.mult_x_L, dtype=Number_dtype )
+        memcpy( self.mult_x_L, utils.getPtr( tmparr ), self.N * sizeof( Number ) )
+
+        tmparr = utils.arraySanitize( self.prob.soln.mult_x_U, dtype=Number_dtype )
+        memcpy( self.mult_x_U, utils.getPtr( tmparr ), self.N * sizeof( Number ) )
+
+        self.warm_start = True
+        self.options["warm_start_init_point"] = "yes"
+
+        return True
 
 
     cdef int processOptions( self ):
@@ -346,6 +349,11 @@ cdef class Solver( base.Solver ):
             self.options["output_file"] = self.options["printFile"]
 
         for key in self.options:
+            ## Manage legacy and None keys
+            if( key == "printFile" or
+                self.options[key] is None ):
+                continue
+
             if( isinstance( self.options[key], int ) ):
                 ipopt.AddIpoptIntOption( self.nlp, key, self.options[key] )
             elif( isinstance( self.options[key], float ) ):
@@ -355,8 +363,8 @@ cdef class Solver( base.Solver ):
                 ipopt.AddIpoptStrOption( self.nlp, key, <char*> tmpb )
             else:
                 raise TypeError( "Could not process option " +
-                                 "'{0}': '{1}' with type '{2}'".format( key, self.options[key],
-                                                                        type(self.options[key]) ) )
+                                 "'{0}: {1}' with type {2}".format( key, self.options[key],
+                                                                    type( self.options[key] ) ) )
 
         return True
 
@@ -366,7 +374,10 @@ cdef class Solver( base.Solver ):
         cdef Number obj_val[1]
 
         ## Begin by setting up initial condition
-        tmparr = utils.arraySanitize( self.prob.init, dtype=Number_dtype )
+        if( self.warm_start ):
+            tmparr = utils.arraySanitize( self.prob.soln.final, dtype=Number_dtype )
+        else:
+            tmparr = utils.arraySanitize( self.prob.init, dtype=Number_dtype )
         memcpy( self.x, utils.getPtr( tmparr ), self.N * sizeof( Number ) )
 
         self.processOptions()
@@ -374,6 +385,10 @@ cdef class Solver( base.Solver ):
         ## Call Ipopt
         status = ipopt.IpoptSolve( self.nlp, self.x, self.g, obj_val, self.mult_g,
                                    self.mult_x_L, self.mult_x_U, NULL )
+
+        if( self.warm_start ):
+            self.warm_start = False
+            self.options["warm_start_init_point"] = "no"
 
         ## Save result to prob
         self.prob.soln = Soln()

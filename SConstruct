@@ -2,17 +2,6 @@ from subprocess import call
 import os
 
 clibs = ( "lssol", "npsol", "snopt", "ipopt" )
-srcfolder = "./optwrapper"
-srcfiles = ( "base.pxd", "base.pyx",
-             "ipstdcinterfaceh.pxd", "ipopt.pyx",
-             "lssolh.pxd", "lssol.pyx",
-             "nlp.py",
-             "npsolh.pxd", "npsol.pyx",
-             "ocp.py", "qp.py",
-             "snopth.pxd", "snopt.pyx",
-             "socp.py",
-             "typedefs.pxd",
-             "utils.pxd", "utils.pyx" )
 
 def CheckProg( context, cmd ):
     context.Message( "Checking for {0} command... ".format( cmd ) )
@@ -116,8 +105,7 @@ if( FindFile( GetOption( "manifest_file" ), "." ) ):
     env.Clean( spy_inst, GetOption( "manifest_file" ) )
 
 ### Hierarchy
-for file in srcfiles:
-    env.Depends( spy_build, srcfolder + "/" + file )
+env.AlwaysBuild( spy_build ) ## run setup.py in case the source files have changed
 env.Depends( spy_build, spy )
 env.Depends( spy_inst, spy_build )
 env.Default( spy_build )

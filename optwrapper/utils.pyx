@@ -324,7 +324,7 @@ cdef class sMatrix:
         return out
 
 
-    def dot( cnp.ndarray x ):
+    def dot( self, cnp.ndarray x ):
         ## TODO
         return self[:].dot( x )
 
