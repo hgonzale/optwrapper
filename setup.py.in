@@ -2,46 +2,42 @@ from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Build import cythonize
 import numpy as np
+from os import environ
 
 major = "0"
 minor = "5+"
 
+environ[ "CC" ] = "gcc" ## clang does not support OpenMP
+
+include_dirs = [ np.get_include(), "." ] + @headers@
+
 extensions = []
 extensions.append( Extension( "optwrapper.utils",
                               sources = [ "optwrapper/utils.pyx" ],
-                              include_dirs = [ np.get_include(), "." ] ) )
+                              include_dirs = include_dirs ) )
 extensions.append( Extension( "optwrapper.base",
                               sources = [ "optwrapper/base.pyx" ],
-                              include_dirs = [ np.get_include(), "." ] ) )
-
+                              include_dirs = include_dirs ) )
 if( @lssol@ ):
     extensions.append( Extension( "optwrapper.lssol",
                                   sources = [ "optwrapper/lssol.pyx" ],
-                                  include_dirs = [ np.get_include(), "." ],
-                                  libraries = [ "lssol",
-                                                "blas",
-                                                "m" ] ) )
-if( @npsol@ ):
+                                  include_dirs =  include_dirs,
+                                  libraries = [ "lssol" ] ) )
+if( @npsol@ and @lssol@ ):
     extensions.append( Extension( "optwrapper.npsol",
                                   sources = [ "optwrapper/npsol.pyx" ],
-                                  include_dirs = [ np.get_include(), "." ],
+                                  include_dirs =  include_dirs,
                                   libraries = [ "npsol",
-                                                "lssol",
-                                                "blas",
-                                                "m" ] ) )
+                                                "lssol" ] ) )
 if( @snopt@ ):
     extensions.append( Extension( "optwrapper.snopt",
                                   sources = [ "optwrapper/snopt.pyx" ],
-                                  include_dirs = [ np.get_include(), "." ],
-                                  libraries = [ "snopt",
-                                                "snprint",
-                                                "blas",
-                                                "m" ] ) )
-
+                                  include_dirs =  include_dirs,
+                                  libraries = [ "snopt" ] ) )
 if( @ipopt@ ):
     extensions.append( Extension( "optwrapper.ipopt",
                                   sources = [ "optwrapper/ipopt.pyx" ],
-                                  include_dirs = [ np.get_include(), "." ],
+                                  include_dirs =  include_dirs,
                                   libraries = [ "ipopt" ] ) )
 
 setup( name = "OptWrapper",

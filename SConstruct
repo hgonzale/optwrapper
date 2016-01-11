@@ -1,5 +1,5 @@
 from subprocess import call
-import os
+from os import environ, devnull
 
 clibs = ( "lssol", "npsol", "snopt", "ipopt" )
 
@@ -12,11 +12,10 @@ def CheckProg( context, cmd ):
 
 def CheckPythonLib( context, lib ):
     context.Message( "Checking for Python {0} library... ".format( lib ) )
-    fp = open( os.devnull, "w" )
-    result = call( ( "python", "-c", "import {0}".format( lib ) ),
-                   stdout=fp, stderr=fp )
+    fp = open( devnull, "w" )
+    result = ( call( ( "python", "-c", "import {0}".format( lib ) ),
+                   stdout=fp, stderr=fp ) == 0 )
     fp.close()
-    result = ( result == 0 )
     context.Result( result )
     return result
 
@@ -31,26 +30,29 @@ def CheckSizeOf( context, dtype ):
       }
       """
     ret = context.TryRun( program, ".c" )
-    context.Result( ret[0] )
+    context.Result( ret[1] )
     return int( ret[1] )
 
 
 ### Main
-env = Environment( ENV = os.environ,
-                   tools = ( "default", "textfile" ) )
+repl = { "@headers@": [ "/usr/local/include" ] }
+env = Environment( ENV = environ,
+                   tools = ( "default", "textfile" ),
+                   CPPPATH = repl[ "@headers@" ] )
 conf = Configure( env,
                   custom_tests = { "CheckProg": CheckProg,
                                    "CheckPythonLib": CheckPythonLib,
                                    "CheckSizeOf": CheckSizeOf } )
 
 ### Configure
-repl = {}
 if( not env.GetOption( "clean" ) or
     not env.GetOption( "help" ) ):
-    if( not conf.CheckLib( "blas" ) or
-        not conf.CheckLib( "m" ) or
-        not conf.CheckPythonLib( "numpy" ) or
-        not conf.CheckProg( "cython" ) ):
+    if( not conf.CheckPythonLib( "numpy" ) or
+        not conf.CheckProg( "cython" ) or
+        not conf.CheckHeader( "lssol.h" ) or
+        not conf.CheckHeader( "npsol.h" ) or
+        not conf.CheckHeader( "snopt.h" ) or
+        not conf.CheckHeader( "coin/IpStdCInterface.h" ) ):
         Exit(1)
 
     ## Check sizes of integer and doublereal from typedefs.pxd
@@ -107,5 +109,5 @@ if( FindFile( GetOption( "manifest_file" ), "." ) ):
 ### Hierarchy
 env.AlwaysBuild( spy_build ) ## run setup.py in case the source files have changed
 env.Depends( spy_build, spy )
-env.Depends( spy_inst, spy_build )
+env.Depends( spy_inst, spy )
 env.Default( spy_build )

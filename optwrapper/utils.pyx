@@ -1,6 +1,12 @@
+# distutils: extra_compile_args = -fopenmp
+# distutils: extra_link_args = -fopenmp
+# cython: boundscheck=False
+# cython: wraparound=False
+
+from __future__ import division
 import numpy as np
 cimport numpy as cnp
-
+from cython.parallel cimport prange
 from libc.stdint cimport int32_t, int64_t
 from libc.string cimport memcpy, memset
 from libc.stdlib cimport malloc, free
@@ -134,6 +140,8 @@ cdef class sMatrix:
 
     def print_debug( self ):
         """
+        print_debug()
+
         print internal C arrays containing representation data of this sparse matrix, which
         cannot be accessed using Python
 
@@ -324,14 +332,41 @@ cdef class sMatrix:
         return out
 
 
-    def dot( self, cnp.ndarray x ):
-        ## TODO
-        return self[:].dot( x )
+    def dot( self, double[:] x ):
+        """
+        A.dot(x)
+
+        Matrix-vector product, x must be a 1-D numpy float64 array
+
+        """
+
+        cdef double[:] out
+        cdef int row, idx
+        out = np.zeros( (self.nrows,), dtype=np.float64 )
+
+        for row in prange( self.nrows, nogil=True ):
+            for idx in range( self.rptr[row], self.rptr[row+1] ):
+                out[row] += self.data[idx] * x[ self.cidx[idx] ]
+
+        return np.asarray( out )
 
 
     def toarray( self ):
+        """
+        M = A.toarray()
+
+        Transforms A into a dense numpy array M.
+
+        """
         return self[:]
 
 
     def __str__( self ):
-        return str( self.toarray() )
+        out = "{0}x{1}: {2} elems, {3:.1%} sparsity, ".format( self.nrows, self.ncols, self.nnz,
+                                                               self.nnz/(self.nrows*self.ncols) )
+        if( self.data_alloc ):
+            out += "owns data"
+        else:
+            out += "does not own data"
+
+        return out

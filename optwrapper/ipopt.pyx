@@ -6,6 +6,7 @@ from libc.stdlib cimport malloc, free
 from libc.stdint cimport int32_t, int64_t
 cimport numpy as cnp
 import numpy as np
+import os
 
 from ipstdcinterfaceh cimport Number, Index, Int, Bool, UserDataPtr
 cimport ipstdcinterfaceh as ipopt ## import functions exposed in IpStdCInterface.h
@@ -186,6 +187,9 @@ cdef class Solver( base.Solver ):
         if( prob ):
             self.setupProblem( prob )
 
+        self.options["hessian_approximation"] = "limited-memory"
+        self.options["output_file"] = None
+
 
     def setupProblem( self, prob ):
         global extprob
@@ -258,8 +262,6 @@ cdef class Solver( base.Solver ):
                                              <ipopt.Eval_Jac_G_CB> eval_consg,
                                              <ipopt.Eval_H_CB> eval_lagrangianh )
         self.nlp_alloc = True
-
-        self.options["hessian_approximation"] = "limited-memory"
 
 
     cdef allocate( self ):
@@ -339,13 +341,13 @@ cdef class Solver( base.Solver ):
 
     cdef int processOptions( self ):
         cdef bytes tmpb
+        cdef Bool ret
         if( not self.nlp_alloc ):
             return False
 
         ## Manage legacy keys
-        if( ( "output_file" not in self.options or
-              self.options["output_file"] is None ) and
-            "printFile" in self.options ):
+        if( self.options["output_file"] is None and
+            self.options["printFile"] is not None ):
             self.options["output_file"] = self.options["printFile"]
 
         for key in self.options:
@@ -354,14 +356,16 @@ cdef class Solver( base.Solver ):
                 self.options[key] is None ):
                 continue
 
+            ret = False
             if( isinstance( self.options[key], int ) ):
-                ipopt.AddIpoptIntOption( self.nlp, key, self.options[key] )
+                ret = ipopt.AddIpoptIntOption( self.nlp, key, self.options[key] )
             elif( isinstance( self.options[key], float ) ):
-                ipopt.AddIpoptNumOption( self.nlp, key, self.options[key] )
+                ret = ipopt.AddIpoptNumOption( self.nlp, key, self.options[key] )
             elif( isinstance( self.options[key], str ) ):
                 tmpb = self.options[key].encode( "latin_1" )
-                ipopt.AddIpoptStrOption( self.nlp, key, <char*> tmpb )
-            else:
+                ret = ipopt.AddIpoptStrOption( self.nlp, key, <char*> tmpb )
+
+            if( not ret ):
                 raise TypeError( "Could not process option " +
                                  "'{0}: {1}' with type {2}".format( key, self.options[key],
                                                                     type( self.options[key] ) ) )
@@ -382,9 +386,22 @@ cdef class Solver( base.Solver ):
 
         self.processOptions()
 
+        ## unless output_file is stdout, we redirect stdout to /dev/null
+        if( self.options["output_file"] != "stdout" ):
+            old_stdout = os.dup(1)
+            os.close(1)
+            os.open( os.devnull, os.O_WRONLY )
+
         ## Call Ipopt
         status = ipopt.IpoptSolve( self.nlp, self.x, self.g, obj_val, self.mult_g,
                                    self.mult_x_L, self.mult_x_U, NULL )
+
+        ## undo redirection of stdout to /dev/null
+        if( self.options["output_file"] != "stdout" ):
+            os.close(1)
+            os.dup( old_stdout ) # should dup to 1
+            os.close( old_stdout ) # get rid of left overs
+
 
         if( self.warm_start ):
             self.warm_start = False
