@@ -1,7 +1,10 @@
 from subprocess import call
 from os import environ, devnull
 
-clibs = ( "lssol", "npsol", "snopt", "ipopt" )
+clibs = { "lssol": "lssol.h",
+          "npsol": "npsol.h",
+          "snopt": "snopt.h",
+          "ipopt": "coin/IpStdCInterface.h" }
 
 def CheckProg( context, cmd ):
     context.Message( "Checking for {0} command... ".format( cmd ) )
@@ -35,24 +38,25 @@ def CheckSizeOf( context, dtype ):
 
 
 ### Main
-repl = { "@headers@": [ "/usr/local/include" ] }
 env = Environment( ENV = environ,
-                   tools = ( "default", "textfile" ),
-                   CPPPATH = repl[ "@headers@" ] )
+                   tools = ( "default", "textfile" ) )
 conf = Configure( env,
                   custom_tests = { "CheckProg": CheckProg,
                                    "CheckPythonLib": CheckPythonLib,
                                    "CheckSizeOf": CheckSizeOf } )
 
 ### Configure
-if( not env.GetOption( "clean" ) or
+## add folders to include path
+repl = { "@headers@": [ "/usr/local/include" ],
+         "@cc@": "gcc" } ## we need an openmp-compatible compiler, using gcc by default
+env[ "CC" ] = repl[ "@cc@" ]
+env.Append( CPPPATH = repl[ "@headers@" ] )
+
+if( not env.GetOption( "clean" ) and
     not env.GetOption( "help" ) ):
-    if( not conf.CheckPythonLib( "numpy" ) or
-        not conf.CheckProg( "cython" ) or
-        not conf.CheckHeader( "lssol.h" ) or
-        not conf.CheckHeader( "npsol.h" ) or
-        not conf.CheckHeader( "snopt.h" ) or
-        not conf.CheckHeader( "coin/IpStdCInterface.h" ) ):
+    if( not conf.CheckCC() or
+        not conf.CheckPythonLib( "numpy" ) or
+        not conf.CheckProg( "cython" ) ):
         Exit(1)
 
     ## Check sizes of integer and doublereal from typedefs.pxd
@@ -60,9 +64,11 @@ if( not env.GetOption( "clean" ) or
         conf.CheckSizeOf( "double" ) != 8 ):
         Exit(1)
 
-    ## List of shared libraries to check, these define the string substitutions in setup.py.in
+    ## List of shared libraries and their headers to check
+    ## these define string substitutions in setup.py.in
     for lib in clibs:
-        repl[ "@{0}@".format( lib ) ] = conf.CheckLib( lib )
+        repl[ "@{0}@".format( lib ) ] = ( conf.CheckLib( lib ) and
+                                          conf.CheckHeader( clibs[lib] ) )
 
 env = conf.Finish()
 
@@ -88,7 +94,7 @@ if( env.GetOption( "silent" ) ):
 
 spy_str = "python setup.py {0}".format( " ".join( args ) )
 spy_build_str = spy_str + " build"
-spy_install_str = spy_str + " install --record={0}".format( GetOption( "manifest_file" ) )
+spy_install_str = spy_str + " install --record={0}".format( env.GetOption( "manifest_file" ) )
 if( GetOption( "install_local" ) ):
     spy_install_str += " --user"
 
@@ -100,11 +106,11 @@ spy_inst = env.Command( "install", None, spy_install_str ) ## target "install" i
 ### Determine cleans
 env.Clean( spy_build, "./build" )
 
-if( FindFile( GetOption( "manifest_file" ), "." ) ):
-    with open( GetOption( "manifest_file" ) ) as mfile:
+if( env.FindFile( env.GetOption( "manifest_file" ), "." ) ):
+    with open( env.GetOption( "manifest_file" ) ) as mfile:
         for line in mfile:
             env.Clean( spy_inst, line.rstrip( "\n" ) )
-    env.Clean( spy_inst, GetOption( "manifest_file" ) )
+    env.Clean( spy_inst, env.GetOption( "manifest_file" ) )
 
 ### Hierarchy
 env.AlwaysBuild( spy_build ) ## run setup.py in case the source files have changed

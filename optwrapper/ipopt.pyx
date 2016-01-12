@@ -27,6 +27,7 @@ if( sizeof( Index ) == 4 ):
 cdef object extprob
 cdef utils.sMatrix Asparse
 cdef utils.sMatrix consGsparse
+cdef utils.sMatrix consmixedAsparse
 
 ## These evaluation functions are detailed under "C++ Interface" at:
 ## http://www.coin-or.org/Ipopt/documentation/
@@ -67,7 +68,7 @@ cdef Bool eval_consf( Index n, Number* x, Bool new_x,
         garr = utils.wrap1dPtr( &g[extprob.Nconslin], extprob.Ncons, Number_type )
         extprob.consf( garr, xarr )
         if( extprob.consmixedA is not None ):
-            garr += extprob.consmixedA.dot( xarr )
+            garr += consmixedAsparse.dot( xarr )
 
     return True
 
@@ -75,8 +76,6 @@ cdef Bool eval_consg( Index n, Number *x, Bool new_x,
                       Index m, Index nele_jac,
                       Index *iRow, Index *jCol, Number *values,
                       UserDataPtr user_data ):
-    global consGsparse ## we are assigning consGsparse using extprob.consmixedA
-
     if( values == NULL ):
         if( sizeof( Index ) == 4 ):
             if( Asparse.nnz > 0 ):
@@ -103,8 +102,8 @@ cdef Bool eval_consg( Index n, Number *x, Bool new_x,
             memset( &values[Asparse.nnz], 0, consGsparse.nnz * sizeof( Number ) )
             consGsparse.setDataPtr( &values[Asparse.nnz] )
             extprob.consg( consGsparse, xarr )
-            if( extprob.consmixedA is not None ):
-                consGsparse += extprob.consmixedA
+            if( consmixedAsparse.nnz > 0 ):
+                consGsparse.add_sparse( consmixedAsparse )
 
     return True
 
@@ -195,6 +194,7 @@ cdef class Solver( base.Solver ):
         global extprob
         global Asparse
         global consGsparse
+        global consmixedAsparse
         cdef cnp.ndarray tmparr
 
         if( not isinstance( prob, nlp.Problem ) ):
@@ -245,8 +245,14 @@ cdef class Solver( base.Solver ):
 
         Asparse = utils.sMatrix( prob.conslinA, copy_data=True )
 
+        consmixedAsparse = utils.sMatrix( prob.consmixedA, copy_data=True )
+
         if( isinstance( prob, nlp.SparseProblem ) and prob.consgpattern is not None ):
-            consGsparse = utils.sMatrix( prob.consgpattern )
+            if( prob.consmixedA is None ):
+                consGsparse = utils.sMatrix( prob.consgpattern )
+            else:
+                consGsparse = utils.sMatrix( np.logical_or( prob.consgpattern,
+                                                            prob.consmixedA ) )
         else:
             consGsparse = utils.sMatrix( np.ones( ( prob.Ncons, self.N ) ) )
 

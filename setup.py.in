@@ -7,7 +7,7 @@ from os import environ
 major = "0"
 minor = "5+"
 
-environ[ "CC" ] = "gcc" ## clang does not support OpenMP
+environ[ "CC" ] = "@cc@"
 
 include_dirs = [ np.get_include(), "." ] + @headers@
 
@@ -21,23 +21,23 @@ extensions.append( Extension( "optwrapper.base",
 if( @lssol@ ):
     extensions.append( Extension( "optwrapper.lssol",
                                   sources = [ "optwrapper/lssol.pyx" ],
-                                  include_dirs =  include_dirs,
+                                  include_dirs = include_dirs,
                                   libraries = [ "lssol" ] ) )
 if( @npsol@ and @lssol@ ):
     extensions.append( Extension( "optwrapper.npsol",
                                   sources = [ "optwrapper/npsol.pyx" ],
-                                  include_dirs =  include_dirs,
+                                  include_dirs = include_dirs,
                                   libraries = [ "npsol",
                                                 "lssol" ] ) )
 if( @snopt@ ):
     extensions.append( Extension( "optwrapper.snopt",
                                   sources = [ "optwrapper/snopt.pyx" ],
-                                  include_dirs =  include_dirs,
+                                  include_dirs = include_dirs,
                                   libraries = [ "snopt" ] ) )
 if( @ipopt@ ):
     extensions.append( Extension( "optwrapper.ipopt",
                                   sources = [ "optwrapper/ipopt.pyx" ],
-                                  include_dirs =  include_dirs,
+                                  include_dirs = include_dirs,
                                   libraries = [ "ipopt" ] ) )
 
 setup( name = "OptWrapper",

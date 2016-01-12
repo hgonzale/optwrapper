@@ -30,3 +30,5 @@ cdef class sMatrix:
     cdef double get_elem_at( self, int64_t row, int64_t col )
     cdef bint set_elem_at( self, int64_t row, int64_t col, double val )
     cdef cnp.broadcast key_to_bcast( self, object key )
+    cpdef cnp.ndarray dot( self, double[:] x )
+    cpdef void add_sparse( self, sMatrix A )

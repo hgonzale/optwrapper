@@ -332,7 +332,7 @@ cdef class sMatrix:
         return out
 
 
-    def dot( self, double[:] x ):
+    cpdef cnp.ndarray dot( self, double[:] x ):
         """
         A.dot(x)
 
@@ -341,7 +341,7 @@ cdef class sMatrix:
         """
 
         cdef double[:] out
-        cdef int row, idx
+        cdef int64_t row, idx
         out = np.zeros( (self.nrows,), dtype=np.float64 )
 
         for row in prange( self.nrows, nogil=True ):
@@ -349,6 +349,38 @@ cdef class sMatrix:
                 out[row] += self.data[idx] * x[ self.cidx[idx] ]
 
         return np.asarray( out )
+
+
+    cpdef void add_sparse( self, sMatrix A ):
+        """
+        A.add_sparse(B)
+
+        Compute A = A + B, where B is an sMatrix.
+        Zero entries in A are left unchanged.
+
+        """
+
+        cdef int64_t row, aidx
+        cdef int64_t *sidx
+
+        if( self.nrows != A.nrows or
+            self.ncols != A.ncols ):
+            raise ValueError( "Argument must have same dimensions as original matrix" )
+
+        sidx = <int64_t *> malloc( self.nrows * sizeof( int64_t ) )
+        memcpy( sidx, self.rptr, self.nrows * sizeof( int64_t ) )
+
+        for row in prange( self.nrows, nogil=True ):
+            for aidx in range( A.rptr[row], A.rptr[row+1] ):
+                while( sidx[row] < self.rptr[row+1] and
+                       self.cidx[ sidx[row] ] <= A.cidx[aidx] ):
+                    if( self.cidx[ sidx[row] ] == A.cidx[aidx] ):
+                        self.data[ sidx[row] ] += A.data[aidx]
+                        break
+                    else:
+                        sidx[row] += 1
+
+        free( sidx )
 
 
     def toarray( self ):
