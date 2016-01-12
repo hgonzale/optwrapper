@@ -1,6 +1,6 @@
 import numpy as np
 import sys
-from optwrapper import nlp, ocp, snopt, npsol
+import optwrapper as ow
 
 def instcost( x, u, grad=True ):
     Q = np.identity(2)
@@ -53,7 +53,7 @@ consdxpattern = np.array( [[1,0],[0,1]], dtype=np.int )
 
 
 ## main ##
-prob = ocp.Problem( Nstates=2, Ninputs=2, Ncons=2 )
+prob = ow.ocp.Problem( Nstates=2, Ninputs=2, Ncons=2 )
 prob.initCond( [ 1, 1 ] )
 prob.timeHorizon( 0, 5 )
 prob.costInstant( instcost, dxpattern=icostdxpattern, dupattern=icostdupattern )
@@ -73,13 +73,13 @@ if( not nlpprob.checkGrad( debug=True ) ):
 if( not nlpprob.checkPattern( debug=True ) ):
     sys.exit( "Pattern check failed." )
 
-solver = snopt.Solver( nlpprob )
-solver.debug = True
-solver.printOpts[ "summaryFile" ] = "stdout"
-solver.printOpts[ "printFile" ] = "debugp.txt"
-solver.printOpts[ "printLevel" ] = 111111
-solver.printOpts[ "minorPrintLevel" ] = 10
-solver.solveOpts[ "verifyLevel" ] = 3
+solver = ow.ipopt.Solver( nlpprob )
+# solver.debug = True
+# solver.printOpts[ "summaryFile" ] = "stdout"
+# solver.printOpts[ "printFile" ] = "debugp.txt"
+# solver.printOpts[ "printLevel" ] = 111111
+# solver.printOpts[ "minorPrintLevel" ] = 10
+# solver.solveOpts[ "verifyLevel" ] = 3
 
 solver.solve()
 print( "Status: " + nlpprob.soln.getStatus() )

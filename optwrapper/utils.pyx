@@ -351,7 +351,7 @@ cdef class sMatrix:
         return np.asarray( out )
 
 
-    cpdef void add_sparse( self, sMatrix A ):
+    cpdef add_sparse( self, sMatrix A ):
         """
         A.add_sparse(B)
 

@@ -1,7 +1,7 @@
 import numpy as np
 import math
 import sys
-from optwrapper import nlp, npsol, snopt
+import optwrapper as ow
 
 def objf( out, x ):
     pass
@@ -17,7 +17,7 @@ def consg( out, x ):
     out[0,1] = 8*x[1]
     out[1,:] = [ 2*(x[0]-2), 2*x[1] ]
 
-prob = nlp.SparseProblem( N=2, Ncons=2 )
+prob = ow.nlp.SparseProblem( N=2, Ncons=2 )
 prob.initPoint( [10.0, 12.0] )
 prob.consBox( [0,-10], [5,2] )
 
@@ -32,11 +32,11 @@ if( not prob.checkGrad( debug=True ) ):
 if( not prob.checkPattern( debug=True ) ):
     sys.exit( "Pattern check failed." )
 
-solver = snopt.Solver( prob ) ## change this line to use another solver
-solver.debug = True
-solver.printOpts[ "summaryFile" ] = "debugs.txt"
-solver.printOpts[ "printFile" ] = "debugp.txt"
-solver.printOpts[ "printLevel" ] = 10
+solver = ow.ipopt.Solver( prob ) ## change this line to use another solver
+# solver.debug = True
+# solver.printOpts[ "summaryFile" ] = "debugs.txt"
+# solver.printOpts[ "printFile" ] = "debugp.txt"
+# solver.printOpts[ "printLevel" ] = 10
 
 print( "First run..." )
 solver.solve()

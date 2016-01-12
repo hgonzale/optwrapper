@@ -1,6 +1,6 @@
 import numpy as np
 import sys
-from optwrapper import nlp, ocp, snopt, npsol
+import optwrapper as ow
 
 def instcost( x, u, grad=True ):
     Q = np.identity(2)
@@ -42,7 +42,7 @@ def cons( x, grad=True ):
                          [ 0, -1 ] ] ) )
 
 ## main ##
-prob = ocp.Problem( Nstates=2, Ninputs=2, Ncons=2 )
+prob = ow.ocp.Problem( Nstates=2, Ninputs=2, Ncons=2 )
 prob.initCond( [ 1, 1 ] )
 prob.timeHorizon( 0, 5 )
 prob.costInstant( instcost )
@@ -59,11 +59,11 @@ prob.consBoxInput( -10 * np.ones( prob.Ninputs ),
 if( not nlpprob.checkGrad( debug=True ) ):
     sys.exit( "Gradient check failed." )
 
-solver = snopt.Solver( nlpprob )
-solver.debug = True
-solver.printOpts[ "summaryFile" ] = "debugs.txt"
-solver.printOpts[ "printFile" ] = "debugp.txt"
-solver.printOpts[ "printLevel" ] = 10
+solver = ow.ipopt.Solver( nlpprob )
+# solver.debug = True
+# solver.printOpts[ "summaryFile" ] = "debugs.txt"
+# solver.printOpts[ "printFile" ] = "debugp.txt"
+# solver.printOpts[ "printLevel" ] = 10
 
 solver.solve()
 print( "Status: " + nlpprob.soln.getStatus() )
