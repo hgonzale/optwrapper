@@ -1,11 +1,6 @@
 from subprocess import call
 from os import environ, devnull
 
-clibs = { "lssol": "lssol.h",
-          "npsol": "npsol.h",
-          "snopt": "snopt.h",
-          "ipopt": "coin/IpStdCInterface.h" }
-
 def CheckProg( context, cmd ):
     context.Message( "Checking for {0} command... ".format( cmd ) )
     result = WhereIs( cmd )
@@ -66,9 +61,15 @@ if( not env.GetOption( "clean" ) and
 
     ## List of shared libraries and their headers to check
     ## these define string substitutions in setup.py.in
-    for lib in clibs:
-        repl[ "@{0}@".format( lib ) ] = ( conf.CheckLib( lib ) and
-                                          conf.CheckHeader( clibs[lib] ) )
+    repl[ "@lssol@" ] = ( conf.CheckLib( "lssol" ) and
+                          conf.CheckHeader( "lssol.h" ) )
+    repl[ "@npsol@" ] = ( repl[ "@lssol@" ] and
+                          conf.CheckLib( "npsol" ) and
+                          conf.CheckHeader( "npsol.h" ) )
+    repl[ "@snopt@" ] = ( conf.CheckLib( "snopt" ) and
+                          conf.CheckHeader( "snopt.h" ) )
+    repl[ "@ipopt@" ] = ( conf.CheckLib( "ipopt" ) and
+                          conf.CheckHeader( "coin/IpStdCInterface.h" ) )
 
 env = conf.Finish()
 
@@ -100,6 +101,7 @@ if( GetOption( "install_local" ) ):
 
 ### Create targets
 spy = env.Substfile( "setup.py.in", SUBST_DICT=repl )
+init = env.Substfile( "optwrapper/__init__.py.in", SUBST_DICT=repl )
 spy_build = env.Command( "build", None, spy_build_str ) ## target "build" is *not* a file
 spy_inst = env.Command( "install", None, spy_install_str ) ## target "install" is *not* a file
 
@@ -114,6 +116,7 @@ if( env.FindFile( env.GetOption( "manifest_file" ), "." ) ):
 
 ### Hierarchy
 env.AlwaysBuild( spy_build ) ## run setup.py in case the source files have changed
+env.Depends( spy_build, init )
 env.Depends( spy_build, spy )
 env.Depends( spy_inst, spy )
 env.Default( spy_build )

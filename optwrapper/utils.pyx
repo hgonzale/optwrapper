@@ -442,17 +442,21 @@ cdef class Options:
 
 
     def __setitem__( self, key, value ):
-        cdef datatype tmp = checkType( value )
+        cdef datatype dtype = checkType( value )
         cdef str mykey
 
         if( not isinstance( key, str ) ):
             raise TypeError( "key must be a string" )
 
-        if( tmp == NONE ):
+        if( value is not None and
+            dtype == NONE ):
             raise TypeError( "invalid datatype" )
 
+        if( dtype == STR ):
+            value = value.lower()
+
         mykey = self.sanitizeKey( key )
-        self.data[ mykey ] = OptPair( value, tmp )
+        self.data[ mykey ] = OptPair( value, dtype )
 
 
     def __getitem__( self, key ):

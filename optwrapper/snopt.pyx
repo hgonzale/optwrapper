@@ -145,6 +145,8 @@ cdef class Solver( base.Solver ):
     cdef integer mem_size_ws[3]
 
     def __init__( self, prob=None ):
+        cdef dict legacy
+
         super().__init__()
 
         self.mem_alloc = False
@@ -156,57 +158,53 @@ cdef class Solver( base.Solver ):
         if( prob ):
             self.setupProblem( prob )
 
-        ## Set options
-        self.options[ "summaryFile" ] = None
-        self.options[ "printLevel" ] = None
-        self.options[ "minorPrintLevel" ] = None
-        self.options[ "printFreq" ] = None
-        self.options[ "scalePrint" ] = None
-        self.options[ "solutionPrint" ] = None
-        self.options[ "systemInfo" ] = None
-        self.options[ "timingLevel" ] = None
-
-        self.options[ "centralDiffInterval" ] = None
-        self.options[ "checkFreq" ] = None
-        self.options[ "crashOpt" ] = None
-        self.options[ "crashTol" ] = None
-        self.options[ "nonderivLinesearch"] = None
-        self.options[ "diffInterval" ] = None
-        self.options[ "elasticWeight" ] = None
-        self.options[ "expandFreq" ] = None
-        self.options[ "factorizationFreq" ] = None
-        self.options[ "feasiblePoint" ] = None
-        self.options[ "fctnPrecision" ] = None
-        self.options[ "hessianFreq" ] = None
-        self.options[ "hessianMemory" ] = None
-        self.options[ "hessianUpdates" ] = None
-        self.options[ "infBound" ] = None
-        self.options[ "iterLimit" ] = None
-        self.options[ "linesearchTol" ] = None
-        self.options[ "luFactorTol" ] = None
-        self.options[ "luUpdateTol" ] = None
-        self.options[ "luPivoting" ] = None
-        self.options[ "luDensityTol" ] = None
-        self.options[ "luSingularityTol" ] = None
-        self.options[ "majorFeasibilityTol" ] = None
-        self.options[ "majorIterLimit" ] = None
-        self.options[ "majorOptimalityTol" ] = None
-        self.options[ "majorStepLimit" ] = None
-        self.options[ "minorIterLimit" ] = None
-        self.options[ "minorFeasibilityTol" ] = None
-        self.options[ "newSuperbasicsLimit" ] = None
-        self.options[ "partialPrice" ] = None
-        self.options[ "pivotTol" ] = None
-        self.options[ "proximalPointMethod" ] = None
-        self.options[ "qpSolver" ] = None
-        self.options[ "reducedHessianDim" ] = None
-        self.options[ "scaleOption" ] = None
-        self.options[ "scaleTol" ] = None
-        self.options[ "superbasicsLimit" ] = None
-        self.options[ "unboundedObjValue" ] = None
-        self.options[ "unboundedStepSize" ] = None
-        self.options[ "verifyLevel" ] = None
-        self.options[ "violationLimit" ] = None
+        ## legacy_label: real_label
+        legacy = { "printLevel": "Major print level",
+                   "minorPrintLevel": "Minor print level",
+                   "printFreq": "Print frequency",
+                   "scalePrint": "Scale print",
+                   "solutionPrint": "Solution",
+                   "systemInfo": "System information Yes",
+                   "timingLevel": "Timing level",
+                   "centralDiffInterval": "Central difference interval",
+                   "checkFreq": "Check frequency",
+                   "crashOpt": "Crash option",
+                   "crashTol": "Crash tolerance",
+                   "nonderivLinesearch": "Nonderivative linesearch",
+                   "diffInterval": "Difference interval",
+                   "elasticWeight": "Elastic weight",
+                   "expandFreq": "Expand frequency",
+                   "factorizationFreq": "Factorization frequency",
+                   "feasiblePoint": "Feasible point",
+                   "fctnPrecision": "Function precision",
+                   "hessianFreq": "Hessian frequency",
+                   "hessianUpdates": "Hessian updates",
+                   "infBound": "Infinite bound",
+                   "iterLimit": "Iterations limit",
+                   "linesearchTol": "Linesearch tolerance",
+                   "luFactorTol": "LU factor tolerance",
+                   "luUpdateTol": "LU update tolerance",
+                   "luDensityTol": "LU density tolerance",
+                   "luSingularityTol": "LU singularity tolerance",
+                   "majorFeasibilityTol": "Major feasibility tolerance",
+                   "majorIterLimit": "Major iterations limit",
+                   "majorOptimalityTol": "Major optimality tolerance",
+                   "majorStepLimit": "Major step limit",
+                   "minorIterLimit": "Minor iterations limit",
+                   "minorFeasibilityTol": "Minor feasibility tolerance",
+                   "newSuperbasicsLimit": "New superbasics limit",
+                   "partialPrice": "Partial price",
+                   "pivotTol": "Pivot tolerance",
+                   "proximalPointMethod": "Proximal point method",
+                   "reducedHessianDim": "Reduced Hessian dimension",
+                   "scaleOption": "Scale option",
+                   "scaleTol": "Scale tolerance",
+                   "superbasicsLimit": "Superbasics limit",
+                   "unboundedObjValue": "Unbounded objective value",
+                   "unboundedStepSize": "Unbounded step size",
+                   "verifyLevel": "Verify level",
+                   "violationLimit": "Violation limit" }
+        self.options = Options( legacy )
 
 
     def setupProblem( self, prob ):
@@ -484,6 +482,37 @@ cdef class Solver( base.Solver ):
         return True
 
 
+    cdef int processOptions( self, integer* printFileUnit, integer* summaryFileUnit,
+                             char* cw, integer* iw, doublereal* rw,
+                             integer* lencw, integer* leniw, integer* lenrw ):
+        cdef str mystr
+        cdef integer inform_out[1]
+
+        if( not self.nlp_alloc ):
+            return False
+
+        for key in self.options:
+            mystr = key
+            if( self.options[key].dtype != utils.NONE ):
+                mystr += " {0}".format( self.options[key].value )
+
+            if( debug ):
+                print( "processing option: '{0}'".format( mystr ) )
+
+            snopt.snset_( mystr,
+                          printFileUnit, summaryFileUnit, inform_out,
+                          cw, lencw, iw, leniw, rw, lenrw,
+                          len( mystr ), lencw[0]*8 )
+
+            if( inform_out[0] != 0 ):
+                raise TypeError( "Could not process option " +
+                                 "'{0}: {1}' with type {2}".format( key,
+                                                                    self.options[key].value,
+                                                                    self.options[key].dtype ) )
+
+        return True
+
+
     def solve( self ):
         def ezset( char* s, bint temp=False ):
             if( temp ):
@@ -518,62 +547,10 @@ cdef class Solver( base.Solver ):
                            len( s ), self.lencw[0]*8 )
 
         ## option strings
-        cdef char* STR_CENTRAL_DIFFERENCE_INTERVAL = "Central difference interval"
-        cdef char* STR_CHECK_FREQUENCY = "Check frequency"
-        cdef char* STR_CRASH_OPTION = "Crash option"
-        cdef char* STR_CRASH_TOLERANCE = "Crash tolerance"
-        cdef char* STR_NONDERIVATIVE_LINESEARCH = "Nonderivative linesearch"
-        cdef char* STR_DIFFERENCE_INTERVAL = "Difference interval"
-        cdef char* STR_ELASTIC_WEIGHT = "Elastic weight"
-        cdef char* STR_EXPAND_FREQUENCY = "Expand frequency"
-        cdef char* STR_FACTORIZATION_FREQUENCY = "Factorization frequency"
-        cdef char* STR_FEASIBLE_POINT = "Feasible point"
-        cdef char* STR_FUNCTION_PRECISION = "Function precision"
-        cdef char* STR_HESSIAN_FULL_MEMORY = "Hessian full memory"
-        cdef char* STR_HESSIAN_LIMITED_MEMORY = "Hessian limited memory"
-        cdef char* STR_HESSIAN_FREQUENCY = "Hessian frequency"
-        cdef char* STR_HESSIAN_UPDATES = "Hessian updates"
-        cdef char* STR_INFINITE_BOUND = "Infinite bound"
-        cdef char* STR_ITERATIONS_LIMIT = "Iterations limit"
-        cdef char* STR_LINESEARCH_TOLERANCE = "Linesearch tolerance"
-        cdef char* STR_LU_FACTOR_TOLERANCE = "LU factor tolerance"
-        cdef char* STR_LU_UPDATE_TOLERANCE = "LU update tolerance"
-        cdef char* STR_LU_ROOK_PIVOTING = "LU rook pivoting"
-        cdef char* STR_LU_COMPLETE_PIVOTING = "LU complete pivoting"
-        cdef char* STR_LU_DENSITY_TOLERANCE = "LU density tolerance"
-        cdef char* STR_LU_SINGULARITY_TOLERANCE = "LU singularity tolerance"
-        cdef char* STR_MAJOR_FEASIBILITY_TOLERANCE = "Major feasibility tolerance"
-        cdef char* STR_MAJOR_ITERATIONS_LIMIT = "Major iterations limit"
-        cdef char* STR_MAJOR_OPTIMALITY_TOLERANCE = "Major optimality tolerance"
-        cdef char* STR_MAJOR_PRINT_LEVEL = "Major print level"
-        cdef char* STR_MAJOR_STEP_LIMIT = "Major step limit"
-        cdef char* STR_MINOR_ITERATIONS_LIMIT = "Minor iterations limit"
-        cdef char* STR_MINOR_FEASIBILITY_TOLERANCE = "Minor feasibility tolerance"
-        cdef char* STR_MINOR_PRINT_LEVEL = "Minor print level"
-        cdef char* STR_NEW_SUPERBASICS_LIMIT = "New superbasics limit"
-        cdef char* STR_PARTIAL_PRICE = "Partial price"
-        cdef char* STR_PIVOT_TOLERANCE = "Pivot tolerance"
-        cdef char* STR_PRINT_FREQUENCY = "Print frequency"
-        cdef char* STR_PROXIMAL_POINT_METHOD = "Proximal point method"
-        cdef char* STR_QPSOLVER_CG = "QPSolver CG"
-        cdef char* STR_QPSOLVER_QN = "QPSolver QN"
-        cdef char* STR_REDUCED_HESSIAN_DIMENSION = "Reduced Hessian dimension"
-        cdef char* STR_SCALE_OPTION = "Scale option"
-        cdef char* STR_SCALE_TOLERANCE = "Scale tolerance"
-        cdef char* STR_SCALE_PRINT = "Scale print"
-        cdef char* STR_SOLUTION_YES = "Solution Yes"
-        cdef char* STR_SOLUTION_NO = "Solution No"
-        cdef char* STR_SUPERBASICS_LIMIT = "Superbasics limit"
         cdef char* STR_SUPPRESS_PARAMETERS = "Suppress parameters"
         cdef char* STR_TOTAL_CHARACTER_WORKSPACE = "Total character workspace"
         cdef char* STR_TOTAL_INTEGER_WORKSPACE = "Total integer workspace"
         cdef char* STR_TOTAL_REAL_WORKSPACE = "Total real workspace"
-        cdef char* STR_SYSTEM_INFORMATION_YES = "System information Yes"
-        cdef char* STR_TIMING_LEVEL = "Timing level"
-        cdef char* STR_UNBOUNDED_OBJECTIVE_VALUE = "Unbounded objective value"
-        cdef char* STR_UNBOUNDED_STEP_SIZE = "Unbounded step size"
-        cdef char* STR_VERIFY_LEVEL = "Verify level"
-        cdef char* STR_VIOLATION_LIMIT = "Violation limit"
 
         cdef integer mincw[1]
         cdef integer miniw[1]
@@ -594,9 +571,9 @@ cdef class Solver( base.Solver ):
         cdef doublereal sInf[1]
         cdef doublereal *ObjAdd = [ 0.0 ]
         cdef integer *ObjRow = [ 1 ]
-        cdef char *probname = "optwrapp" ## Must have 8 characters
-        cdef char *xnames = "dummy"
-        cdef char *Fnames = "dummy"
+        cdef char* probname = "optwrapp" ## Must have 8 characters
+        cdef char* xnames = "dummy"
+        cdef char* Fnames = "dummy"
         cdef cnp.ndarray tmparr
 
         ## Begin by setting up initial condition
@@ -605,8 +582,7 @@ cdef class Solver( base.Solver ):
                 self.n[0] * sizeof( doublereal ) )
 
         ## Handle debug files
-        if( self.options[ "printFile" ] is not None and
-            self.options[ "printFile" ] != "" ):
+        if( self.options[ "printFile" ].value ):
             printFileUnit[0] = 90 ## Hardcoded since nobody cares
             if( self.debug ):
                 print( ">>> Sending print file to " + self.options[ "printFile" ] )
@@ -615,9 +591,8 @@ cdef class Solver( base.Solver ):
             if( self.debug ):
                 print( ">>> Print file is disabled" )
 
-        if( self.options[ "summaryFile" ] is not None and
-            self.options[ "summaryFile" ] != "" ):
-            if( self.options[ "summaryFile" ].lower() == "stdout" ):
+        if( self.options[ "summaryFile" ].value ):
+            if( self.options[ "summaryFile" ].value == "stdout" ):
                 summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
                 if( self.debug ):
                     print( ">>> Sending summary to stdout" )
@@ -637,6 +612,9 @@ cdef class Solver( base.Solver ):
 
         inform_out[0] = 0 ## Reset inform_out before running snset* functions
 
+        #####################################################
+        #####################################################
+        #####################################################
         ## Suppress parameter verbosity
         if( not self.debug ):
             ezset( STR_SUPPRESS_PARAMETERS, True )

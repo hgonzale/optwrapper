@@ -346,7 +346,6 @@ cdef class Solver( base.Solver ):
 
 
     cdef int processOptions( self ):
-        cdef bytes tmpb
         cdef Bool ret
         if( not self.nlp_alloc ):
             return False
@@ -358,8 +357,7 @@ cdef class Solver( base.Solver ):
             elif( self.options[key].dtype == utils.DOUBLE ):
                 ret = ipopt.AddIpoptNumOption( self.nlp, key, self.options[key].value )
             elif( self.options[key].dtype == utils.STR ):
-                tmpb = self.options[key].value.encode( "latin_1" )
-                ret = ipopt.AddIpoptStrOption( self.nlp, key, <char*> tmpb )
+                ret = ipopt.AddIpoptStrOption( self.nlp, key, self.options[key].value )
 
             if( not ret ):
                 raise TypeError( "Could not process option " +

@@ -9,7 +9,7 @@ minor = "5+"
 
 environ[ "CC" ] = "@cc@"
 
-include_dirs = [ np.get_include(), "." ] + @headers@
+include_dirs = [ np.get_include() ] + @headers@
 
 extensions = []
 extensions.append( Extension( "optwrapper.utils",
@@ -23,7 +23,7 @@ if( @lssol@ ):
                                   sources = [ "optwrapper/lssol.pyx" ],
                                   include_dirs = include_dirs,
                                   libraries = [ "lssol" ] ) )
-if( @npsol@ and @lssol@ ):
+if( @npsol@ ):
     extensions.append( Extension( "optwrapper.npsol",
                                   sources = [ "optwrapper/npsol.pyx" ],
                                   include_dirs = include_dirs,

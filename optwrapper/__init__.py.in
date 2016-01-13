@@ -1,0 +1,21 @@
+## Import problems
+import qp, nlp, ocp, socp
+
+__all__ = [ "qp", "nlp", "ocp", "socp" ]
+
+## Import solvers
+if( @lssol@ ):
+    import lssol
+    __all__ += [ "lssol" ]
+
+if( @npsol@ ):
+    import npsol
+    __all__ += [ "npsol" ]
+
+if( @snopt@ ):
+    import snopt
+    __all__ += [ "snopt" ]
+
+if( @ipopt@ ):
+    import ipopt
+    __all__ += [ "ipopt" ]
