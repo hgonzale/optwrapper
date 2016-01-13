@@ -93,3 +93,4 @@ debug*.txt
 ## Installation extras
 install_manifest.txt
 setup.py
+__init__.py
