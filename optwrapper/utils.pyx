@@ -72,7 +72,9 @@ cdef cnp.ndarray arraySanitize( cnp.ndarray array, type dtype=None,
     return np.require( array, dtype=dtype, requirements=reqs )
 
 
-## sMatrix helper to create arrays with valid indices out of keys with heterogeneous datatypes
+###
+### sMatrix
+###
 cdef cnp.ndarray key_to_array( object key, int64_t limit ):
     if( isinstance( key, slice ) ):
         return np.arange( *key.indices( limit ), dtype=np.int64 )
@@ -393,7 +395,7 @@ cdef class sMatrix:
         return self[:]
 
 
-    def __str__( self ):
+    def __repr__( self ):
         out = "{0}x{1}: {2} elems, {3:.1%} sparsity, ".format( self.nrows, self.ncols, self.nnz,
                                                                self.nnz/(self.nrows*self.ncols) )
         if( self.data_alloc ):
@@ -402,3 +404,106 @@ cdef class sMatrix:
             out += "does not own data"
 
         return out
+
+
+    def __str__( self ):
+        return str( self.toarray() )
+
+
+###
+### Options
+###
+cdef datatype checkType( object val ):
+    if( isinstance( val, bool ) ):
+        return BOOL
+    elif( isinstance( val, int ) ):
+        return INT
+    elif( isinstance( val, float ) ):
+        return DOUBLE
+    elif( isinstance( val, str ) ):
+        return STR
+    else:
+        return NONE
+
+
+cdef class OptPair:
+    cdef object value
+    cdef datatype dtype
+
+    def __str__( self ):
+        return str( self.value )
+
+
+cdef class Options:
+    def __init__( self, dict legacy=None ):
+        self.legacy = dict()
+        if( legacy is not None ):
+            self.legacyInsert( legacy )
+
+
+    def __setitem__( self, key, value ):
+        cdef datatype tmp = checkType( value )
+        cdef str mykey
+
+        if( not isinstance( key, str ) ):
+            raise TypeError( "key must be a string" )
+
+        if( tmp == NONE ):
+            raise TypeError( "invalid datatype" )
+
+        mykey = self.sanitizeKey( key )
+        self.data[ mykey ] = OptPair( value, tmp )
+
+
+    def __getitem__( self, key ):
+        cdef str mykey
+
+        if( not isinstance( key, str ) ):
+            raise TypeError( "key must be a string" )
+
+        mykey = self.sanitizeKey( key )
+
+        if( mykey not in self.data ):
+            # raise KeyError( "unknown key" )
+            return OptPair( None, NONE )
+
+        return self.data[ mykey ]
+
+
+    def __delitem__( self, key ):
+        if( not isinstance( key, str ) ):
+            raise KeyError( "key must be a string" )
+
+        mykey = self.sanitizeKey( key )
+
+        if( mykey not in self.data ):
+            return
+
+        del self.data[ mykey ]
+
+
+    def __iter__( self ):
+        return iter( self.data )
+
+
+    def __len__( self ):
+        return len( self.data )
+
+
+    def __contains__( self, key ):
+        cdef str mykey = self.sanitizeKey( key )
+        return ( mykey in self.data )
+
+
+    cpdef legacyInsert( self, dict legacy ):
+        for (key,value) in legacy.iteritems():
+            self.legacy[ key.lower() ] = value.lower()
+
+
+    cdef str sanitizeKey( self, str key ):
+        cdef str lkey = key.lower()
+
+        if( lkey in self.legacy ):
+            return self.legacy[ lkey ]
+
+        return lkey

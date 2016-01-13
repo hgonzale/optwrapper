@@ -5,5 +5,4 @@ cdef class Soln:
 
 cdef class Solver:
     def __init__( self ):
-        self.options = { "printFile": None }
         self.debug = False

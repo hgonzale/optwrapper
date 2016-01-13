@@ -8,7 +8,7 @@ cimport numpy as cnp
 import numpy as np
 import os
 
-from ipstdcinterfaceh cimport Number, Index, Int, Bool, UserDataPtr
+from .ipstdcinterfaceh cimport Number, Index, Int, Bool, UserDataPtr
 cimport ipstdcinterfaceh as ipopt ## import functions exposed in IpStdCInterface.h
 cimport utils
 cimport base
@@ -186,8 +186,8 @@ cdef class Solver( base.Solver ):
         if( prob ):
             self.setupProblem( prob )
 
+        self.options = utils.Options( { "printFile": "output_file" } ) ## legacy_label: real_label
         self.options["hessian_approximation"] = "limited-memory"
-        self.options["output_file"] = None
 
 
     def setupProblem( self, prob ):
@@ -351,30 +351,21 @@ cdef class Solver( base.Solver ):
         if( not self.nlp_alloc ):
             return False
 
-        ## Manage legacy keys
-        if( self.options["output_file"] is None and
-            self.options["printFile"] is not None ):
-            self.options["output_file"] = self.options["printFile"]
-
         for key in self.options:
-            ## Manage legacy and None keys
-            if( key == "printFile" or
-                self.options[key] is None ):
-                continue
-
             ret = False
-            if( isinstance( self.options[key], int ) ):
-                ret = ipopt.AddIpoptIntOption( self.nlp, key, self.options[key] )
-            elif( isinstance( self.options[key], float ) ):
-                ret = ipopt.AddIpoptNumOption( self.nlp, key, self.options[key] )
-            elif( isinstance( self.options[key], str ) ):
-                tmpb = self.options[key].encode( "latin_1" )
+            if( self.options[key].dtype == utils.INT ):
+                ret = ipopt.AddIpoptIntOption( self.nlp, key, self.options[key].value )
+            elif( self.options[key].dtype == utils.DOUBLE ):
+                ret = ipopt.AddIpoptNumOption( self.nlp, key, self.options[key].value )
+            elif( self.options[key].dtype == utils.STR ):
+                tmpb = self.options[key].value.encode( "latin_1" )
                 ret = ipopt.AddIpoptStrOption( self.nlp, key, <char*> tmpb )
 
             if( not ret ):
                 raise TypeError( "Could not process option " +
-                                 "'{0}: {1}' with type {2}".format( key, self.options[key],
-                                                                    type( self.options[key] ) ) )
+                                 "'{0}: {1}' with type {2}".format( key,
+                                                                    self.options[key].value,
+                                                                    self.options[key].dtype ) )
 
         return True
 
@@ -393,7 +384,7 @@ cdef class Solver( base.Solver ):
         self.processOptions()
 
         ## unless output_file is stdout, we redirect stdout to /dev/null
-        if( self.options["output_file"] != "stdout" ):
+        if( self.options["output_file"].value != "stdout" ):
             old_stdout = os.dup(1)
             os.close(1)
             os.open( os.devnull, os.O_WRONLY )
@@ -403,7 +394,7 @@ cdef class Solver( base.Solver ):
                                    self.mult_x_L, self.mult_x_U, NULL )
 
         ## undo redirection of stdout to /dev/null
-        if( self.options["output_file"] != "stdout" ):
+        if( self.options["output_file"].value != "stdout" ):
             os.close(1)
             os.dup( old_stdout ) # should dup to 1
             os.close( old_stdout ) # get rid of left overs

@@ -1,4 +1,5 @@
 cimport numpy as np
+from .utils cimport Options
 
 cdef class Soln:
     cdef public float value
@@ -9,5 +10,5 @@ cdef class Soln:
 cdef class Solver:
     cdef public object prob
 
-    cdef public dict options
+    cdef public Options options
     cdef public int debug

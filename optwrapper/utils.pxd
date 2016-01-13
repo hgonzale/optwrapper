@@ -32,3 +32,17 @@ cdef class sMatrix:
     cdef cnp.broadcast key_to_bcast( self, object key )
     cpdef cnp.ndarray dot( self, double[:] x )
     cpdef add_sparse( self, sMatrix A )
+
+ctypedef enum datatype:
+    INT,
+    STR,
+    DOUBLE,
+    BOOL,
+    NONE
+
+cdef class Options:
+    cdef public dict data
+    cdef dict legacy
+
+    cpdef legacyInsert( self, dict legacy )
+    cdef str sanitizeKey( self, str key )
