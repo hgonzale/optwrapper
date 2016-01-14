@@ -131,6 +131,8 @@ cdef class Solver( base.Solver ):
 
 
     def __init__( self, prob=None ):
+        cdef dict legacy
+
         super().__init__()
 
         self.mem_alloc = False
@@ -140,24 +142,24 @@ cdef class Solver( base.Solver ):
         if( prob ):
             self.setupProblem( prob )
 
-        ## Set print options
-        self.options[ "summaryFile" ] = None
-        self.options[ "printLevel" ] = None
-        self.options[ "minorPrintLevel" ] = None
-        ## Set solve options
-        self.options[ "centralDiffInterval" ] = None
-        self.options[ "crashTol" ] = None
-        self.options[ "diffInterval" ] = None
-        self.options[ "feasibilityTol" ] = None
-        self.options[ "fctnPrecision" ] = None
-        self.options[ "infBoundSize" ] = None
-        self.options[ "infStepSize" ] = None
-        self.options[ "iterLimit" ] = None
-        self.options[ "linesearchTol" ] = None
-        self.options[ "minorIterLimit" ] = None
-        self.options[ "optimalityTol" ] = None
-        self.options[ "stepLimit" ] = None
-        self.options[ "verifyLevel" ] = None
+        legacy = { "printLevel": "Print Level",
+                   "minorPrintLevel": "Minor Print Level",
+                   "centralDiffInterval": "Central Difference Interval",
+                   "crashTol": "Crash Tolerance",
+                   "diffInterval": "Difference Interval",
+                   "feasibilityTol": "Feasibility Tolerance",
+                   "fctnPrecision": "Function Precision",
+                   "infBoundSize": "Infinite Bound Size",
+                   "infStepSize": "Infinite Step Size",
+                   "iterLimit": "Iteration Limit",
+                   "linesearchTol": "Line Search Tolerance",
+                   "minorIterLimit": "Minor Iteration Limit",
+                   "optimalityTol": "Optimality Tolerance",
+                   "stepLimit": "Step Limit",
+                   "verifyLevel": "Verify Level" }
+        self.options = utils.Options( legacy )
+        self.options[ "Hessian" ] = "yes"
+        self.options[ "Verify level" ] = -1
 
 
     def setupProblem( self, prob ):
@@ -304,54 +306,43 @@ cdef class Solver( base.Solver ):
         memcpy( self.R, utils.getPtr( tmparr ), self.prob.N * self.prob.N * sizeof( doublereal ) )
 
         self.warm_start = True
+        self.options[ "Warm start" ] = True
+        self.options[ "Hessian" ] = "yes"
+
         return True
 
 
-    def solve( self ):
-        ## Option strings
-        cdef char* STR_NOLIST = "Nolist"
-        cdef char* STR_DEFAULTS = "Defaults"
-        cdef char* STR_WARM_START = "Warm Start"
-        cdef char* STR_CENTRAL_DIFFERENCE_INTERVAL = "Central Difference Interval"
-        cdef char* STR_CRASH_TOLERANCE = "Crash Tolerance"
-        cdef char* STR_DIFFERENCE_INTERVAL = "Difference Interval"
-        cdef char* STR_FEASIBILITY_TOLERANCE = "Feasibility Tolerance"
-        cdef char* STR_FUNCTION_PRECISION = "Function Precision"
-        cdef char* STR_HESSIAN_YES = "Hessian Yes"
-        cdef char* STR_INFINITE_BOUND_SIZE = "Infinite Bound Size"
-        cdef char* STR_INFINITE_STEP_SIZE = "Infinite Step Size"
-        cdef char* STR_ITERATION_LIMIT = "Iteration Limit"
-        cdef char* STR_LINE_SEARCH_TOLERANCE = "Line Search Tolerance"
-        cdef char* STR_PRINT_LEVEL = "Print Level"
-        cdef char* STR_MINOR_ITERATION_LIMIT = "Minor Iteration Limit"
-        cdef char* STR_MINOR_PRINT_LEVEL = "Minor Print Level"
-        cdef char* STR_OPTIMALITY_TOLERANCE = "Optimality Tolerance"
-        cdef char* STR_PRINT_FILE = "Print File"
-        cdef char* STR_STEP_LIMIT = "Step Limit"
-        cdef char* STR_SUMMARY_FILE = "Summary File"
-        cdef char* STR_VERIFY_LEVEL = "Verify Level"
+    cdef void setOption( self, str option ):
+        cdef bytes myopt
 
-        cdef bytes printFileTmp = self.options[ "printFile" ].encode( "latin_1" )
-        cdef char* printFile = printFileTmp
-        cdef bytes summaryFileTmp = self.options[ "summaryFile" ].encode( "latin_1" )
-        cdef char* summaryFile = summaryFileTmp
+        if( len( option ) > 72 ):
+            raise ValueError( "option string is too long: {0}".format( option ) )
+
+        myopt = option.encode( "ascii" )
+        npsol.npoptn_( myopt, len( myopt ) )
+
+
+    cdef void processOptions( self ):
+        cdef str mystr, key
+
+        for key in self.options:
+            if( self.options[key].dtype == utils.NONE or
+                ( self.options[key].dtype == utils.BOOL and not self.options[key].value ) ):
+                continue
+
+            mystr = key
+            if( self.options[key].dtype != utils.BOOL ):
+                mystr += " {0}".format( self.options[key].value )
+
+            if( self.debug ):
+                print( "processing option: '{0}'".format( mystr ) )
+
+            self.setOption( mystr )
+
+
+    def solve( self ):
         cdef integer summaryFileUnit[1]
         cdef integer printFileUnit[1]
-        cdef doublereal centralDiffInterval[1]
-        cdef doublereal crashTol[1]
-        cdef doublereal diffInterval[1]
-        cdef doublereal feasibilityTol[1]
-        cdef doublereal fctnPrecision[1]
-        cdef doublereal infBoundSize[1]
-        cdef doublereal infStepSize[1]
-        cdef integer iterLimit[1]
-        cdef doublereal linesearchTol[1]
-        cdef integer printLevel[1]
-        cdef integer minorIterLimit[1]
-        cdef integer minorPrintLevel[1]
-        cdef doublereal optimalityTol[1]
-        cdef doublereal stepLimit[1]
-        cdef integer verifyLevel[1]
 
         cdef integer *n = [ self.prob.N ]
         cdef integer *nclin = [ self.prob.Nconslin ]
@@ -366,103 +357,27 @@ cdef class Solver( base.Solver ):
         memcpy( self.x, utils.getPtr( tmparr ), self.prob.N * sizeof( doublereal ) )
 
         ## Supress echo options and reset optional values, pg. 21
-        npsol.npoptn_( STR_NOLIST, len( STR_NOLIST ) )
-        npsol.npoptn_( STR_DEFAULTS, len( STR_DEFAULTS ) )
+        self.setOption( "Nolist" )
+        self.setOption( "Defaults" )
 
         ## Handle debug files
-        if( self.options[ "printFile" ] is not None and
-            self.options[ "printFile" ] != "" ):
+        if( "printFile" in self.options ):
             printFileUnit[0] = 90 ## Hardcoded since nobody cares
         else:
             printFileUnit[0] = 0 ## disabled by default, pg. 27
 
-        if( self.options[ "summaryFile" ] is not None and
-              self.options[ "summaryFile" ] != "" ):
-            if( self.options[ "summaryFile" ].lower() == "stdout" ):
+        if( "summaryFile" in self.options ):
+            if( self.options[ "summaryFile" ].value == "stdout" ):
                 summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
             else:
                 summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
         else:
             summaryFileUnit[0] = 0 ## disabled by default, pg. 28
 
-        npsol.npopti_( STR_PRINT_FILE, printFileUnit, len( STR_PRINT_FILE ) )
-        npsol.npopti_( STR_SUMMARY_FILE, summaryFileUnit, len( STR_SUMMARY_FILE ) )
+        self.setOption( "Print file {0}".format( printFileUnit[0] ) )
+        self.setOption( "Summary file {0}".format( summaryFileUnit[0] ) )
 
-        ## Set optional parameters, pg. 22
-        if( self.options[ "centralDiffInterval" ] is not None ):
-            centralDiffInterval[0] = self.options[ "centralDiffInterval" ]
-            npsol.npoptr_( STR_CENTRAL_DIFFERENCE_INTERVAL, centralDiffInterval,
-                           len( STR_CENTRAL_DIFFERENCE_INTERVAL ) )
-
-        if( self.warm_start ):
-            npsol.npoptn_( STR_WARM_START, len( STR_WARM_START ) )
-            ## follow recommendation in pg. 24
-            npsol.npoptn_( STR_HESSIAN_YES, len( STR_HESSIAN_YES ) )
-            self.warm_start = False ## Reset variable
-
-        if( self.options[ "crashTol" ] is not None ):
-            crashTol[0] = self.options[ "crashTol" ]
-            npsol.npoptr_( STR_CRASH_TOLERANCE, crashTol, len( STR_CRASH_TOLERANCE ) )
-
-        if( self.options[ "diffInterval" ] is not None ):
-            diffInterval[0] = self.options[ "diffInterval" ]
-            npsol.npoptr_( STR_DIFFERENCE_INTERVAL, diffInterval,
-                           len( STR_DIFFERENCE_INTERVAL ) )
-
-        if( self.options[ "feasibilityTol" ] is not None ):
-            feasibilityTol[0] = self.options[ "feasibilityTol" ]
-            npsol.npoptr_( STR_FEASIBILITY_TOLERANCE, feasibilityTol,
-                           len( STR_FEASIBILITY_TOLERANCE ) )
-
-        if( self.options[ "fctnPrecision" ] is not None ):
-            fctnPrecision[0] = self.options[ "fctnPrecision" ]
-            npsol.npoptr_( STR_FUNCTION_PRECISION, fctnPrecision,
-                           len( STR_FUNCTION_PRECISION ) )
-
-        if( self.options[ "infBoundSize" ] is not None ):
-            infBoundSize[0] = self.options[ "infBoundSize" ]
-            npsol.npoptr_( STR_INFINITE_BOUND_SIZE, infBoundSize, len( STR_INFINITE_BOUND_SIZE ) )
-
-        if( self.options[ "infStepSize" ] is not None ):
-            infStepSize[0] = self.options[ "infStepSize" ]
-            npsol.npoptr_( STR_INFINITE_STEP_SIZE, infStepSize, len( STR_INFINITE_STEP_SIZE ) )
-
-        if( self.options[ "iterLimit" ] is not None ):
-            iterLimit[0] = self.options["iterLimit"]
-            npsol.npopti_( STR_ITERATION_LIMIT, iterLimit, len( STR_ITERATION_LIMIT ) )
-
-        if( self.options[ "printLevel" ] is not None ):
-            printLevel[0] = self.options[ "printLevel" ]
-            npsol.npopti_( STR_PRINT_LEVEL, printLevel, len( STR_PRINT_LEVEL ) )
-
-        if( self.options[ "linesearchTol" ] is not None ):
-            linesearchTol[0] = self.options[ "linesearchTol" ]
-            npsol.npoptr_( STR_LINE_SEARCH_TOLERANCE, linesearchTol,
-                           len( STR_LINE_SEARCH_TOLERANCE ) )
-
-        if( self.options[ "minorIterLimit" ] is not None ):
-            minorIterLimit[0] = self.options[ "minorIterLimit" ]
-            npsol.npopti_( STR_MINOR_ITERATION_LIMIT, minorIterLimit,
-                           len( STR_MINOR_ITERATION_LIMIT ) )
-
-        if( self.options[ "minorPrintLevel" ] is not None ):
-            minorPrintLevel[0] = self.options[ "minorPrintLevel" ]
-            npsol.npopti_( STR_MINOR_PRINT_LEVEL, minorPrintLevel, len( STR_MINOR_PRINT_LEVEL ) )
-
-        if( self.options[ "optimalityTol" ] is not None ):
-            optimalityTol[0] = self.options[ "optimalityTol" ]
-            npsol.npoptr_( STR_OPTIMALITY_TOLERANCE, optimalityTol,
-                           len( STR_OPTIMALITY_TOLERANCE ) )
-
-        if( self.options[ "stepLimit" ] is not None ):
-            stepLimit[0] = self.options["stepLimit"]
-            npsol.npoptr_( STR_STEP_LIMIT, stepLimit, len( STR_STEP_LIMIT ) )
-
-        if( self.options[ "verifyLevel" ] is not None ):
-            verifyLevel[0] = self.options[ "verifyLevel" ]
-        else:
-            verifyLevel[0] = -1 ## disabled by default, pg. 28
-        npsol.npopti_( STR_VERIFY_LEVEL, verifyLevel, len( STR_VERIFY_LEVEL ) )
+        self.processOptions()
 
         ## Call NPSOL
         npsol.npsol_( n, nclin,
@@ -475,21 +390,22 @@ cdef class Solver( base.Solver ):
                       objf_val, self.objg_val, self.R, self.x,
                       self.iw, self.leniw, self.w, self.lenw )
 
+        self.warm_start = False
+        del self.options[ "Warm start" ]
+
         ## Try to rename fortran print and summary files
-        if( self.options[ "printFile" ] is not None and
-            self.options[ "printFile" ] != "" ):
+        if( "printFile" in self.options ):
             try:
                 os.rename( "fort.{0}".format( printFileUnit[0] ),
-                           self.options[ "printFile" ] )
+                           self.options[ "printFile" ].value )
             except:
                 pass
 
-        if( self.options[ "summaryFile" ] is not None and
-            self.options[ "summaryFile" ] != "" and
+        if( "summaryFile" in self.options and
             self.options[ "summaryFile" ].lower() != "stdout" ):
             try:
                 os.rename( "fort.{0}".format( summaryFileUnit[0] ),
-                           self.options[ "summaryFile" ] )
+                           self.options[ "summaryFile" ].value )
             except:
                 pass
 

@@ -346,18 +346,22 @@ cdef class Solver( base.Solver ):
 
 
     cdef int processOptions( self ):
+        cdef bytes tmpkey
+        cdef bytes tmpval
         cdef Bool ret
         if( not self.nlp_alloc ):
             return False
 
         for key in self.options:
             ret = False
+            tmpkey = key.encode( "ascii" )
             if( self.options[key].dtype == utils.INT ):
-                ret = ipopt.AddIpoptIntOption( self.nlp, key, self.options[key].value )
+                ret = ipopt.AddIpoptIntOption( self.nlp, tmpkey, self.options[key].value )
             elif( self.options[key].dtype == utils.DOUBLE ):
-                ret = ipopt.AddIpoptNumOption( self.nlp, key, self.options[key].value )
+                ret = ipopt.AddIpoptNumOption( self.nlp, tmpkey, self.options[key].value )
             elif( self.options[key].dtype == utils.STR ):
-                ret = ipopt.AddIpoptStrOption( self.nlp, key, self.options[key].value )
+                tmpval = self.options[key].value.encode( "ascii" )
+                ret = ipopt.AddIpoptStrOption( self.nlp, tmpkey, tmpval )
 
             if( not ret ):
                 raise TypeError( "Could not process option " +
@@ -397,9 +401,9 @@ cdef class Solver( base.Solver ):
             os.dup( old_stdout ) # should dup to 1
             os.close( old_stdout ) # get rid of left overs
 
-        if( self.warm_start ):
-            self.warm_start = False
-            self.options[ "warm_start_init_point" ] = "no"
+        ## disable warm start after execution
+        self.warm_start = False
+        del self.options[ "warm_start_init_point" ]
 
         ## Save result to prob
         self.prob.soln = Soln()

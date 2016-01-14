@@ -500,7 +500,7 @@ cdef class Options:
     def __contains__( self, key ):
         cdef str mykey = self.sanitizeKey( key )
         return ( mykey in self.data and
-                 self.data[mykey] is not None )
+                 self.data[mykey] )
 
 
     cpdef legacyInsert( self, dict legacy ):

@@ -30,7 +30,7 @@ prob.consGrad( consg )
 if( not prob.checkGrad( debug=True ) ):
     sys.exit( "Gradient check failed." )
 
-solver = ow.ipopt.Solver( prob ) ## change this line to use another solver
+solver = ow.snopt.Solver( prob ) ## change this line to use another solver
 # solver.options["printFile"] = "stdout"
 
 print( "First run..." )

@@ -37,9 +37,19 @@ cdef class Soln( base.Soln ):
         self.nS = 0
 
     def getStatus( self ):
-        cdef tuple statusInfo = ( "Finished successfully", ## 0
-                                  "The problem appears to be infeasible", ## 10
-                                  "The problem appears to be unbounded", ## 20
+        cdef dict statusInfo = { 0: "Finished successfully",
+                                 1: "Optimality conditions satisfied",
+                                 2: "Feasible point found",
+                                 3: "Requested accuracy could not be achieved",
+                                 10: "The problem appears to be infeasible",
+                                 11: "Infeasible linear constraints",
+                                 12: "Infeasible linear equalities",
+                                 13: "Nonlinear infeasibilities minimized",
+                                 14: "Infeasibilities minimized",
+                                 20: "The problem appears to be unbounded",
+                                 21: "Unbounded objective",
+                                 22: "Constraint violation limit reached",
+                                 ###############################
                                   "Resource limit error", ## 30
                                   "Terminated after numerical difficulties", ## 40
                                   "Error in the user-supplied functions", ## 50
@@ -248,7 +258,8 @@ cdef class Solver( base.Solver ):
         else:
             tmplist += ( np.zeros( ( prob.Ncons, self.n[0] ) ), )
         Asparse = utils.sMatrix( np.vstack( tmplist ), copy_data=True )
-        print( Asparse[:] )
+        # print( Asparse[:] )
+
         if( Asparse.nnz > 0 ):
             self.lenA[0] = Asparse.nnz
             self.neA[0] = self.lenA[0]
@@ -494,7 +505,7 @@ cdef class Solver( base.Solver ):
                         char* cw, integer* lencw,
                         integer* iw, integer* leniw,
                         doublereal* rw, integer* lenrw ):
-        cdef integer inform_out[1]
+        cdef integer* inform_out = [ 0 ]
         cdef bytes myopt
 
         if( len( option ) > 72 ):
@@ -512,13 +523,9 @@ cdef class Solver( base.Solver ):
         return inform_out[0]
 
 
-    cdef int processOptions( self, char* cw, integer* iw, doublereal* rw,
-                             integer* lencw, integer* leniw, integer* lenrw ):
+    cdef int processOptions( self ):
         cdef str mystr, key
-        cdef integer ret
-
-        if( not self.nlp_alloc ):
-            return False
+        cdef int out = True
 
         for key in self.options:
             if( self.options[key].dtype == utils.NONE or
@@ -532,9 +539,11 @@ cdef class Solver( base.Solver ):
             if( self.debug ):
                 print( "processing option: '{0}'".format( mystr ) )
 
-            ret = self.setOption( mystr, cw, lencw, iw, leniw, rw, lenrw )
+            out = out and self.setOption( mystr,
+                                          self.cw, self.lencw, self.iw, self.leniw,
+                                          self.rw, self.lenrw )
 
-        return True
+        return out
 
 
     def solve( self ):
@@ -645,17 +654,15 @@ cdef class Solver( base.Solver ):
         memcpy( self.iw, tmpiw, ltmpiw[0] * sizeof( integer ) )
         memcpy( self.rw, tmprw, ltmprw[0] * sizeof( doublereal ) )
 
-        inform_out[0] = 0 ## Reset inform_out before running snset* functions
-
         ## Set new workspace lengths
-        self.setOption( "Total character workspace {0}".format( self.lencw ),
+        self.setOption( "Total character workspace {0}".format( self.lencw[0] ),
                        self.cw, ltmpcw, self.iw, ltmpiw, self.rw, ltmprw )
-        self.setOption( "Total integer workspace {0}".format( self.leniw ),
+        self.setOption( "Total integer workspace {0}".format( self.leniw[0] ),
                        self.cw, ltmpcw, self.iw, ltmpiw, self.rw, ltmprw )
-        self.setOption( "Total real workspace {0}".format( self.lenrw ),
+        self.setOption( "Total real workspace {0}".format( self.lenrw[0] ),
                        self.cw, ltmpcw, self.iw, ltmpiw, self.rw, ltmprw )
-        if( inform_out[0] != 0 ):
-            raise Exception( "Could not set workspace lengths" )
+
+        self.processOptions()
 
         if( self.debug ):
             print( ">>> All options successfully set up" )
@@ -702,7 +709,7 @@ cdef class Solver( base.Solver ):
         if( "printFile" in self.options ):
             try:
                 os.rename( "fort.{0}".format( self.printFileUnit[0] ),
-                           self.options[ "printFile" ] )
+                           self.options[ "printFile" ].value )
             except:
                 pass
 
@@ -710,7 +717,7 @@ cdef class Solver( base.Solver ):
             self.options[ "summaryFile" ].value != "stdout" ):
             try:
                 os.rename( "fort.{0}".format( self.summaryFileUnit[0] ),
-                           self.options[ "summaryFile" ] )
+                           self.options[ "summaryFile" ].value )
             except:
                 pass
 
