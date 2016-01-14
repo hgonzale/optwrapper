@@ -138,6 +138,8 @@ cdef class Solver( base.Solver ):
     cdef integer leniw[1]
     cdef integer lenrw[1]
     cdef integer Start[1]
+    cdef integer summaryFileUnit[1]
+    cdef integer printFileUnit[1]
 
     cdef int mem_alloc
     cdef integer mem_size[4]
@@ -154,6 +156,11 @@ cdef class Solver( base.Solver ):
         memset( self.mem_size, 0, 4 * sizeof( integer ) ) ## Set mem_size to zero
         memset( self.mem_size_ws, 0, 3 * sizeof( integer ) ) ## Set mem_size_ws to zero
         self.prob = None
+
+        ## New problems cannot be warm started
+        self.Start[0] = 0 ## Cold start
+        self.printFileUnit[0] = 0
+        self.summaryFileUnit[0] = 0
 
         if( prob ):
             self.setupProblem( prob )
@@ -220,9 +227,6 @@ cdef class Solver( base.Solver ):
 
         self.prob = prob ## Save a copy of prob's pointer
         extprob = prob ## Save another (global) copy of prob's pointer to use in usrfun
-
-        ## New problems cannot be warm started
-        self.Start[0] = 0 ## Cold start
 
         ## Set n, nF
         self.n[0] = prob.N
@@ -482,29 +486,42 @@ cdef class Solver( base.Solver ):
         return True
 
 
-    cdef int processOptions( self, integer* printFileUnit, integer* summaryFileUnit,
-                             char* cw, integer* iw, doublereal* rw,
+    cdef int setOption( self, str option,
+                        char* cw, integer* iw, doublereal* rw,
+                        integer* lencw, integer* leniw, integer* lenrw ):
+        cdef integer inform_out[1]
+
+        snopt.snset_( option,
+                      self.printFileUnit, self.summaryFileUnit, inform_out,
+                      cw, lencw, iw, leniw, rw, lenrw,
+                      len( option ), lencw[0]*8 )
+
+        return inform_out[0]
+
+
+    cdef int processOptions( self, char* cw, integer* iw, doublereal* rw,
                              integer* lencw, integer* leniw, integer* lenrw ):
         cdef str mystr
-        cdef integer inform_out[1]
+        cdef integer ret
 
         if( not self.nlp_alloc ):
             return False
 
         for key in self.options:
+            if( self.options[key].dtype == utils.NONE or
+                ( self.options[key].dtype == utils.BOOL and not self.options[key].value ) ):
+                continue
+
             mystr = key
-            if( self.options[key].dtype != utils.NONE ):
+            if( self.options[key].dtype != utils.BOOL ):
                 mystr += " {0}".format( self.options[key].value )
 
             if( debug ):
                 print( "processing option: '{0}'".format( mystr ) )
 
-            snopt.snset_( mystr,
-                          printFileUnit, summaryFileUnit, inform_out,
-                          cw, lencw, iw, leniw, rw, lenrw,
-                          len( mystr ), lencw[0]*8 )
+            ret = self.setOption( mystr, cw, lencw, iw, leniw, rw, lenrw )
 
-            if( inform_out[0] != 0 ):
+            if( ret != 0 ):
                 raise TypeError( "Could not process option " +
                                  "'{0}: {1}' with type {2}".format( key,
                                                                     self.options[key].value,
@@ -562,8 +579,6 @@ cdef class Solver( base.Solver ):
         cdef char tmpcw[500 * 8]
         cdef integer tmpiw[500]
         cdef doublereal tmprw[500]
-        cdef integer summaryFileUnit[1]
-        cdef integer printFileUnit[1]
         cdef integer *nxname = [ 1 ] ## Do not provide vars names
         cdef integer *nFname = [ 1 ] ## Do not provide cons names
         cdef integer nS[1]
@@ -583,30 +598,30 @@ cdef class Solver( base.Solver ):
 
         ## Handle debug files
         if( self.options[ "printFile" ].value ):
-            printFileUnit[0] = 90 ## Hardcoded since nobody cares
+            self.printFileUnit[0] = 90 ## Hardcoded since nobody cares
             if( self.debug ):
                 print( ">>> Sending print file to " + self.options[ "printFile" ] )
         else:
-            printFileUnit[0] = 0 ## disabled by default, pg. 27
+            self.printFileUnit[0] = 0 ## disabled by default, pg. 27
             if( self.debug ):
                 print( ">>> Print file is disabled" )
 
         if( self.options[ "summaryFile" ].value ):
             if( self.options[ "summaryFile" ].value == "stdout" ):
-                summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
+                self.summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
                 if( self.debug ):
                     print( ">>> Sending summary to stdout" )
             else:
-                summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
+                self.summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
                 if( self.debug ):
                     print( ">>> Sending summary to " + self.options[ "summaryFile" ] )
         else:
-            summaryFileUnit[0] = 0 ## disabled by default, pg. 28
+            self.summaryFileUnit[0] = 0 ## disabled by default, pg. 28
             if( self.debug ):
                 print( ">>> Summary is disabled" )
 
         ## Initialize
-        snopt.sninit_( printFileUnit, summaryFileUnit,
+        snopt.sninit_( self.printFileUnit, self.summaryFileUnit,
                        tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw,
                        ltmpcw[0]*8 )
 
@@ -617,7 +632,7 @@ cdef class Solver( base.Solver ):
         #####################################################
         ## Suppress parameter verbosity
         if( not self.debug ):
-            ezset( STR_SUPPRESS_PARAMETERS, True )
+            self.setOption( STR_SUPPRESS_PARAMETERS, tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw )
 
         ## The following settings change the outcome of snmema, pg. 29
         if( self.options[ "hessianMemory" ] is not None ):
