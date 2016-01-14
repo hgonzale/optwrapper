@@ -169,7 +169,6 @@ cdef class Solver( base.Solver ):
         legacy = { "printLevel": "Major print level",
                    "minorPrintLevel": "Minor print level",
                    "printFreq": "Print frequency",
-                   "scalePrint": "Scale print",
                    "solutionPrint": "Solution",
                    "systemInfo": "System information Yes",
                    "timingLevel": "Timing level",
@@ -203,15 +202,20 @@ cdef class Solver( base.Solver ):
                    "partialPrice": "Partial price",
                    "pivotTol": "Pivot tolerance",
                    "proximalPointMethod": "Proximal point method",
-                   "reducedHessianDim": "Reduced Hessian dimension",
+                   "reducedHessianDim": "Hessian dimension",
+                   "Reduced hessian dimension": "Hessian dimension",
                    "scaleOption": "Scale option",
                    "scaleTol": "Scale tolerance",
+                   "scalePrint": "Scale print",
                    "superbasicsLimit": "Superbasics limit",
                    "unboundedObjValue": "Unbounded objective value",
                    "unboundedStepSize": "Unbounded step size",
                    "verifyLevel": "Verify level",
                    "violationLimit": "Violation limit" }
-        self.options = Options( legacy )
+
+        self.options = utils.Options( legacy )
+        self.options[ "Verify level" ] = -1
+        self.options[ "Solution" ] = "no"
 
 
     def setupProblem( self, prob ):
@@ -487,21 +491,30 @@ cdef class Solver( base.Solver ):
 
 
     cdef int setOption( self, str option,
-                        char* cw, integer* iw, doublereal* rw,
-                        integer* lencw, integer* leniw, integer* lenrw ):
+                        char* cw, integer* lencw,
+                        integer* iw, integer* leniw,
+                        doublereal* rw, integer* lenrw ):
         cdef integer inform_out[1]
+        cdef bytes myopt
 
-        snopt.snset_( option,
+        if( len( option ) > 72 ):
+            raise ValueError( "option string is too long: {0}".format( option ) )
+
+        myopt = option.encode( "ascii" )
+        snopt.snset_( myopt,
                       self.printFileUnit, self.summaryFileUnit, inform_out,
                       cw, lencw, iw, leniw, rw, lenrw,
-                      len( option ), lencw[0]*8 )
+                      len( myopt ), lencw[0]*8 )
+
+        if( inform_out[0] != 0 ):
+            raise ValueError( "Could not process option: {0}".format( option ) )
 
         return inform_out[0]
 
 
     cdef int processOptions( self, char* cw, integer* iw, doublereal* rw,
                              integer* lencw, integer* leniw, integer* lenrw ):
-        cdef str mystr
+        cdef str mystr, key
         cdef integer ret
 
         if( not self.nlp_alloc ):
@@ -516,58 +529,18 @@ cdef class Solver( base.Solver ):
             if( self.options[key].dtype != utils.BOOL ):
                 mystr += " {0}".format( self.options[key].value )
 
-            if( debug ):
+            if( self.debug ):
                 print( "processing option: '{0}'".format( mystr ) )
 
             ret = self.setOption( mystr, cw, lencw, iw, leniw, rw, lenrw )
-
-            if( ret != 0 ):
-                raise TypeError( "Could not process option " +
-                                 "'{0}: {1}' with type {2}".format( key,
-                                                                    self.options[key].value,
-                                                                    self.options[key].dtype ) )
 
         return True
 
 
     def solve( self ):
-        def ezset( char* s, bint temp=False ):
-            if( temp ):
-                snopt.snset_( s,
-                              printFileUnit, summaryFileUnit, inform_out,
-                              tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw,
-                              len( s ), ltmpcw[0]*8 )
-            else:
-                snopt.snset_( s,
-                              printFileUnit, summaryFileUnit, inform_out,
-                              self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                              len( s ), self.lencw[0]*8 )
-
-        def ezseti( char* s, integer i, bint temp=False ):
-            cdef integer* tmpInt = [ i ]
-            if( temp ):
-                snopt.snseti_( s, tmpInt,
-                               printFileUnit, summaryFileUnit, inform_out,
-                               tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw,
-                               len( s ), ltmpcw[0]*8 )
-            else:
-                snopt.snseti_( s, tmpInt,
-                               printFileUnit, summaryFileUnit, inform_out,
-                               self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                               len( s ), self.lencw[0]*8 )
-
-        def ezsetr( char* s, doublereal r ):
-            cdef doublereal* tmpReal = [ r ]
-            snopt.snsetr_( s, tmpReal,
-                           printFileUnit, summaryFileUnit, inform_out,
-                           self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
-                           len( s ), self.lencw[0]*8 )
-
-        ## option strings
-        cdef char* STR_SUPPRESS_PARAMETERS = "Suppress parameters"
-        cdef char* STR_TOTAL_CHARACTER_WORKSPACE = "Total character workspace"
-        cdef char* STR_TOTAL_INTEGER_WORKSPACE = "Total integer workspace"
-        cdef char* STR_TOTAL_REAL_WORKSPACE = "Total real workspace"
+        global Asparse
+        global objGsparse
+        global consGsparse
 
         cdef integer mincw[1]
         cdef integer miniw[1]
@@ -597,7 +570,7 @@ cdef class Solver( base.Solver ):
                 self.n[0] * sizeof( doublereal ) )
 
         ## Handle debug files
-        if( self.options[ "printFile" ].value ):
+        if( "printFile" in self.options ):
             self.printFileUnit[0] = 90 ## Hardcoded since nobody cares
             if( self.debug ):
                 print( ">>> Sending print file to " + self.options[ "printFile" ] )
@@ -606,7 +579,7 @@ cdef class Solver( base.Solver ):
             if( self.debug ):
                 print( ">>> Print file is disabled" )
 
-        if( self.options[ "summaryFile" ].value ):
+        if( "summaryFile" in self.options ):
             if( self.options[ "summaryFile" ].value == "stdout" ):
                 self.summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
                 if( self.debug ):
@@ -627,28 +600,27 @@ cdef class Solver( base.Solver ):
 
         inform_out[0] = 0 ## Reset inform_out before running snset* functions
 
-        #####################################################
-        #####################################################
-        #####################################################
         ## Suppress parameter verbosity
         if( not self.debug ):
-            self.setOption( STR_SUPPRESS_PARAMETERS, tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw )
+            self.setOption( "Suppress parameters", tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw )
 
         ## The following settings change the outcome of snmema, pg. 29
-        if( self.options[ "hessianMemory" ] is not None ):
-            if( self.options[ "hessianMemory" ].lower() == "full" ):
-                ezset( STR_HESSIAN_FULL_MEMORY, True )
-            elif( self.options[ "hessianMemory" ].lower() == "limited" ):
-                ezset( STR_HESSIAN_LIMITED_MEMORY, True )
+        if( "Hessian full memory" in self.options ):
+            self.setOption( "Hessian full memory", tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw )
+        elif( "Hessian limited memory" in self.options ):
+            self.setOption( "Hessian limited memory", tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw )
 
-        if( self.options[ "hessianUpdates" ] is not None ):
-            ezseti( STR_HESSIAN_UPDATES, self.options[ "hessianUpdates" ], True )
+        if( "Hessian updates" in self.options ):
+            self.setOption( "Hessian updtes {0}".format( self.options[ "Hessian updates" ].value ),
+                            tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw )
 
-        if( self.options[ "reducedHessianDim" ] is not None ):
-            ezseti( STR_REDUCED_HESSIAN_DIMENSION, self.options[ "reducedHessianDim" ], True )
+        if( "Hessian dimension" in self.options ):
+            self.setOption( "Hessian dimension {0}".format( self.options[ "Hessian dimension" ].value ),
+                            tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw )
 
-        if( self.options[ "superbasicsLimit" ] is not None ):
-            ezseti( STR_SUPERBASICS_LIMIT, self.options[ "superbasicsLimit" ], True )
+        if( "Superbasics limit" in self.options ):
+            self.setOption( "Superbasics limit {0}".format( self.options[ "Superbasics limit" ].value ),
+                            tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw )
 
         ## Now we get to know how much memory we need
         snopt.snmema_( inform_out, self.nF, self.n, nxname, nFname, self.lenA, self.lenG,
@@ -676,168 +648,16 @@ cdef class Solver( base.Solver ):
         inform_out[0] = 0 ## Reset inform_out before running snset* functions
 
         ## Set new workspace lengths
-        snopt.snseti_( STR_TOTAL_CHARACTER_WORKSPACE, self.lencw,
-                       printFileUnit, summaryFileUnit, inform_out,
-                       self.cw, ltmpcw, self.iw, ltmpiw, self.rw, ltmprw,
-                       len( STR_TOTAL_CHARACTER_WORKSPACE ), self.lencw[0]*8 )
-        snopt.snseti_( STR_TOTAL_INTEGER_WORKSPACE, self.leniw,
-                       printFileUnit, summaryFileUnit, inform_out,
-                       self.cw, ltmpcw, self.iw, ltmpiw, self.rw, ltmprw,
-                       len( STR_TOTAL_INTEGER_WORKSPACE ), self.lencw[0]*8 )
-        snopt.snseti_( STR_TOTAL_REAL_WORKSPACE, self.lenrw,
-                       printFileUnit, summaryFileUnit, inform_out,
-                       self.cw, ltmpcw, self.iw, ltmpiw, self.rw, ltmprw,
-                       len( STR_TOTAL_REAL_WORKSPACE ), self.lencw[0]*8 )
+        self.setOption( "Total character workspace {0}".format( self.lencw ),
+                       self.cw, ltmpcw, self.iw, ltmpiw, self.rw, ltmprw )
+        self.setOption( "Total integer workspace {0}".format( self.leniw ),
+                       self.cw, ltmpcw, self.iw, ltmpiw, self.rw, ltmprw )
+        self.setOption( "Total real workspace {0}".format( self.lenrw ),
+                       self.cw, ltmpcw, self.iw, ltmpiw, self.rw, ltmprw )
         if( inform_out[0] != 0 ):
             raise Exception( "Could not set workspace lengths" )
 
-        ## Set rest of the parameters
-        if( self.options[ "centralDiffInterval" ] is not None ):
-            ezsetr( STR_CENTRAL_DIFFERENCE_INTERVAL, self.options[ "centralDiffInterval" ] )
-
-        if( self.options[ "checkFreq" ] is not None ):
-            ezseti( STR_CHECK_FREQUENCY, self.options[ "checkFreq" ] )
-
-        if( self.options[ "crashOpt" ] is not None ):
-            ezseti( STR_CRASH_OPTION, self.options[ "crashOpt" ] )
-
-        if( self.options[ "crashTol" ] is not None ):
-            ezseti( STR_CRASH_TOLERANCE, self.options[ "crashTol" ] )
-
-        if( self.options[ "nonderivLinesearch"] is not None ):
-            ezset( STR_NONDERIVATIVE_LINESEARCH )
-
-        if( self.options[ "diffInterval" ] is not None ):
-            ezsetr( STR_DIFFERENCE_INTERVAL, self.options[ "diffInterval" ] )
-
-        if( self.options[ "elasticWeight" ] is not None ):
-            ezsetr( STR_ELASTIC_WEIGHT, self.options[ "elasticWeight" ] )
-
-        if( self.options[ "expandFreq" ] is not None ):
-            ezseti( STR_EXPAND_FREQUENCY, self.options[ "expandFreq" ] )
-
-        if( self.options[ "factorizationFreq" ] is not None ):
-            ezseti( STR_FACTORIZATION_FREQUENCY, self.options[ "factorizationFreq" ] )
-
-        if( self.options[ "feasiblePoint" ] is not None ):
-            ezset( STR_FEASIBLE_POINT )
-
-        if( self.options[ "fctnPrecision" ] is not None ):
-            ezsetr( STR_FUNCTION_PRECISION, self.options[ "fctnPrecision" ] )
-
-        if( self.options[ "hessianFreq" ] is not None ):
-            ezseti( STR_HESSIAN_FREQUENCY, self.options[ "hessianFreq" ] )
-
-        if( self.options[ "infBound" ] is not None ):
-            ezsetr( STR_INFINITE_BOUND, self.options[ "infBound" ] )
-
-        if( self.options[ "iterLimit" ] is not None ):
-            ezseti( STR_ITERATIONS_LIMIT, self.options[ "iterLimit" ] )
-
-        if( self.options[ "linesearchTol" ] is not None ):
-            ezsetr( STR_LINESEARCH_TOLERANCE, self.options[ "linesearchTol" ] )
-
-        if( self.options[ "luFactorTol" ] is not None ):
-            ezsetr( STR_LU_FACTOR_TOLERANCE, self.options[ "luFactorTol" ] )
-
-        if( self.options[ "luUpdateTol" ] is not None ):
-            ezsetr( STR_LU_UPDATE_TOLERANCE, self.options[ "luUpdateTol" ] )
-
-        if( self.options[ "luPivoting" ] is not None ):
-            if( self.options[ "luPivoting" ].lower() == "rook" ):
-                ezset( STR_LU_ROOK_PIVOTING )
-            elif( self.options[ "luPivoting" ].lower() == "complete" ):
-                ezset( STR_LU_COMPLETE_PIVOTING )
-
-        if( self.options[ "luDensityTol" ] is not None ):
-            ezsetr( STR_LU_DENSITY_TOLERANCE, self.options[ "luDensityTol" ] )
-
-        if( self.options[ "luSingularityTol" ] is not None ):
-            ezsetr( STR_LU_SINGULARITY_TOLERANCE, self.options[ "luSingularityTol" ] )
-
-        if( self.options[ "majorFeasibilityTol" ] is not None ):
-            ezsetr( STR_MAJOR_FEASIBILITY_TOLERANCE, self.options[ "majorFeasibilityTol" ] )
-
-        if( self.options[ "majorIterLimit" ] is not None ):
-            ezseti( STR_MAJOR_ITERATIONS_LIMIT, self.options[ "majorIterLimit" ] )
-
-        if( self.options[ "majorOptimalityTol" ] is not None ):
-            ezsetr( STR_MAJOR_OPTIMALITY_TOLERANCE, self.options[ "majorOptimalityTol" ] )
-
-        if( self.options[ "printLevel" ] is not None ):
-            ezseti( STR_MAJOR_PRINT_LEVEL, self.options[ "printLevel" ] )
-
-        if( self.options[ "majorStepLimit" ] is not None ):
-            ezsetr( STR_MAJOR_STEP_LIMIT, self.options[ "majorStepLimit" ] )
-
-        if( self.options[ "minorIterLimit" ] is not None ):
-            ezseti( STR_MINOR_ITERATIONS_LIMIT, self.options[ "minorIterLimit" ] )
-
-        if( self.options[ "minorFeasibilityTol" ] is not None ):
-            ezsetr( STR_MINOR_FEASIBILITY_TOLERANCE, self.options[ "minorFeasibilityTol" ] )
-
-        if( self.options[ "minorPrintLevel" ] is not None ):
-            ezseti( STR_MINOR_PRINT_LEVEL, self.options[ "minorPrintLevel" ] )
-
-        if( self.options[ "newSuperbasicsLimit" ] is not None ):
-            ezseti( STR_NEW_SUPERBASICS_LIMIT, self.options[ "newSuperbasicsLimit" ] )
-
-        if( self.options[ "partialPrice" ] is not None ):
-            ezseti( STR_PARTIAL_PRICE, self.options[ "partialPrice" ] )
-
-        if( self.options[ "pivotTol" ] is not None ):
-            ezsetr( STR_PIVOT_TOLERANCE, self.options[ "pivotTol" ] )
-
-        if( self.options[ "printFreq" ] is not None ):
-            ezseti( STR_PRINT_FREQUENCY, self.options[ "printFreq" ] )
-
-        if( self.options[ "proximalPointMethod" ] is not None ):
-            ezseti( STR_PROXIMAL_POINT_METHOD, self.options[ "proximalPointMethod" ] )
-
-        if( self.options[ "qpSolver" ] is not None ):
-            if( self.options[ "qpSolver" ].lower() == "cg" ):
-                ezset( STR_QPSOLVER_CG )
-            elif( self.options[ "qpSolver" ].lower() == "qn" ):
-                ezset( STR_QPSOLVER_QN )
-
-        if( self.options[ "scaleOption" ] is not None ):
-            ezseti( STR_SCALE_OPTION, self.options[ "scaleOption" ] )
-
-        if( self.options[ "scaleTol" ] is not None ):
-            ezsetr( STR_SCALE_TOLERANCE, self.options[ "scaleTol" ] )
-
-        if( self.options[ "scalePrint" ] is not None ):
-            ezset( STR_SCALE_PRINT )
-
-        if( self.options[ "solutionPrint" ] == True ):
-            ezset( STR_SOLUTION_YES )
-        else:
-            ezset( STR_SOLUTION_NO ) ## changed default value! we don't print soln unless requested
-
-        if( self.options[ "systemInfo" ] is not None ):
-            ezset( STR_SYSTEM_INFORMATION_YES )
-
-        if( self.options[ "timingLevel" ] is not None ):
-            ezseti( STR_TIMING_LEVEL, self.options[ "timingLevel" ] )
-
-        if( self.options[ "unboundedObjValue" ] is not None ):
-            ezsetr( STR_UNBOUNDED_OBJECTIVE_VALUE, self.options[ "unboundedObjValue" ] )
-
-        if( self.options[ "unboundedStepSize" ] is not None ):
-            ezsetr( STR_UNBOUNDED_STEP_SIZE, self.options[ "unboundedStepSize" ] )
-
-        if( self.options[ "verifyLevel" ] is not None ):
-            ezseti( STR_VERIFY_LEVEL, self.options[ "verifyLevel" ] )
-        else:
-            ezseti( STR_VERIFY_LEVEL, -1 ) ## changed default value! disabled by default, pg. 84
-
-        if( self.options[ "violationLimit" ] is not None ):
-            ezsetr( STR_VIOLATION_LIMIT, self.options[ "violationLimit" ] )
-
-        ## Checkout if we had any errors before we run SNOPT
-        if( inform_out[0] != 0 ):
-            raise Exception( "At least one option setting failed" )
-        elif( self.debug ):
+        if( self.debug ):
             print( ">>> All options successfully set up" )
 
         if( self.debug ):
@@ -854,11 +674,10 @@ cdef class Solver( base.Solver ):
 
             if( isinstance( self.prob, nlp.SparseProblem ) ):
                 if( self.prob.Nconslin > 0 ):
-                    print( ">>> Sparsity of A: {0:.1%}".format(
-                           self.lenA[0] / ( self.n[0] * self.prob.Nconslin ) ) )
+                    print( ">>> Sparse A: {0}".format( Asparse.__repr__() ) )
+                print( ">>> Sparse gradient obj: {0}".format( objGsparse.__repr() ) )
                 if( self.prob.Ncons > 0 ):
-                    print( ">>> Sparsity of gradient: {0:.1%}".format(
-                           self.lenG[0] / ( self.n[0] * ( 1 + self.prob.Ncons ) ) ) )
+                    print( ">>> Sparse gradient cons: {0}".format( consGsparse.__repr() ) )
 
         ## Execute SNOPT
         snopt.snopta_( self.Start, self.nF,
@@ -880,19 +699,17 @@ cdef class Solver( base.Solver ):
                        self.lencw[0]*8, self.lencw[0]*8 )
 
         ## Try to rename fortran print and summary files
-        if( self.options[ "printFile" ] is not None and
-            self.options[ "printFile" ] != "" ):
+        if( "printFile" in self.options ):
             try:
-                os.rename( "fort.{0}".format( printFileUnit[0] ),
+                os.rename( "fort.{0}".format( self.printFileUnit[0] ),
                            self.options[ "printFile" ] )
             except:
                 pass
 
-        if( self.options[ "summaryFile" ] is not None and
-            self.options[ "summaryFile" ] != "" and
-            self.options[ "summaryFile" ].lower() != "stdout" ):
+        if( "summaryFile" in self.options and
+            self.options[ "summaryFile" ].value != "stdout" ):
             try:
-                os.rename( "fort.{0}".format( summaryFileUnit[0] ),
+                os.rename( "fort.{0}".format( self.summaryFileUnit[0] ),
                            self.options[ "summaryFile" ] )
             except:
                 pass

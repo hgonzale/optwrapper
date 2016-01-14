@@ -427,8 +427,9 @@ cdef datatype checkType( object val ):
 
 
 cdef class OptPair:
-    cdef object value
-    cdef datatype dtype
+    def __init__( self, value, dtype ):
+        self.value = value
+        self.dtype = dtype
 
     def __str__( self ):
         return str( self.value )
@@ -437,6 +438,8 @@ cdef class OptPair:
 cdef class Options:
     def __init__( self, dict legacy=None ):
         self.legacy = dict()
+        self.data = dict()
+
         if( legacy is not None ):
             self.legacyInsert( legacy )
 
@@ -496,7 +499,8 @@ cdef class Options:
 
     def __contains__( self, key ):
         cdef str mykey = self.sanitizeKey( key )
-        return ( mykey in self.data )
+        return ( mykey in self.data and
+                 self.data[mykey] is not None )
 
 
     cpdef legacyInsert( self, dict legacy ):

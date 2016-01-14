@@ -187,7 +187,7 @@ cdef class Solver( base.Solver ):
             self.setupProblem( prob )
 
         self.options = utils.Options( { "printFile": "output_file" } ) ## legacy_label: real_label
-        self.options["hessian_approximation"] = "limited-memory"
+        self.options[ "hessian_approximation" ] = "limited-memory"
 
 
     def setupProblem( self, prob ):
@@ -340,7 +340,7 @@ cdef class Solver( base.Solver ):
         memcpy( self.mult_x_U, utils.getPtr( tmparr ), self.N * sizeof( Number ) )
 
         self.warm_start = True
-        self.options["warm_start_init_point"] = "yes"
+        self.options[ "warm_start_init_point" ] = "yes"
 
         return True
 
@@ -382,7 +382,7 @@ cdef class Solver( base.Solver ):
         self.processOptions()
 
         ## unless output_file is stdout, we redirect stdout to /dev/null
-        if( self.options["output_file"].value != "stdout" ):
+        if( self.options[ "output_file" ].value != "stdout" ):
             old_stdout = os.dup(1)
             os.close(1)
             os.open( os.devnull, os.O_WRONLY )
@@ -392,15 +392,14 @@ cdef class Solver( base.Solver ):
                                    self.mult_x_L, self.mult_x_U, NULL )
 
         ## undo redirection of stdout to /dev/null
-        if( self.options["output_file"].value != "stdout" ):
+        if( self.options[ "output_file" ].value != "stdout" ):
             os.close(1)
             os.dup( old_stdout ) # should dup to 1
             os.close( old_stdout ) # get rid of left overs
 
-
         if( self.warm_start ):
             self.warm_start = False
-            self.options["warm_start_init_point"] = "no"
+            self.options[ "warm_start_init_point" ] = "no"
 
         ## Save result to prob
         self.prob.soln = Soln()

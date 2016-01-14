@@ -40,6 +40,10 @@ ctypedef enum datatype:
     BOOL,
     NONE
 
+cdef class OptPair:
+    cdef public object value
+    cdef public datatype dtype
+
 cdef class Options:
     cdef public dict data
     cdef dict legacy
