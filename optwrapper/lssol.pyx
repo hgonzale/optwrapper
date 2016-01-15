@@ -33,25 +33,20 @@ cdef class Soln( base.Soln ):
 
     def getStatus( self ):
         ## pg. 10
-        cdef tuple statusInfo = ( "Strong local minimum (likely unique)", ## 0
-                                  "Weak local minimum (likely not unique)", ## 1
-                                  "Solution appears to be unbounded", ## 2
-                                  "No feasible point found", ## 3
-                                  "Iteration limit reached", ## 4
-                                  "Algorithm likely cycling, point has not changed in 50 iters.", ## 5
-                                  "Invalid input parameter" ) ## 6
+        cdef dict statusInfo = { 0: "Strong local minimum (likely unique)",
+                                 1: "Weak local minimum (likely not unique)",
+                                 2: "Solution appears to be unbounded",
+                                 3: "No feasible point found",
+                                 4: "Iteration limit reached",
+                                 5: "Algorithm likely cycling, point has not changed in 50 iters.",
+                                 6: "Invalid input parameter",
+                                 100: "Return information undefined" }
 
-        if( self.retval == 100 ):
-            return "Return information is not defined yet"
-
-        if( self.retval < 0 or self.retval >= 7 ):
+        if( self.retval not in statusInfo ):
             return "Invalid return value"
         else:
             return statusInfo[ self.retval ]
 
-
-cdef enum prob_t:
-    fp, lp, qp1, qp2, qp3, qp4, ls1, ls2, ls3, ls4
 
 cdef class Solver( base.Solver ):
     cdef integer nrowC[1]
@@ -70,7 +65,6 @@ cdef class Solver( base.Solver ):
     cdef doublereal *C
     cdef doublereal B[1]
     cdef doublereal *cVec
-    cdef prob_t prob_type
 
     cdef int warm_start
     cdef int mem_alloc
@@ -78,25 +72,25 @@ cdef class Solver( base.Solver ):
 
 
     def __init__( self, prob=None ):
+        cdef dict legacy
+
         super().__init__()
 
         self.mem_alloc = False
         self.mem_size[0] = self.mem_size[1] = 0
         self.prob = None
 
+        legacy = { "crashTol": "Crash Tolerance",
+                   "iterLimit": "Optimality Phase Iteration Limit",
+                   "feasibilityTol": "Feasibility Tolerance",
+                   "infBoundSize": "Infinite Bound Size",
+                   "infStepSize": "Infinite Step Size",
+                   "printLevel": "Print level",
+                   "rankTol": "Rank Tolerance" }
+        self.options = utils.Options( legacy )
+
         if( prob ):
             self.setupProblem( prob )
-
-        ## Set print options
-        self.options[ "summaryFile" ] = None
-        self.options[ "printLevel" ] = None
-        ## Set solve options
-        self.options[ "crashTol" ] = None
-        self.options[ "iterLimit" ] = None
-        self.options[ "feasibilityTol" ] = None
-        self.options[ "infBoundSize" ] = None
-        self.options[ "infStepSize" ] = None
-        self.options[ "rankTol" ] = None
 
 
     def setupProblem( self, prob ):
@@ -112,11 +106,11 @@ cdef class Solver( base.Solver ):
 
         ## Set problem type
         if( prob.objQ is None and prob.objL is None ):
-            self.prob_type = fp
+            self.options[ "Problem type" ] = "FP"
         elif( prob.objQ is None ):
-            self.prob_type = lp
+            self.options[ "Problem type" ] = "LP"
         else:
-            self.prob_type = qp2
+            self.options[ "Problem type" ] = "QP2"
 
         ## Set size-dependent constants
         if( prob.Nconslin == 0 ): ## pg. 7, nrowC >= 1 even if nclin = 0
@@ -230,37 +224,42 @@ cdef class Solver( base.Solver ):
                 ( self.prob.N + self.prob.Nconslin ) * sizeof( integer ) )
 
         self.warm_start = True
+        self.options[ "Warm start" ] = True
+
         return True
 
 
-    def solve( self ):
-        ## Option strings
-        cdef char* STR_NOLIST = "Nolist"
-        cdef char* STR_DEFAULTS = "Defaults"
-        cdef char* STR_WARM_START = "Warm Start"
-        cdef char* STR_CRASH_TOLERANCE = "Crash Tolerance"
-        cdef char* STR_FEASIBILITY_PHASE_ITERATION_LIMIT = "Feasibility Phase Iteration Limit"
-        cdef char* STR_OPTIMALITY_PHASE_ITERATION_LIMIT = "Optimality Phase Iteration Limit"
-        cdef char* STR_FEASIBILITY_TOLERANCE = "Feasibility Tolerance"
-        cdef char* STR_INFINITE_BOUND_SIZE = "Infinite Bound Size"
-        cdef char* STR_INFINITE_STEP_SIZE = "Infinite Step Size"
-        cdef char* STR_PRINT_LEVEL = "Print Level"
-        cdef char* STR_PROBLEM_TYPE_FP = "Problem Type FP"
-        cdef char* STR_PROBLEM_TYPE_LP = "Problem Type LP"
-        cdef char* STR_PROBLEM_TYPE_QP2 = "Problem Type QP2"
-        cdef char* STR_RANK_TOLERANCE = "Rank Tolerance"
-        cdef char* STR_PRINT_FILE = "Print File"
-        cdef char* STR_SUMMARY_FILE = "Summary File"
+    cdef void setOption( self, str option ):
+        cdef bytes myopt
 
-        cdef doublereal crashTol[1]
-        cdef integer iterLimit[1]
-        cdef doublereal feasibilityTol[1]
-        cdef doublereal infBoundSize[1]
-        cdef doublereal infStepSize[1]
-        cdef integer printLevel[1]
-        cdef doublereal rankTol[1]
-        cdef integer printFileUnit[1]
-        cdef integer summaryFileUnit[1]
+        if( len( option ) > 72 ):
+            raise ValueError( "option string is too long: {0}".format( option ) )
+
+        myopt = option.encode( "ascii" )
+        lssol.lsoptn_( myopt, len( myopt ) )
+
+
+    cdef void processOptions( self ):
+        cdef str mystr, key
+
+        for key in self.options:
+            if( self.options[key].dtype == utils.NONE or
+                ( self.options[key].dtype == utils.BOOL and not self.options[key].value ) ):
+                continue
+
+            mystr = key
+            if( self.options[key].dtype != utils.BOOL ):
+                mystr += " {0}".format( self.options[key].value )
+
+            if( self.debug ):
+                print( "processing option: '{0}'".format( mystr ) )
+
+            self.setOption( mystr )
+
+
+    def solve( self ):
+        cdef integer printFileUnit
+        cdef integer summaryFileUnit
 
         cdef integer *n = [ self.prob.N ]
         cdef integer *nclin = [ self.prob.Nconslin ]
@@ -280,73 +279,27 @@ cdef class Solver( base.Solver ):
                     self.prob.N * self.prob.N * sizeof( doublereal ) )
 
         ## Supress echo options and reset optional values, pg. 13
-        lssol.lsoptn_( STR_NOLIST, len( STR_NOLIST ) )
-        lssol.lsoptn_( STR_DEFAULTS, len( STR_DEFAULTS ) )
+        self.setOptions( "Nolist" )
+        self.setOptions( "Defaults" )
 
         ## Handle debug files
-        if( self.options[ "printFile" ] is not None and
-            self.options[ "printFile" ] != "" ):
-            printFileUnit[0] = 90 ## Hardcoded since nobody cares
+        if( "printFile" in self.options ):
+            printFileUnit = 90 ## Hardcoded since nobody cares
         else:
-            printFileUnit[0] = 0 ## disabled by default, pg. 27
+            printFileUnit = 0 ## disabled by default, pg. 27
 
-        if( self.options[ "summaryFile" ] is not None and
-              self.options[ "summaryFile" ] != "" ):
-            if( self.options[ "summaryFile" ].lower() == "stdout" ):
-                summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
+        if( "summaryFile" in self.options ):
+            if( self.options[ "summaryFile" ] == "stdout" ):
+                summaryFileUnit = 6 ## Fortran's magic value for stdout
             else:
-                summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
+                summaryFileUnit = 89 ## Hardcoded since nobody cares
         else:
-            summaryFileUnit[0] = 0 ## disabled by default, pg. 28
+            summaryFileUnit = 0 ## disabled by default, pg. 28
 
-        lssol.lsopti_( STR_PRINT_FILE, printFileUnit, len( STR_PRINT_FILE ) )
-        lssol.lsopti_( STR_SUMMARY_FILE, summaryFileUnit, len( STR_SUMMARY_FILE ) )
+        self.setOption( "Print file {0}".format( printFileUnit ) )
+        self.setOption( "Summary file {0}".format( summaryFileUnit ) )
 
-        ## Set optional parameters, pg. 14
-        if( self.warm_start ):
-            lssol.lsoptn_( STR_WARM_START, len( STR_WARM_START ) )
-            self.warm_start = False ## Reset variable
-
-        if( self.options[ "crashTol" ] is not None ):
-            crashTol[0] = self.options[ "crashTol" ]
-            lssol.lsoptr_( STR_CRASH_TOLERANCE, crashTol, len( STR_CRASH_TOLERANCE ) )
-
-        if( self.options[ "iterLimit" ] is not None ):
-            iterLimit[0] = self.options[ "iterLimit" ]
-            lssol.lsopti_( STR_FEASIBILITY_PHASE_ITERATION_LIMIT, iterLimit,
-                           len( STR_FEASIBILITY_PHASE_ITERATION_LIMIT ) )
-            lssol.lsopti_( STR_OPTIMALITY_PHASE_ITERATION_LIMIT, iterLimit,
-                           len( STR_OPTIMALITY_PHASE_ITERATION_LIMIT ) )
-
-        if( self.options[ "feasibilityTol" ] is not None ):
-            feasibilityTol[0] = self.options[ "feasibilityTol" ]
-            lssol.lsoptr_( STR_FEASIBILITY_TOLERANCE, feasibilityTol,
-                           len( STR_FEASIBILITY_TOLERANCE ) )
-
-        if( self.options[ "infBoundSize" ] is not None ):
-            infBoundSize[0] = self.options[ "infBoundSize" ]
-            lssol.lsoptr_( STR_INFINITE_BOUND_SIZE, infBoundSize, len( STR_INFINITE_BOUND_SIZE ) )
-
-        if( self.options[ "infStepSize" ] is not None ):
-            infStepSize[0] = self.options[ "infStepSize" ]
-            lssol.lsoptr_( STR_INFINITE_STEP_SIZE, infStepSize, len( STR_INFINITE_STEP_SIZE ) )
-
-        if( self.options[ "printLevel" ] is not None ):
-            printLevel[0] = self.options[ "printLevel" ]
-            lssol.lsopti_( STR_PRINT_LEVEL, printLevel, len( STR_PRINT_LEVEL ) )
-
-        if( self.options[ "rankTol" ] is not None ):
-            rankTol[0] = self.options[ "rankTol" ]
-            lssol.lsoptr_( STR_RANK_TOLERANCE, rankTol, len( STR_RANK_TOLERANCE ) )
-
-        if( self.prob_type == fp ):
-            lssol.lsoptn_( STR_PROBLEM_TYPE_FP, len( STR_PROBLEM_TYPE_FP ) )
-        elif( self.prob_type == lp ):
-            lssol.lsoptn_( STR_PROBLEM_TYPE_LP, len( STR_PROBLEM_TYPE_LP ) )
-        elif( self.prob_type == qp2 ):
-            lssol.lsoptn_( STR_PROBLEM_TYPE_QP2, len( STR_PROBLEM_TYPE_QP2 ) )
-        else:
-            raise NotImplementedError( "Problem Type not implemented" )
+        self.processOptions()
 
         ## Call NPSOL
         lssol.lssol_( n, n,
@@ -356,21 +309,23 @@ cdef class Solver( base.Solver ):
                       inform_out, iter_out, objf_val, self.clamda,
                       self.iw, self.leniw, self.w, self.lenw )
 
+        ## Reset warm start state
+        self.warm_start = False
+        del self.options[ "Warm start" ]
+
         ## Try to rename fortran print and summary files
-        if( self.options[ "printFile" ] is not None and
-            self.options[ "printFile" ] != "" ):
+        if( "printFile" in self.options ):
             try:
-                os.rename( "fort.{0}".format( printFileUnit[0] ),
-                           self.options[ "printFile" ] )
+                os.rename( "fort.{0}".format( printFileUnit ),
+                           str( self.options[ "printFile" ] ) )
             except:
                 pass
 
-        if( self.options[ "summaryFile" ] is not None and
-            self.options[ "summaryFile" ] != "" and
-            self.options[ "summaryFile" ].lower() != "stdout" ):
+        if( "summaryFile" in self.options and
+            self.options[ "summaryFile" ] != "stdout" ):
             try:
-                os.rename( "fort.{0}".format( summaryFileUnit[0] ),
-                           self.options[ "summaryFile" ] )
+                os.rename( "fort.{0}".format( summaryFileUnit ),
+                           str( self.options[ "summaryFile" ] ) )
             except:
                 pass
 

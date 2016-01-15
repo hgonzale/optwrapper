@@ -83,26 +83,22 @@ cdef class Soln( base.Soln ):
         self.retval = 100
 
     def getStatus( self ):
-        cdef tuple statusInfo = ( "Optimality conditions satisfied", ## 0
-                                  "Optimality conditions satisfied, but sequence has not converged", ## 1
-                                  "Linear constraints could not be satisfied", ## 2
-                                  "Nonlinear constraints could not be satisfied", ## 3
-                                  "Iteration limit reached", ## 4
-                                  "N/A",
-                                  "Optimality conditions not satisfied, no improvement can be made", ## 6
-                                  "Derivatives appear to be incorrect", ## 7
-                                  "N/A",
-                                  "Invalid input parameter" ) ## 9
-
-        if( self.retval == 100 ):
-            return "Return information is not defined yet"
+        cdef dict status = { 0: "Optimality conditions satisfied",
+                             1: "Optimality conditions satisfied, but sequence has not converged",
+                             2: "Linear constraints could not be satisfied",
+                             3: "Nonlinear constraints could not be satisfied",
+                             4: "Iteration limit reached",
+                             6: "Optimality conditions not satisfied, no improvement can be made",
+                             7: "Derivatives appear to be incorrect",
+                             9: "Invalid input parameter",
+                             100: "Return information undefined" }
 
         if( self.retval < 0 ):
             return "Execution terminated by user defined function (should not occur)"
-        elif( self.retval >= 10 ):
+        elif( self.retval not in status ):
             return "Invalid return value"
         else:
-            return statusInfo[ self.retval ]
+            return status[ self.retval ]
 
 
 cdef class Solver( base.Solver ):
@@ -341,8 +337,8 @@ cdef class Solver( base.Solver ):
 
 
     def solve( self ):
-        cdef integer summaryFileUnit[1]
-        cdef integer printFileUnit[1]
+        cdef integer summaryFileUnit
+        cdef integer printFileUnit
 
         cdef integer *n = [ self.prob.N ]
         cdef integer *nclin = [ self.prob.Nconslin ]
@@ -362,20 +358,20 @@ cdef class Solver( base.Solver ):
 
         ## Handle debug files
         if( "printFile" in self.options ):
-            printFileUnit[0] = 90 ## Hardcoded since nobody cares
+            printFileUnit = 90 ## Hardcoded since nobody cares
         else:
-            printFileUnit[0] = 0 ## disabled by default, pg. 27
+            printFileUnit = 0 ## disabled by default, pg. 27
 
         if( "summaryFile" in self.options ):
-            if( self.options[ "summaryFile" ].value == "stdout" ):
-                summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
+            if( self.options[ "summaryFile" ] == "stdout" ):
+                summaryFileUnit = 6 ## Fortran's magic value for stdout
             else:
-                summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
+                summaryFileUnit = 89 ## Hardcoded since nobody cares
         else:
-            summaryFileUnit[0] = 0 ## disabled by default, pg. 28
+            summaryFileUnit = 0 ## disabled by default, pg. 28
 
-        self.setOption( "Print file {0}".format( printFileUnit[0] ) )
-        self.setOption( "Summary file {0}".format( summaryFileUnit[0] ) )
+        self.setOption( "Print file {0}".format( printFileUnit ) )
+        self.setOption( "Summary file {0}".format( summaryFileUnit ) )
 
         self.processOptions()
 
@@ -390,22 +386,23 @@ cdef class Solver( base.Solver ):
                       objf_val, self.objg_val, self.R, self.x,
                       self.iw, self.leniw, self.w, self.lenw )
 
+        ## Reset warm start state
         self.warm_start = False
         del self.options[ "Warm start" ]
 
         ## Try to rename fortran print and summary files
         if( "printFile" in self.options ):
             try:
-                os.rename( "fort.{0}".format( printFileUnit[0] ),
-                           self.options[ "printFile" ].value )
+                os.rename( "fort.{0}".format( printFileUnit ),
+                           str( self.options[ "printFile" ] ) )
             except:
                 pass
 
         if( "summaryFile" in self.options and
-            self.options[ "summaryFile" ].lower() != "stdout" ):
+            self.options[ "summaryFile" ] != "stdout" ):
             try:
-                os.rename( "fort.{0}".format( summaryFileUnit[0] ),
-                           self.options[ "summaryFile" ].value )
+                os.rename( "fort.{0}".format( summaryFileUnit ),
+                           str( self.options[ "summaryFile" ] ) )
             except:
                 pass
 

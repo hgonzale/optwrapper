@@ -143,10 +143,8 @@ cdef class Soln( base.Soln ):
                                  -100: "Unrecoverable Exception",
                                  -101: "NonIpopt Exception Thrown",
                                  -102: "Insufficient Memory",
-                                 -199: "Internal Error" }
-
-        if( self.retval == 100 ):
-            return "Return information is not defined yet"
+                                 -199: "Internal Error",
+                                 100: "Return information undefined" }
 
         if( self.retval not in statusInfo ):
             return "Undefined return information"
@@ -348,10 +346,11 @@ cdef class Solver( base.Solver ):
     cdef int processOptions( self ):
         cdef bytes tmpkey
         cdef bytes tmpval
-        cdef Bool ret
+        cdef Bool ret, out
         if( not self.nlp_alloc ):
             return False
 
+        out = True
         for key in self.options:
             ret = False
             tmpkey = key.encode( "ascii" )
@@ -365,11 +364,10 @@ cdef class Solver( base.Solver ):
 
             if( not ret ):
                 raise TypeError( "Could not process option " +
-                                 "'{0}: {1}' with type {2}".format( key,
-                                                                    self.options[key].value,
-                                                                    self.options[key].dtype ) )
+                                 "'{0}: {1:r}'".format( key, self.options[key] ) )
+            out = out and ret
 
-        return True
+        return out
 
 
     def solve( self ):
@@ -386,7 +384,7 @@ cdef class Solver( base.Solver ):
         self.processOptions()
 
         ## unless output_file is stdout, we redirect stdout to /dev/null
-        if( self.options[ "output_file" ].value != "stdout" ):
+        if( self.options[ "output_file" ] != "stdout" ):
             old_stdout = os.dup(1)
             os.close(1)
             os.open( os.devnull, os.O_WRONLY )
@@ -396,7 +394,7 @@ cdef class Solver( base.Solver ):
                                    self.mult_x_L, self.mult_x_U, NULL )
 
         ## undo redirection of stdout to /dev/null
-        if( self.options[ "output_file" ].value != "stdout" ):
+        if( self.options[ "output_file" ] != "stdout" ):
             os.close(1)
             os.dup( old_stdout ) # should dup to 1
             os.close( old_stdout ) # get rid of left overs

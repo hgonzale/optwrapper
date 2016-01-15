@@ -49,29 +49,50 @@ cdef class Soln( base.Soln ):
                                  20: "The problem appears to be unbounded",
                                  21: "Unbounded objective",
                                  22: "Constraint violation limit reached",
-                                 ###############################
-                                  "Resource limit error", ## 30
-                                  "Terminated after numerical difficulties", ## 40
-                                  "Error in the user-supplied functions", ## 50
-                                  "Undefined user-supplied functions", ## 60
-                                  "User requested termination", ## 70
-                                  "Insufficient storage allocated", ## 80
-                                  "Input arguments out of range", ## 90
-                                  "SNOPT auxiliary routine finished successfully", ## 100
-                                  "Errors while processing MPS data", ## 110
-                                  "Errors while estimating Jacobian structure", ## 120
-                                  "Errors while reading the Specs file", ## 130
-                                  "System error" ) ## 140
-
-        if( self.retval == 1000 ):
-            return "Return information is not defined yet"
+                                 30: "Resource limit error",
+                                 31: "Iteration limit reached",
+                                 32: "Major iteration limit reached",
+                                 33: "The superbasics limit is too small",
+                                 40: "Terminated after numerical difficulties",
+                                 41: "Current point cannot be improved",
+                                 42: "Singular basis",
+                                 43: "Cannot satisfy the general constraints",
+                                 44: "Ill-conditioned null-space basis",
+                                 50: "Error in the user-supplied functions",
+                                 51: "Incorrect objective derivatives",
+                                 52: "Incorrect constraint derivatives",
+                                 60: "Undefined user-supplied functions",
+                                 61: "Undefined function at the first feasible point",
+                                 62: "Undefined function at the initial point",
+                                 63: "Unable to proceed into undefined region",
+                                 70: "User requested termination",
+                                 71: "Terminated during function evaluation",
+                                 72: "Terminated during constraint evaluation",
+                                 73: "Terminated during objective evaluation",
+                                 74: "Terminated from monitor routine",
+                                 80: "Insufficient storage allocated",
+                                 81: "Work arrays must have at least 500 elements",
+                                 82: "Not enough character storage",
+                                 83: "Not enough integer storage",
+                                 84: "Not enough real storage",
+                                 90: "Input arguments out of range",
+                                 91: "Invalud input argument",
+                                 92: "Basis file dimensions do not match this problem",
+                                 100: "SNOPT auxiliary routine finished successfully",
+                                 110: "Errors while processing MPS data",
+                                 120: "Errors while estimating Jacobian structure",
+                                 130: "Errors while reading the Specs file",
+                                 140: "System error",
+                                 141: "Wrong number of basic variables",
+                                 142: "Error in basis package",
+                                 1000: "Return information undefined" }
 
         if( self.retval < 0 ):
             return "Execution terminated by user defined function (should not occur)"
-        elif( self.retval >= 143 ):
-            return "Invalid value"
+        elif( self.retval not in statusInfo ):
+            return "Invalid return value"
         else:
-            return statusInfo[ int( self.retval / 10 ) ]
+            return statusInfo[ self.retval ]
 
 
 ## helper static function usrfun that evaluate user-defined functions in Solver.prob
@@ -539,9 +560,9 @@ cdef class Solver( base.Solver ):
             if( self.debug ):
                 print( "processing option: '{0}'".format( mystr ) )
 
-            out = out and self.setOption( mystr,
-                                          self.cw, self.lencw, self.iw, self.leniw,
-                                          self.rw, self.lenrw )
+            out = out and ( self.setOption( mystr,
+                                            self.cw, self.lencw, self.iw, self.leniw,
+                                            self.rw, self.lenrw ) == 0 )
 
         return out
 
@@ -582,21 +603,21 @@ cdef class Solver( base.Solver ):
         if( "printFile" in self.options ):
             self.printFileUnit[0] = 90 ## Hardcoded since nobody cares
             if( self.debug ):
-                print( ">>> Sending print file to " + self.options[ "printFile" ] )
+                print( ">>> Sending print file to {0}".format( self.options[ "printFile" ] ) )
         else:
             self.printFileUnit[0] = 0 ## disabled by default, pg. 27
             if( self.debug ):
                 print( ">>> Print file is disabled" )
 
         if( "summaryFile" in self.options ):
-            if( self.options[ "summaryFile" ].value == "stdout" ):
+            if( self.options[ "summaryFile" ] == "stdout" ):
                 self.summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
                 if( self.debug ):
                     print( ">>> Sending summary to stdout" )
             else:
                 self.summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
                 if( self.debug ):
-                    print( ">>> Sending summary to " + self.options[ "summaryFile" ] )
+                    print( ">>> Sending summary to {0}".format( self.options[ "summaryFile" ] ) )
         else:
             self.summaryFileUnit[0] = 0 ## disabled by default, pg. 28
             if( self.debug ):
@@ -620,15 +641,15 @@ cdef class Solver( base.Solver ):
             self.setOption( "Hessian limited memory", tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw )
 
         if( "Hessian updates" in self.options ):
-            self.setOption( "Hessian updtes {0}".format( self.options[ "Hessian updates" ].value ),
+            self.setOption( "Hessian updtes {0}".format( self.options[ "Hessian updates" ] ),
                             tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw )
 
         if( "Hessian dimension" in self.options ):
-            self.setOption( "Hessian dimension {0}".format( self.options[ "Hessian dimension" ].value ),
+            self.setOption( "Hessian dimension {0}".format( self.options[ "Hessian dimension" ] ),
                             tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw )
 
         if( "Superbasics limit" in self.options ):
-            self.setOption( "Superbasics limit {0}".format( self.options[ "Superbasics limit" ].value ),
+            self.setOption( "Superbasics limit {0}".format( self.options[ "Superbasics limit" ] ),
                             tmpcw, ltmpcw, tmpiw, ltmpiw, tmprw, ltmprw )
 
         ## Now we get to know how much memory we need
@@ -681,10 +702,10 @@ cdef class Solver( base.Solver ):
 
             if( isinstance( self.prob, nlp.SparseProblem ) ):
                 if( self.prob.Nconslin > 0 ):
-                    print( ">>> Sparse A: {0}".format( Asparse.__repr__() ) )
-                print( ">>> Sparse gradient obj: {0}".format( objGsparse.__repr() ) )
+                    print( ">>> Sparse A: {0:r}".format( Asparse ) )
+                print( ">>> Sparse gradient obj: {0:r}".format( objGsparse ) )
                 if( self.prob.Ncons > 0 ):
-                    print( ">>> Sparse gradient cons: {0}".format( consGsparse.__repr() ) )
+                    print( ">>> Sparse gradient cons: {0:r}".format( consGsparse ) )
 
         ## Execute SNOPT
         snopt.snopta_( self.Start, self.nF,
@@ -709,15 +730,15 @@ cdef class Solver( base.Solver ):
         if( "printFile" in self.options ):
             try:
                 os.rename( "fort.{0}".format( self.printFileUnit[0] ),
-                           self.options[ "printFile" ].value )
+                           str( self.options[ "printFile" ] ) )
             except:
                 pass
 
         if( "summaryFile" in self.options and
-            self.options[ "summaryFile" ].value != "stdout" ):
+            self.options[ "summaryFile" ] != "stdout" ):
             try:
                 os.rename( "fort.{0}".format( self.summaryFileUnit[0] ),
-                           self.options[ "summaryFile" ].value )
+                           str( self.options[ "summaryFile" ] ) )
             except:
                 pass
 

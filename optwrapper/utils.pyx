@@ -410,6 +410,13 @@ cdef class sMatrix:
         return str( self.toarray() )
 
 
+    def __format__( self, str fmt ):
+        if( str( fmt ).lower() == "r" ):
+            return self.__repr__()
+
+        return str( self )
+
+
 ###
 ### Options
 ###
@@ -431,8 +438,47 @@ cdef class OptPair:
         self.value = value
         self.dtype = dtype
 
+
     def __str__( self ):
         return str( self.value )
+
+
+    def __richcmp__( self, object value, int op ):
+        if( op == 0 ):
+            return ( self.value < value )
+        elif( op == 1 ):
+            return ( self.value <= value )
+        elif( op == 2 ):
+            return ( self.value == value )
+        elif( op == 3 ):
+            return ( self.value != value )
+        elif( op == 4 ):
+            return ( self.value > value )
+        elif( op == 5 ):
+            return ( self.value >= value )
+
+
+    def __repr__( self ):
+        tmp = ""
+        if( self.dtype == BOOL ):
+            tmp = "bool"
+        elif( self.dtype == INT ):
+            tmp = "int"
+        elif( self.dtype == DOUBLE ):
+            tmp = "float"
+        elif( self.dtype == STR ):
+            tmp = "str"
+        else:
+            tmp = "none"
+
+        return "{0} ({1})".format( self.value, tmp )
+
+
+    def __format__( self, fmt ):
+        if( str( fmt ).lower() == "r" ):
+            return self.__repr__()
+
+        return str( self )
 
 
 cdef class Options:
@@ -501,6 +547,13 @@ cdef class Options:
         cdef str mykey = self.sanitizeKey( key )
         return ( mykey in self.data and
                  self.data[mykey] )
+
+    def __str__( self ):
+        return str( self.data )
+
+
+    def __repr__( self ):
+        return repr( self.data )
 
 
     cpdef legacyInsert( self, dict legacy ):
