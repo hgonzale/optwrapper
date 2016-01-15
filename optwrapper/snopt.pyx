@@ -193,9 +193,6 @@ cdef class Solver( base.Solver ):
         self.printFileUnit[0] = 0
         self.summaryFileUnit[0] = 0
 
-        if( prob ):
-            self.setupProblem( prob )
-
         ## legacy_label: real_label
         legacy = { "printLevel": "Major print level",
                    "minorPrintLevel": "Minor print level",
@@ -247,6 +244,9 @@ cdef class Solver( base.Solver ):
         self.options = utils.Options( legacy )
         self.options[ "Verify level" ] = -1
         self.options[ "Solution" ] = "no"
+
+        if( prob ):
+            self.setupProblem( prob )
 
 
     def setupProblem( self, prob ):

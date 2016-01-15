@@ -153,7 +153,7 @@ cdef class Solver( base.Solver ):
                     prob.Nconslin * prob.N * sizeof( doublereal ) )
 
 
-    cdef allocate( self ):
+    cdef int allocate( self ):
         if( self.mem_alloc ):
             return False
 
@@ -189,7 +189,7 @@ cdef class Solver( base.Solver ):
         return True
 
 
-    cdef deallocate( self ):
+    cdef int deallocate( self ):
         if( not self.mem_alloc ):
             return False
 

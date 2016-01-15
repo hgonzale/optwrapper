@@ -181,11 +181,11 @@ cdef class Solver( base.Solver ):
         self.mem_size[0] = self.mem_size[1] = 0
         self.prob = None
 
-        if( prob ):
-            self.setupProblem( prob )
-
         self.options = utils.Options( { "printFile": "output_file" } ) ## legacy_label: real_label
         self.options[ "hessian_approximation" ] = "limited-memory"
+
+        if( prob ):
+            self.setupProblem( prob )
 
 
     def setupProblem( self, prob ):
@@ -268,7 +268,7 @@ cdef class Solver( base.Solver ):
         self.nlp_alloc = True
 
 
-    cdef allocate( self ):
+    cdef int allocate( self ):
         if( self.mem_alloc ):
             return False
 
@@ -299,7 +299,7 @@ cdef class Solver( base.Solver ):
         return True
 
 
-    cdef deallocate( self ):
+    cdef int deallocate( self ):
         if( not self.mem_alloc ):
             return False
 

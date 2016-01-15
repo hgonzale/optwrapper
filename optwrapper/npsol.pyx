@@ -135,9 +135,6 @@ cdef class Solver( base.Solver ):
         self.mem_size[0] = self.mem_size[1] = self.mem_size[2] = 0
         self.prob = None
 
-        if( prob ):
-            self.setupProblem( prob )
-
         legacy = { "printLevel": "Print Level",
                    "minorPrintLevel": "Minor Print Level",
                    "centralDiffInterval": "Central Difference Interval",
@@ -156,6 +153,9 @@ cdef class Solver( base.Solver ):
         self.options = utils.Options( legacy )
         self.options[ "Hessian" ] = "yes"
         self.options[ "Verify level" ] = -1
+
+        if( prob ):
+            self.setupProblem( prob )
 
 
     def setupProblem( self, prob ):
@@ -224,7 +224,7 @@ cdef class Solver( base.Solver ):
                     prob.Ncons * sizeof( doublereal ) )
 
 
-    cdef allocate( self ):
+    cdef int allocate( self ):
         if( self.mem_alloc ):
             return False
 
@@ -261,7 +261,7 @@ cdef class Solver( base.Solver ):
         return True
 
 
-    cdef deallocate( self ):
+    cdef int deallocate( self ):
         if( not self.mem_alloc ):
             return False
 
