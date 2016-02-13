@@ -1,7 +1,7 @@
-OptWrapper v0.5
+OptWrapper v0.6
 ---------------
 
-This is a python wrapper for numerical optimization libraries. It contains two general types of objects: problems and solvers. This version has been tested in Python 2.7 and 3.4, and Cython 0.21 and 0.22.
+This is a python wrapper for numerical optimization libraries. It contains two general types of objects: problems and solvers. This version has been tested using Python 2.7 and 3.5, and Cython 0.21.
 
 Currently we implement the following problems:
 - Quadratic and Linear Programming Problems (qp.Problem)
@@ -13,9 +13,13 @@ We provide interfaces for the following solvers:
 - LSSOL (lssol.Solver)
 - NPSOL (npsol.Solver)
 - SNOPT (snopt.Solver)
+- IpOpt (ipopt.Solver)
 
 The documentation is sketchy, so for the time being you should take a look at the examples (in the 'examples' folder) and, if you feel brave, you can also take a look at the source code.
-If you want to tweak the optional parameters in any of the solvers then you will have to take a look at the corresponding manuals and the definition of the 'solveOpts' dictionary in each of the Cython source files.
+If you want to tweak the optional parameters in any of the solvers then you will have to take a look at the corresponding manuals.
+Options are defined via the 'options' dictionary, which is a an attribute of each solver.
+For example, to set the option 'Print Level' to value '10' in a solver we write:
+> solver.options['Print Level'] = 10
 
 
 Requirements
@@ -25,11 +29,14 @@ Requirements
 - Python (either 2.x or 3.x)
 - Cython
 - NumPy
-- NPSOL 6 or SNOPT 7
+- NPSOL 6, SNOPT 7, or IpOpt 3.12
 
 
 Installation
 ------------
+
+To build the package run:
+% scons
 
 To install locally for your user only (recommended) run:
 % scons --local install
