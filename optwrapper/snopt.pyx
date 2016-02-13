@@ -171,6 +171,7 @@ cdef class Solver( base.Solver ):
     cdef integer Start[1]
     cdef integer summaryFileUnit[1]
     cdef integer printFileUnit[1]
+    cdef utils.sMatrix Asparse
 
     cdef int mem_alloc
     cdef integer mem_size[4]
@@ -250,7 +251,6 @@ cdef class Solver( base.Solver ):
 
 
     def setupProblem( self, prob ):
-        cdef utils.sMatrix Asparse
         cdef cnp.ndarray tmparr
 
         global extprob
@@ -278,11 +278,11 @@ cdef class Solver( base.Solver ):
             tmplist += ( prob.consmixedA, )
         else:
             tmplist += ( np.zeros( ( prob.Ncons, self.n[0] ) ), )
-        Asparse = utils.sMatrix( np.vstack( tmplist ), copy_data=True )
+        self.Asparse = utils.sMatrix( np.vstack( tmplist ), copy_data=True )
         # print( Asparse[:] )
 
-        if( Asparse.nnz > 0 ):
-            self.lenA[0] = Asparse.nnz
+        if( self.Asparse.nnz > 0 ):
+            self.lenA[0] = self.Asparse.nnz
             self.neA[0] = self.lenA[0]
         else: ## Minimum allowed values, pg. 16
             self.lenA[0] = 1
@@ -327,10 +327,10 @@ cdef class Solver( base.Solver ):
                                      <int64_t *> &self.jGvar[objGsparse.nnz],
                                      roffset = 1 + prob.Nconslin )
         ## copy index data of A
-        Asparse.copyFortranIdxs( <int64_t *> &self.iAfun[0],
-                                 <int64_t *> &self.jAvar[0] )
+        self.Asparse.copyFortranIdxs( <int64_t *> &self.iAfun[0],
+                                      <int64_t *> &self.jAvar[0] )
         ## copy matrix data of A
-        Asparse.copyData( &self.A[0] )
+        self.Asparse.copyData( &self.A[0] )
 
         ## copy general constraints limits
         ## objective function knows no limits (https://i.imgur.com/UuQbJ.gif)
@@ -568,7 +568,6 @@ cdef class Solver( base.Solver ):
 
 
     def solve( self ):
-        global Asparse
         global objGsparse
         global consGsparse
 
@@ -702,7 +701,7 @@ cdef class Solver( base.Solver ):
 
             if( isinstance( self.prob, nlp.SparseProblem ) ):
                 if( self.prob.Nconslin > 0 ):
-                    print( ">>> Sparse A: {0:r}".format( Asparse ) )
+                    print( ">>> Sparse A: {0:r}".format( self.Asparse ) )
                 print( ">>> Sparse gradient obj: {0:r}".format( objGsparse ) )
                 if( self.prob.Ncons > 0 ):
                     print( ">>> Sparse gradient cons: {0:r}".format( consGsparse ) )

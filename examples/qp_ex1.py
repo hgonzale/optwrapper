@@ -1,5 +1,5 @@
 import numpy as np
-from optwrapper import qp, lssol
+import optwrapper as ow
 
 ## pg. 25 of LSSOL's manual
 
@@ -25,18 +25,18 @@ Clb = -2 * np.ones( (3,) )
 Cub = 1.5 * np.ones( (3,) )
 Cub[2] = 4
 
-prob = qp.Problem( N=9, Nconslin=3 )
+prob = ow.qp.Problem( N=9, Nconslin=3 )
 prob.initPoint( np.zeros( (9,) ) )
 prob.consBox( lb = -2 * np.ones( (9,) ),
               ub =  2 * np.ones( (9,) ) )
 prob.objFctn( quad=Q, lin=L )
 prob.consLinear( C, lb=Clb, ub=Cub )
 
-solver = lssol.Solver( prob ) ## change this line to use another solver
+solver = ow.lssol.Solver( prob ) ## change this line to use another solver
 solver.debug = True
-solver.printOpts[ "printFile" ] = "debugp.txt"
-solver.printOpts[ "summaryFile" ] = "debugs.txt"
-solver.printOpts[ "printLevel" ] = 10
+solver.options[ "printFile" ] = "debugp.txt"
+solver.options[ "summaryFile" ] = "debugs.txt"
+solver.options[ "printLevel" ] = 10
 
 optimal_soln = np.array( [ 2, -.23333333, -.26666667, -.3, -.1, 2, 2, -1.77777778, -.45555556 ] )
 optimal_value = -8.067777633666992

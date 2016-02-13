@@ -279,8 +279,8 @@ cdef class Solver( base.Solver ):
                     self.prob.N * self.prob.N * sizeof( doublereal ) )
 
         ## Supress echo options and reset optional values, pg. 13
-        self.setOptions( "Nolist" )
-        self.setOptions( "Defaults" )
+        self.setOption( "Nolist" )
+        self.setOption( "Defaults" )
 
         ## Handle debug files
         if( "printFile" in self.options ):

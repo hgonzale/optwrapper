@@ -60,10 +60,10 @@ if( not nlpprob.checkGrad( debug=True ) ):
     sys.exit( "Gradient check failed." )
 
 solver = ow.ipopt.Solver( nlpprob )
-# solver.debug = True
-# solver.printOpts[ "summaryFile" ] = "debugs.txt"
-# solver.printOpts[ "printFile" ] = "debugp.txt"
-# solver.printOpts[ "printLevel" ] = 10
+solver.debug = True
+# solver.options[ "summaryFile" ] = "debugs.txt"
+# solver.options[ "printFile" ] = "debugp.txt"
+# solver.options[ "printLevel" ] = 10
 
 solver.solve()
 print( "Status: " + nlpprob.soln.getStatus() )

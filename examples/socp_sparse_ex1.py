@@ -1,6 +1,6 @@
 import numpy as np
 import sys
-from optwrapper import nlp, socp, snopt, npsol
+import optwrapper as ow
 
 A = np.array( [ [1.0979, -.0105, .0167 ], [-.0105, 1.0481, .0825], [.0167, .0825, 1.1540] ] )
 
@@ -69,7 +69,7 @@ B3pattern = np.ones( (3,1) )
 
 
 ## create an instance of socp:
-prob = socp.Problem( Nstates = 3, Ninputs = 1, Nmodes = 3, Ncons = 0 )
+prob = ow.socp.Problem( Nstates = 3, Ninputs = 1, Nmodes = 3, Ncons = 0 )
 prob.initCond( [ 0.0, 0.0, 0.0 ] )
 prob.timeHorizon( 0.0, 1.0 )
 prob.costInstant( (instcost,) * 3,
@@ -90,13 +90,13 @@ if( not nlpprob.checkGrad( debug=True ) ):
 if( not nlpprob.checkPattern( debug=True ) ):
     sys.exit( "Pattern check failed." )
 
-solver = snopt.Solver( nlpprob )
+solver = ow.snopt.Solver( nlpprob )
 solver.debug = True
-solver.printOpts[ "summaryFile" ] = "stdout"
-solver.printOpts[ "printFile" ] = "debugp.txt"
-solver.printOpts[ "printLevel" ] = 111111
-solver.printOpts[ "minorPrintLevel" ] = 10
-solver.solveOpts[ "verifyLevel" ] = 3
+# solver.options[ "summaryFile" ] = "stdout"
+# solver.options[ "printFile" ] = "debugp.txt"
+# solver.options[ "printLevel" ] = 111111
+# solver.options[ "minorPrintLevel" ] = 10
+# solver.options[ "verifyLevel" ] = 3
 
 solver.solve()
 print( "Status: " + nlpprob.soln.getStatus() )
@@ -111,9 +111,9 @@ print( "Optimal relaxed discrete input:\n" + str( d ) )
 
 Npwm = 5
 thaar = np.linspace( time[0], time[-1], 2**Npwm + 1 )
-uhaar = socp.haarWaveletApprox( time, u, Npwm )
-dhaar = socp.haarWaveletApprox( time, d, Npwm )
-( tpwm, upwm, dpwm ) = socp.pwmTransform( thaar, uhaar, dhaar )
+uhaar = ow.socp.haarWaveletApprox( time, u, Npwm )
+dhaar = ow.socp.haarWaveletApprox( time, d, Npwm )
+( tpwm, upwm, dpwm ) = ow.socp.pwmTransform( thaar, uhaar, dhaar )
 print( "PWM time samples:\n" + str( tpwm ) )
 print( "Optimal continuous input:\n" + str( upwm ) )
 print( "Optimal pure discrete input:\n" + str( dpwm ) )

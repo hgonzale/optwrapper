@@ -545,8 +545,8 @@ cdef class Options:
 
     def __contains__( self, key ):
         cdef str mykey = self.sanitizeKey( key )
-        return ( mykey in self.data and
-                 self.data[mykey] )
+        return bool( mykey in self.data and
+                     self.data[mykey] )
 
     def __str__( self ):
         return str( self.data )
