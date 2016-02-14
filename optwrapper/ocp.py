@@ -43,7 +43,7 @@ class Problem:
         self.init = np.zeros( (self.Nstates,) )
         self.t0 = 0
         self.tf = 1
-        self.icostf = None
+        self.icost = None
         self.icostdxpattern = None
         self.icostdupattern = None
         self.fcost = None
@@ -59,6 +59,23 @@ class Problem:
         self.consstub = None
         self.consinlb = None
         self.consinub = None
+
+
+    def checkSetup( self ):
+        out = ( self.icost is not None and
+                self.fcost is not None and
+                self.vfield is not None and
+                self.consstlb is not None and
+                self.consstub is not None and
+                self.consinlb is not None and
+                self.consinub is not None )
+
+        if( self.Ncons > 0 ):
+            out = out and ( self.cons is not None and
+                            self.conslb is not None and
+                            self.consub is not None )
+
+        return out
 
 
     def initCond( self, init ):

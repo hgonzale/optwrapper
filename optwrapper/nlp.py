@@ -60,6 +60,26 @@ class Problem:
         self.soln = None
 
 
+    def checkSetup( self ):
+        out = ( self.lb is not None and
+                self.ub is not None and
+                self.objf is not None and
+                self.objg is not None )
+
+        if( self.Ncons > 0 ):
+            out = out and ( self.consf is not None and
+                            self.consg is not None and
+                            self.conslb is not None and
+                            self.consub is not None )
+
+        if( self.Nconslin > 0 ):
+            out = out and ( self.conslinA is not None and
+                            self.conslinlb is not None and
+                            self.conslinub is not None )
+
+        return out
+
+
     def consBox( self, lb, ub ):
         """
         sets box constraints.

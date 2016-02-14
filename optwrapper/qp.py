@@ -45,6 +45,18 @@ class Problem:
         self.soln = None
 
 
+    def checkSetup( self ):
+        out = ( self.lb is not None and
+                self.ub is not None )
+
+        if( self.Nconslin > 0 ):
+            out = out and ( self.conslinA is not None and
+                            self.conslinlb is not None and
+                            self.conslinub is not None )
+
+        return out
+
+
     def consBox( self, lb, ub ):
         """
         sets box constraints.
