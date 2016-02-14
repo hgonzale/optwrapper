@@ -123,6 +123,9 @@ class Problem( ocp.Problem ):
 
         """
 
+        if( not self.checkSetup() ):
+            raise ValueError( "Problem has not been properly configured" )
+
         ## index helpers
         stidx = np.arange( 0, self.Nstates * ( Nsamples + 1 ) ).reshape(
             ( self.Nstates, Nsamples + 1 ), order='F' )

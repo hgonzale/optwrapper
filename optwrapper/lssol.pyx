@@ -99,6 +99,9 @@ cdef class Solver( base.Solver ):
         if( not isinstance( prob, qp.Problem ) ):
             raise TypeError( "prob must be of type qp.Problem" )
 
+        if( not prob.checkSetup() ):
+            raise ValueError( "Argument 'prob' has not been properly configured" )
+
         self.prob = prob
 
         ## New problems cannot be warm started

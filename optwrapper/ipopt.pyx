@@ -198,6 +198,9 @@ cdef class Solver( base.Solver ):
         if( not isinstance( prob, nlp.Problem ) ):
             raise TypeError( "Argument 'prob' must be of type 'nlp.Problem'" )
 
+        if( not prob.checkSetup() ):
+            raise ValueError( "Argument 'prob' has not been properly configured" )
+
         self.prob = prob ## Save a copy of prob's pointer
         extprob = prob
 
