@@ -361,6 +361,17 @@ cdef class Solver( base.Solver ):
         memset( self.Fmul, 0, self.nF[0] * sizeof( doublereal ) )
 
 
+    def initPoint( self, init ):
+        if( not self.mem_alloc ):
+            raise ValueError( "Internal memory has not been allocated" )
+
+        tmparr = utils.arraySanitize( init, dtype=doublereal_dtype, fortran=True )
+        memcpy( self.x, utils.getPtr( tmparr ),
+                self.n[0] * sizeof( doublereal ) )
+
+        return True
+
+
     cdef int allocate( self ):
         if( self.mem_alloc ):
             return False
@@ -510,6 +521,8 @@ cdef class Solver( base.Solver ):
         if( not isinstance( self.prob.soln, Soln ) ):
             return False
 
+        self.initPoint( self.prob.soln.final )
+
         tmparr = utils.arraySanitize( self.prob.soln.xstate, dtype=integer_dtype, fortran=True )
         memcpy( self.xstate, utils.getPtr( tmparr ),
                 self.n[0] * sizeof( integer ) )
@@ -561,7 +574,8 @@ cdef class Solver( base.Solver ):
                 print( "processing option: '{0}'".format( mystr ) )
 
             out = out and ( self.setOption( mystr,
-                                            self.cw, self.lencw, self.iw, self.leniw,
+                                            self.cw, self.lencw,
+                                            self.iw, self.leniw,
                                             self.rw, self.lenrw ) == 0 )
 
         return out
@@ -592,11 +606,6 @@ cdef class Solver( base.Solver ):
         cdef char* xnames = "dummy"
         cdef char* Fnames = "dummy"
         cdef cnp.ndarray tmparr
-
-        ## Begin by setting up initial condition
-        tmparr = utils.arraySanitize( self.prob.init, dtype=doublereal_dtype, fortran=True )
-        memcpy( self.x, utils.getPtr( tmparr ),
-                self.n[0] * sizeof( doublereal ) )
 
         ## Handle debug files
         if( "printFile" in self.options ):

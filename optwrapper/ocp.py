@@ -327,6 +327,22 @@ class Problem:
             return decode( s ) + ( np.linspace( self.t0, self.tf, Nsamples + 1 ), )
 
 
+        def initPointEncode( st, u ):
+            """
+            encodes initial optimization vector
+
+            Arguments:
+            st: initial state guess with dimension (Nstates,) or (Nstates,Nsamples+1)
+            u:  initial input guess with dimension (Ninputs,) or (Ninputs,Nsamples)
+
+            Returns:
+            s: nonlinear programming optimization vector
+
+            """
+
+            return encode( st, u )
+
+
         def objf( out, s ):
             """
             discretized nonlinear programming cost function
@@ -455,7 +471,6 @@ class Problem:
 
 
         ## setup feuler now that all the functions are defined
-        feuler.initPoint( encode( self.init, np.zeros( ( self.Ninputs, ) ) ) )
         feuler.consBox( encode( self.consstlb, self.consinlb ),
                         encode( self.consstub, self.consinub ) )
         feuler.objFctn( objf )
@@ -475,4 +490,4 @@ class Problem:
 
         feuler.consGrad( consg, pattern=consgpattern() )
 
-        return ( feuler, solnDecode )
+        return ( feuler, initPointEncode, solnDecode )

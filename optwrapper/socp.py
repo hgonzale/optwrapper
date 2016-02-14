@@ -207,6 +207,23 @@ class Problem( ocp.Problem ):
             return decode( s ) + ( np.linspace( self.t0, self.tf, Nsamples + 1 ), )
 
 
+        def initPointEncode( st, u, d ):
+            """
+            encodes initial optimization vector
+
+            Arguments:
+            st: initial state guess with dimension (Nstates,) or (Nstates,Nsamples+1)
+            u:  initial continuous input guess with dimension (Ninputs,) or (Ninputs,Nsamples)
+            d:  initial discrete input guess with dimension (Nmodes,) or (Nmodes,Nsamples)
+
+            Returns:
+            s: nonlinear programming optimization vector
+
+            """
+
+            return encode( st, u, d )
+
+
         def objf( out, s ):
             """
             discretized nonlinear programming cost function
@@ -373,7 +390,7 @@ class Problem( ocp.Problem ):
 
         feuler.consGrad( consg, pattern=consgpattern() )
 
-        return ( feuler, solnDecode )
+        return ( feuler, initPointEncode, solnDecode )
 
 
 def haarWaveletApprox( t, arr, N ):

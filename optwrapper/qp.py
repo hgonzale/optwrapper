@@ -35,7 +35,6 @@ class Problem:
         if( self.Nconslin < 0 ):
             raise ValueError( "Nconslin must be positive" )
 
-        self.init = np.zeros( (self.N,) )
         self.lb = None
         self.ub = None
         self.objQ = None
@@ -44,21 +43,6 @@ class Problem:
         self.conslinlb = None
         self.conslinub = None
         self.soln = None
-
-
-    def initPoint( self, init ):
-        """
-        sets initial value for optimization variables.
-
-        Arguments:
-        init: initial condition, must be an array of size (N,). (default: zeros).
-
-        """
-
-        self.init = np.asfortranarray( init )
-
-        if( self.init.shape != ( self.N, ) ):
-            raise ValueError( "Argument must have size (" + str(self.N) + ",)." )
 
 
     def consBox( self, lb, ub ):

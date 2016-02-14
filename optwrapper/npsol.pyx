@@ -224,6 +224,17 @@ cdef class Solver( base.Solver ):
                     prob.Ncons * sizeof( doublereal ) )
 
 
+    def initPoint( self, init ):
+        if( not self.mem_alloc ):
+            raise ValueError( "Internal memory has not been allocated" )
+
+        tmparr = utils.arraySanitize( init, dtype=doublereal_dtype, fortran=True )
+        memcpy( self.x, utils.getPtr( tmparr ),
+                self.prob.N * sizeof( doublereal ) )
+
+        return True
+
+
     cdef int allocate( self ):
         if( self.mem_alloc ):
             return False
@@ -292,6 +303,8 @@ cdef class Solver( base.Solver ):
         if( not isinstance( self.prob.soln, Soln ) ):
             return False
 
+        self.initPoint( self.prob.soln.final )
+
         tmparr = utils.arraySanitize( self.prob.soln.istate, dtype=integer_dtype, fortran=True )
         memcpy( self.istate, utils.getPtr( tmparr ), self.nctotl * sizeof( integer ) )
 
@@ -347,10 +360,6 @@ cdef class Solver( base.Solver ):
         cdef integer inform_out[1]
         cdef doublereal objf_val[1]
         cdef cnp.ndarray tmparr
-
-        ## Begin by setting up initial condition
-        tmparr = utils.arraySanitize( self.prob.init, dtype=doublereal_dtype, fortran=True )
-        memcpy( self.x, utils.getPtr( tmparr ), self.prob.N * sizeof( doublereal ) )
 
         ## Supress echo options and reset optional values, pg. 21
         self.setOption( "Nolist" )
