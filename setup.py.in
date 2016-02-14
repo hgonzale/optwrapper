@@ -5,7 +5,7 @@ import numpy as np
 from os import environ
 
 major = "0"
-minor = "6"
+minor = "6+"
 
 environ[ "CC" ] = "@cc@"
 
