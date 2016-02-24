@@ -86,7 +86,9 @@ cdef class Solver( base.Solver ):
                    "infBoundSize": "Infinite Bound Size",
                    "infStepSize": "Infinite Step Size",
                    "printLevel": "Print level",
-                   "rankTol": "Rank Tolerance" }
+                   "rankTol": "Rank Tolerance",
+                   "printFile": "Print File",
+                   "summaryFile": "Summary File" }
         self.options = utils.Options( legacy )
 
         if( prob ):
@@ -262,6 +264,10 @@ cdef class Solver( base.Solver ):
                 ( self.options[key].dtype == utils.BOOL and not self.options[key].value ) ):
                 continue
 
+            if( key == "print file" or
+                key == "summary file" ): ## these options are set in self.solve()
+                continue
+
             mystr = key
             if( self.options[key].dtype != utils.BOOL ):
                 mystr += " {0}".format( self.options[key].value )
@@ -294,13 +300,13 @@ cdef class Solver( base.Solver ):
         self.setOption( "Defaults" )
 
         ## Handle debug files
-        if( "printFile" in self.options ):
+        if( "Print File" in self.options ):
             printFileUnit = 90 ## Hardcoded since nobody cares
         else:
             printFileUnit = 0 ## disabled by default, pg. 27
 
-        if( "summaryFile" in self.options ):
-            if( self.options[ "summaryFile" ] == "stdout" ):
+        if( "Summary File" in self.options ):
+            if( self.options[ "Summary File" ] == "stdout" ):
                 summaryFileUnit = 6 ## Fortran's magic value for stdout
             else:
                 summaryFileUnit = 89 ## Hardcoded since nobody cares
@@ -325,18 +331,18 @@ cdef class Solver( base.Solver ):
         del self.options[ "Warm start" ]
 
         ## Try to rename fortran print and summary files
-        if( "printFile" in self.options ):
+        if( "Print File" in self.options ):
             try:
                 os.rename( "fort.{0}".format( printFileUnit ),
-                           str( self.options[ "printFile" ] ) )
+                           str( self.options[ "Print File" ] ) )
             except:
                 pass
 
-        if( "summaryFile" in self.options and
-            self.options[ "summaryFile" ] != "stdout" ):
+        if( "Summary File" in self.options and
+            self.options[ "Summary File" ] != "stdout" ):
             try:
                 os.rename( "fort.{0}".format( summaryFileUnit ),
-                           str( self.options[ "summaryFile" ] ) )
+                           str( self.options[ "Summary File" ] ) )
             except:
                 pass
 

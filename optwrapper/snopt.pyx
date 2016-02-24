@@ -240,7 +240,9 @@ cdef class Solver( base.Solver ):
                    "unboundedObjValue": "Unbounded objective value",
                    "unboundedStepSize": "Unbounded step size",
                    "verifyLevel": "Verify level",
-                   "violationLimit": "Violation limit" }
+                   "violationLimit": "Violation limit",
+                   "printFile": "Print File",
+                   "summaryFile": "Summary File" }
 
         self.options = utils.Options( legacy )
         self.options[ "Verify level" ] = -1
@@ -569,6 +571,10 @@ cdef class Solver( base.Solver ):
                 ( self.options[key].dtype == utils.BOOL and not self.options[key].value ) ):
                 continue
 
+            if( key == "print file" or
+                key == "summary file" ): ## these options are set in self.solve()
+                continue
+
             mystr = key
             if( self.options[key].dtype != utils.BOOL ):
                 mystr += " {0}".format( self.options[key].value )
@@ -611,24 +617,24 @@ cdef class Solver( base.Solver ):
         cdef cnp.ndarray tmparr
 
         ## Handle debug files
-        if( "printFile" in self.options ):
+        if( "Print File" in self.options ):
             self.printFileUnit[0] = 90 ## Hardcoded since nobody cares
             if( self.debug ):
-                print( ">>> Sending print file to {0}".format( self.options[ "printFile" ] ) )
+                print( ">>> Sending print file to {0}".format( self.options[ "Print File" ] ) )
         else:
             self.printFileUnit[0] = 0 ## disabled by default, pg. 27
             if( self.debug ):
                 print( ">>> Print file is disabled" )
 
-        if( "summaryFile" in self.options ):
-            if( self.options[ "summaryFile" ] == "stdout" ):
+        if( "Summary File" in self.options ):
+            if( self.options[ "Summary File" ] == "stdout" ):
                 self.summaryFileUnit[0] = 6 ## Fortran's magic value for stdout
                 if( self.debug ):
                     print( ">>> Sending summary to stdout" )
             else:
                 self.summaryFileUnit[0] = 89 ## Hardcoded since nobody cares
                 if( self.debug ):
-                    print( ">>> Sending summary to {0}".format( self.options[ "summaryFile" ] ) )
+                    print( ">>> Sending summary to {0}".format( self.options[ "Summary File" ] ) )
         else:
             self.summaryFileUnit[0] = 0 ## disabled by default, pg. 28
             if( self.debug ):
@@ -738,18 +744,18 @@ cdef class Solver( base.Solver ):
                        self.lencw[0]*8, self.lencw[0]*8 )
 
         ## Try to rename fortran print and summary files
-        if( "printFile" in self.options ):
+        if( "Print File" in self.options ):
             try:
                 os.rename( "fort.{0}".format( self.printFileUnit[0] ),
-                           str( self.options[ "printFile" ] ) )
+                           str( self.options[ "Print File" ] ) )
             except:
                 pass
 
-        if( "summaryFile" in self.options and
-            self.options[ "summaryFile" ] != "stdout" ):
+        if( "Summary File" in self.options and
+            self.options[ "Summary File" ] != "stdout" ):
             try:
                 os.rename( "fort.{0}".format( self.summaryFileUnit[0] ),
-                           str( self.options[ "summaryFile" ] ) )
+                           str( self.options[ "Summary File" ] ) )
             except:
                 pass
 
