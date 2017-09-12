@@ -59,7 +59,7 @@ cdef void* getPtr( cnp.ndarray array ):
         raise ValueError( "Array array must be at most 2-dimensional" )
 
 
-cdef cnp.ndarray arraySanitize( cnp.ndarray array, type dtype=None,
+cdef cnp.ndarray arraySanitize( object array, type dtype=None,
                                 int fortran=False, int writtable=False ):
     reqs = [ "A" ]
     if( fortran ):
@@ -69,7 +69,7 @@ cdef cnp.ndarray arraySanitize( cnp.ndarray array, type dtype=None,
     if( writtable ):
         reqs.append( "W" )
 
-    return np.require( array, dtype=dtype, requirements=reqs )
+    return np.require( np.asarray( array ), dtype=dtype, requirements=reqs )
 
 
 ###

@@ -5,7 +5,7 @@ cdef cnp.ndarray wrapPtr( void* array, cnp.ndarray dims, int typenum )
 cdef cnp.ndarray wrap1dPtr( void* array, int length, int typenum )
 cdef cnp.ndarray wrap2dPtr( void* array, int rows, int cols, int typenum, int fortran=* )
 cdef void* getPtr( cnp.ndarray input )
-cdef cnp.ndarray arraySanitize( cnp.ndarray input, type dtype=*,
+cdef cnp.ndarray arraySanitize( object input, type dtype=*,
                                 int fortran=*, int writtable=* )
 
 cdef class sMatrix:
