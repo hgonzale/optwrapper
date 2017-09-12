@@ -19,7 +19,6 @@ def consg( out, x ):
     out[1] = [ 2*(x[0]-2), 2*x[1] ]
 
 prob = ow.nlp.Problem( N=2, Ncons=2 )
-prob.initPoint( [1.0, -2.0] )
 prob.consBox( [0, -10], [5, 2] )
 
 prob.objFctn( objf )
@@ -30,17 +29,17 @@ prob.consGrad( consg )
 if( not prob.checkGrad( debug=True ) ):
     sys.exit( "Gradient check failed." )
 
-solver = ow.snopt.Solver( prob ) ## change this line to use another solver
+solver = ow.ipopt.Solver( prob ) ## change this line to use another solver
 # solver.options["printFile"] = "stdout"
 
 print( "First run..." )
+solver.initPoint( [1.0, -2.0] )
 solver.solve()
 print( prob.soln.getStatus() )
 print( "Value: " + str( prob.soln.value ) )
 print( "Final point: " + str( prob.soln.final ) )
 print( "Retval: " + str( prob.soln.retval ) )
 
-prob.initPoint( [-10.0, -12.0] )
 solver.warmStart()
 print( "\nSecond run..." )
 solver.solve()

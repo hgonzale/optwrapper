@@ -54,12 +54,13 @@ prob.consBoxState( -50 * np.ones( prob.Nstates ),
 prob.consBoxInput( -10 * np.ones( prob.Ninputs ),
                    10 * np.ones( prob.Ninputs ) )
 
-( nlpprob, solndecode ) = prob.discForwardEuler( Nsamples=30 )
+( nlpprob, initencode, solndecode ) = prob.discForwardEuler( Nsamples=30 )
 
 if( not nlpprob.checkGrad( debug=True ) ):
     sys.exit( "Gradient check failed." )
 
 solver = ow.ipopt.Solver( nlpprob )
+solver.initPoint( initencode( prob.init, [ 0, 0 ] ) )
 solver.debug = True
 # solver.options[ "summaryFile" ] = "debugs.txt"
 # solver.options[ "printFile" ] = "debugp.txt"

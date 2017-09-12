@@ -18,7 +18,6 @@ def consg( out, x ):
     out[1] = [ 2*(x[0]-2), 2*x[1] ]
 
 prob = ow.nlp.Problem( N=2, Ncons=2 )
-prob.initPoint( [10.0, 12.0] )
 prob.consBox( [0, -10], [5, 2] )
 
 prob.objFctn( objf, A=[0,1] )
@@ -36,14 +35,14 @@ solver.debug = True
 # solver.options[ "printLevel" ] = 10
 
 print( "First run..." )
+solver.initPoint( [10.0, 12.0] )
 solver.solve()
 print( prob.soln.getStatus() )
 print( "Value: " + str( prob.soln.value ) )
 print( "Final point: " + str( prob.soln.final ) )
 print( "Retval: " + str( prob.soln.retval ) )
 
-prob.initPoint( [-10.0, -12.0] )
-# solver.warmStart()
+solver.warmStart()
 print( "\nSecond run..." )
 solver.solve()
 print( prob.soln.getStatus() )

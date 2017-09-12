@@ -360,7 +360,7 @@ class Problem:
 
             """
 
-            return encode( st, u )
+            return encode( np.asarray( st ), np.asarray( u ) )
 
 
         def objf( out, s ):

@@ -224,7 +224,7 @@ class Problem( ocp.Problem ):
 
             """
 
-            return encode( st, u, d )
+            return encode( np.asarray( st ), np.asarray( u ), np.asarray( d ) )
 
 
         def objf( out, s ):
@@ -372,9 +372,6 @@ class Problem( ocp.Problem ):
 
 
         ## setup feuler now that all the functions are defined
-        feuler.initPoint( encode( self.init,
-                                  np.zeros( (self.Ninputs,) ),
-                                  1/self.Nmodes * np.ones( (self.Nmodes,) ) ) )
         feuler.consBox( encode( self.consstlb, self.consinlb, np.zeros( (self.Nmodes,) ) ),
                         encode( self.consstub, self.consinub, np.ones( (self.Nmodes,) ) ) )
         feuler.consLinear( conslinA(), np.ones( (Nsamples,) ), np.ones( (Nsamples,) ) )
