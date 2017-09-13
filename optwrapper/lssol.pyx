@@ -98,9 +98,6 @@ cdef class Solver( base.Solver ):
     def setupProblem( self, prob ):
         cdef cnp.ndarray tmparr
 
-        if( not isinstance( prob, qp.Problem ) ):
-            raise TypeError( "prob must be of type qp.Problem" )
-
         if( not prob.checkSetup() ):
             raise ValueError( "Argument 'prob' has not been properly configured" )
 
@@ -110,12 +107,15 @@ cdef class Solver( base.Solver ):
         self.warm_start = False
 
         ## Set problem type
-        if( prob.objQ is None and prob.objL is None ):
-            self.options[ "Problem type" ] = "FP"
-        elif( prob.objQ is None ):
-            self.options[ "Problem type" ] = "LP"
-        else:
+        if( isinstance( prob, qp.Problem ) and prob.objQ is not None ):
             self.options[ "Problem type" ] = "QP2"
+        elif( isinstance( prob, lp.Problem ) ):
+            if( prob.objL is not None ):
+                self.options[ "Problem type" ] = "LP"
+            else:
+                self.options[ "Problem type" ] = "FP"
+        else:
+            raise TypeError( "cannot recognize problem type" )
 
         ## Set size-dependent constants
         if( prob.Nconslin == 0 ): ## pg. 7, nrowC >= 1 even if nclin = 0

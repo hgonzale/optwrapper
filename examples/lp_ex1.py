@@ -19,7 +19,7 @@ Clb = -2 * np.ones( (3,) )
 Cub = 1.5 * np.ones( (3,) )
 Cub[2] = 4
 
-prob = ow.qp.Problem( N=9, Nconslin=3 )
+prob = ow.lp.Problem( N=9, Nconslin=3 )
 prob.consBox( lb = -2 * np.ones( (9,) ),
               ub =  2 * np.ones( (9,) ) )
 prob.objFctn( lin=L )
