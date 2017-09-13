@@ -290,7 +290,7 @@ cdef class Solver( base.Solver ):
         cdef cnp.ndarray tmparr
 
         ## Set quadratic obj term if available, it is overwritten after each run, pg. 9
-        if( self.prob.objQ is not None ):
+        if( self.options[ "Problem type" ] == "QP2" ):
             tmparr = utils.arraySanitize( self.prob.objQ, dtype=doublereal_dtype, fortran=True )
             memcpy( &self.A[0], utils.getPtr( tmparr ),
                     self.prob.N * self.prob.N * sizeof( doublereal ) )
