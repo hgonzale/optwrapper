@@ -43,7 +43,7 @@ class Problem:
         self.init = np.zeros( (self.Nstates,) )
         self.t0 = 0
         self.tf = 1
-        self.icostf = None
+        self.icost = None
         self.icostdxpattern = None
         self.icostdupattern = None
         self.fcost = None
@@ -59,6 +59,23 @@ class Problem:
         self.consstub = None
         self.consinlb = None
         self.consinub = None
+
+
+    def checkSetup( self ):
+        out = ( self.icost is not None and
+                self.fcost is not None and
+                self.vfield is not None and
+                self.consstlb is not None and
+                self.consstub is not None and
+                self.consinlb is not None and
+                self.consinub is not None )
+
+        if( self.Ncons > 0 ):
+            out = out and ( self.cons is not None and
+                            self.conslb is not None and
+                            self.consub is not None )
+
+        return out
 
 
     def initCond( self, init ):
@@ -254,6 +271,9 @@ class Problem:
 
         """
 
+        if( not self.checkSetup() ):
+            raise ValueError( "Problem has not been properly configured" )
+
         ## index helpers
         stidx = np.arange( 0, self.Nstates * ( Nsamples + 1 ),
                            dtype=np.int ).reshape( ( self.Nstates, Nsamples + 1 ), order='F' )
@@ -325,6 +345,22 @@ class Problem:
             """
 
             return decode( s ) + ( np.linspace( self.t0, self.tf, Nsamples + 1 ), )
+
+
+        def initPointEncode( st, u ):
+            """
+            encodes initial optimization vector
+
+            Arguments:
+            st: initial state guess with dimension (Nstates,) or (Nstates,Nsamples+1)
+            u:  initial input guess with dimension (Ninputs,) or (Ninputs,Nsamples)
+
+            Returns:
+            s: nonlinear programming optimization vector
+
+            """
+
+            return encode( np.asarray( st ), np.asarray( u ) )
 
 
         def objf( out, s ):
@@ -455,7 +491,6 @@ class Problem:
 
 
         ## setup feuler now that all the functions are defined
-        feuler.initPoint( encode( self.init, np.zeros( ( self.Ninputs, ) ) ) )
         feuler.consBox( encode( self.consstlb, self.consinlb ),
                         encode( self.consstub, self.consinub ) )
         feuler.objFctn( objf )
@@ -475,4 +510,4 @@ class Problem:
 
         feuler.consGrad( consg, pattern=consgpattern() )
 
-        return ( feuler, solnDecode )
+        return ( feuler, initPointEncode, solnDecode )

@@ -44,7 +44,6 @@ class Problem:
         if( self.Ncons < 0 ):
             raise ValueError( "Ncons must be positive" )
 
-        self.init = np.zeros( (self.N,) )
         self.lb = None
         self.ub = None
         self.objf = None
@@ -61,19 +60,24 @@ class Problem:
         self.soln = None
 
 
-    def initPoint( self, init ):
-        """
-        sets initial value for optimization variable.
+    def checkSetup( self ):
+        out = ( self.lb is not None and
+                self.ub is not None and
+                self.objf is not None and
+                self.objg is not None )
 
-        Arguments:
-        init: array of size (N,) as initial condition. (default: array of zeros).
+        if( self.Ncons > 0 ):
+            out = out and ( self.consf is not None and
+                            self.consg is not None and
+                            self.conslb is not None and
+                            self.consub is not None )
 
-        """
+        if( self.Nconslin > 0 ):
+            out = out and ( self.conslinA is not None and
+                            self.conslinlb is not None and
+                            self.conslinub is not None )
 
-        self.init = np.asfortranarray( init )
-
-        if( self.init.shape != ( self.N, ) ):
-            raise ValueError( "Argument must have size (" + str(self.N) + ",)." )
+        return out
 
 
     def consBox( self, lb, ub ):

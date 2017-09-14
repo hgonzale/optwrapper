@@ -262,6 +262,9 @@ cdef class Solver( base.Solver ):
         if( not isinstance( prob, nlp.Problem ) ):
             raise TypeError( "Argument prob must be of type nlp.Problem" )
 
+        if( not prob.checkSetup() ):
+            raise ValueError( "Argument 'prob' has not been properly configured" )
+
         self.prob = prob ## Save a copy of prob's pointer
         extprob = prob ## Save another (global) copy of prob's pointer to use in usrfun
 
@@ -361,6 +364,17 @@ cdef class Solver( base.Solver ):
         memset( self.xstate, 0, self.n[0] * sizeof( integer ) )
         memset( self.Fstate, 0, self.nF[0] * sizeof( integer ) )
         memset( self.Fmul, 0, self.nF[0] * sizeof( doublereal ) )
+
+
+    def initPoint( self, init ):
+        if( not self.mem_alloc ):
+            raise ValueError( "Internal memory has not been allocated" )
+
+        tmparr = utils.arraySanitize( init, dtype=doublereal_dtype, fortran=True )
+        memcpy( self.x, utils.getPtr( tmparr ),
+                self.n[0] * sizeof( doublereal ) )
+
+        return True
 
 
     cdef int allocate( self ):
@@ -512,6 +526,8 @@ cdef class Solver( base.Solver ):
         if( not isinstance( self.prob.soln, Soln ) ):
             return False
 
+        self.initPoint( self.prob.soln.final )
+
         tmparr = utils.arraySanitize( self.prob.soln.xstate, dtype=integer_dtype, fortran=True )
         memcpy( self.xstate, utils.getPtr( tmparr ),
                 self.n[0] * sizeof( integer ) )
@@ -567,7 +583,8 @@ cdef class Solver( base.Solver ):
                 print( "processing option: '{0}'".format( mystr ) )
 
             out = out and ( self.setOption( mystr,
-                                            self.cw, self.lencw, self.iw, self.leniw,
+                                            self.cw, self.lencw,
+                                            self.iw, self.leniw,
                                             self.rw, self.lenrw ) == 0 )
 
         return out
@@ -598,11 +615,6 @@ cdef class Solver( base.Solver ):
         cdef char* xnames = "dummy"
         cdef char* Fnames = "dummy"
         cdef cnp.ndarray tmparr
-
-        ## Begin by setting up initial condition
-        tmparr = utils.arraySanitize( self.prob.init, dtype=doublereal_dtype, fortran=True )
-        memcpy( self.x, utils.getPtr( tmparr ),
-                self.n[0] * sizeof( doublereal ) )
 
         ## Handle debug files
         if( "Print File" in self.options ):

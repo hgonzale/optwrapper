@@ -5,13 +5,13 @@ import numpy as np
 from os import environ
 
 major = "0"
-minor = "6.1"
+minor = "7"
 
 environ[ "CC" ] = "@cc@"
 
 include_dirs = [ np.get_include() ] + @headers@
 
-extensions = []
+extensions = list()
 extensions.append( Extension( "optwrapper.utils",
                               sources = [ "optwrapper/utils.pyx" ],
                               include_dirs = include_dirs ) )
@@ -40,12 +40,12 @@ if( @ipopt@ ):
                                   include_dirs = include_dirs,
                                   libraries = [ "ipopt" ] ) )
 
-setup( name = "OptWrapper",
+setup( name = "optwrapper",
        version = "{0}.{1}".format( major, minor ),
        description = "Common interface for numerical optimization solvers",
        license = "BSD 2-Clause",
        maintainer = "Humberto Gonzalez",
-       maintainer_email = "hgonzale@wustl.edu",
+       maintainer_email = "hgonzale@gmail.com",
        download_url = "https://github.com/hgonzale/optwrapper",
        packages = [ "optwrapper" ],
        ext_modules = cythonize( extensions ) )

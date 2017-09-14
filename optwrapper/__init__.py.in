@@ -1,21 +1,21 @@
 ## Import problems
-import qp, nlp, ocp, socp
+from optwrapper import qp, nlp, ocp, socp
 
-__all__ = [ "qp", "nlp", "ocp", "socp" ]
+__all__ = [ "lp", "qp", "nlp", "ocp", "socp" ]
 
 ## Import solvers
 if( @lssol@ ):
-    import lssol
+    from optwrapper import lssol
     __all__ += [ "lssol" ]
 
 if( @npsol@ ):
-    import npsol
+    from optwrapper import npsol
     __all__ += [ "npsol" ]
 
 if( @snopt@ ):
-    import snopt
+    from optwrapper import snopt
     __all__ += [ "snopt" ]
 
 if( @ipopt@ ):
-    import ipopt
+    from optwrapper import ipopt
     __all__ += [ "ipopt" ]

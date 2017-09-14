@@ -98,8 +98,8 @@ cdef class Solver( base.Solver ):
     def setupProblem( self, prob ):
         cdef cnp.ndarray tmparr
 
-        if( not isinstance( prob, qp.Problem ) ):
-            raise TypeError( "prob must be of type qp.Problem" )
+        if( not prob.checkSetup() ):
+            raise ValueError( "Argument 'prob' has not been properly configured" )
 
         self.prob = prob
 
@@ -107,12 +107,15 @@ cdef class Solver( base.Solver ):
         self.warm_start = False
 
         ## Set problem type
-        if( prob.objQ is None and prob.objL is None ):
-            self.options[ "Problem type" ] = "FP"
-        elif( prob.objQ is None ):
-            self.options[ "Problem type" ] = "LP"
-        else:
+        if( isinstance( prob, qp.Problem ) and prob.objQ is not None ):
             self.options[ "Problem type" ] = "QP2"
+        elif( isinstance( prob, lp.Problem ) ):
+            if( prob.objL is not None ):
+                self.options[ "Problem type" ] = "LP"
+            else:
+                self.options[ "Problem type" ] = "FP"
+        else:
+            raise TypeError( "cannot recognize problem type" )
 
         ## Set size-dependent constants
         if( prob.Nconslin == 0 ): ## pg. 7, nrowC >= 1 even if nclin = 0
@@ -153,6 +156,16 @@ cdef class Solver( base.Solver ):
             tmparr = utils.arraySanitize( prob.conslinA, dtype=doublereal_dtype, fortran=True )
             memcpy( &self.C[0], utils.getPtr( tmparr ),
                     prob.Nconslin * prob.N * sizeof( doublereal ) )
+
+
+    def initPoint( self, init ):
+        if( not self.mem_alloc ):
+            raise ValueError( "Internal memory has not been allocated" )
+
+        tmparr = utils.arraySanitize( init, dtype=doublereal_dtype, fortran=True )
+        memcpy( self.x, utils.getPtr( tmparr ), self.prob.N * sizeof( doublereal ) )
+
+        return True
 
 
     cdef int allocate( self ):
@@ -221,6 +234,8 @@ cdef class Solver( base.Solver ):
         if( not isinstance( self.prob.soln, Soln ) ):
             return False
 
+        self.initPoint( self.prob.soln.final )
+
         tmparr = utils.arraySanitize( self.prob.soln.istate, dtype=integer_dtype, fortran=True )
         memcpy( self.istate, utils.getPtr( tmparr ),
                 ( self.prob.N + self.prob.Nconslin ) * sizeof( integer ) )
@@ -274,12 +289,8 @@ cdef class Solver( base.Solver ):
         cdef doublereal objf_val[1]
         cdef cnp.ndarray tmparr
 
-        ## Begin by setting up initial condition
-        tmparr = utils.arraySanitize( self.prob.init, dtype=doublereal_dtype, fortran=True )
-        memcpy( self.x, utils.getPtr( tmparr ), self.prob.N * sizeof( doublereal ) )
-
         ## Set quadratic obj term if available, it is overwritten after each run, pg. 9
-        if( self.prob.objQ is not None ):
+        if( self.options[ "Problem type" ] == "QP2" ):
             tmparr = utils.arraySanitize( self.prob.objQ, dtype=doublereal_dtype, fortran=True )
             memcpy( &self.A[0], utils.getPtr( tmparr ),
                     self.prob.N * self.prob.N * sizeof( doublereal ) )

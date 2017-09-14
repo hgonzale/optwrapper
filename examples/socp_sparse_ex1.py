@@ -82,7 +82,7 @@ prob.vectorField( ( dynamics_mode1, dynamics_mode2, dynamics_mode3 ),
 prob.consBoxState( -1 * np.ones( (prob.Nstates,) ), 2 * np.ones( (prob.Nstates,) ) )
 prob.consBoxInput( -20 * np.ones( (prob.Ninputs,) ), 20 * np.ones( (prob.Ninputs,) ) )
 
-( nlpprob, solndecode ) = prob.discForwardEuler( Nsamples = 30 )
+( nlpprob, initencode, solndecode ) = prob.discForwardEuler( Nsamples = 30 )
 
 if( not nlpprob.checkGrad( debug=True ) ):
     sys.exit( "Gradient check failed." )
@@ -90,7 +90,8 @@ if( not nlpprob.checkGrad( debug=True ) ):
 if( not nlpprob.checkPattern( debug=True ) ):
     sys.exit( "Pattern check failed." )
 
-solver = ow.snopt.Solver( nlpprob )
+solver = ow.ipopt.Solver( nlpprob )
+solver.initPoint( initencode( prob.init, [0], [1/3, 1/3, 1/3] ) )
 solver.debug = True
 # solver.options[ "summaryFile" ] = "stdout"
 # solver.options[ "printFile" ] = "debugp.txt"

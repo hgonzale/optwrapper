@@ -198,6 +198,9 @@ cdef class Solver( base.Solver ):
         if( not isinstance( prob, nlp.Problem ) ):
             raise TypeError( "Argument 'prob' must be of type 'nlp.Problem'" )
 
+        if( not prob.checkSetup() ):
+            raise ValueError( "Argument 'prob' has not been properly configured" )
+
         self.prob = prob ## Save a copy of prob's pointer
         extprob = prob
 
@@ -268,6 +271,16 @@ cdef class Solver( base.Solver ):
         self.nlp_alloc = True
 
 
+    def initPoint( self, init ):
+        if( not self.mem_alloc ):
+            raise ValueError( "Internal memory has not been allocated" )
+
+        tmparr = utils.arraySanitize( init, dtype=Number_dtype )
+        memcpy( self.x, utils.getPtr( tmparr ), self.N * sizeof( Number ) )
+
+        return True
+
+
     cdef int allocate( self ):
         if( self.mem_alloc ):
             return False
@@ -328,6 +341,8 @@ cdef class Solver( base.Solver ):
         if( not isinstance( self.prob.soln, Soln ) ):
             return False
 
+        self.initPoint( self.prob.soln.final )
+
         tmparr = utils.arraySanitize( self.prob.soln.mult_g, dtype=Number_dtype )
         memcpy( self.mult_g, utils.getPtr( tmparr ), self.Ntotcons * sizeof( Number ) )
 
@@ -373,13 +388,6 @@ cdef class Solver( base.Solver ):
     def solve( self ):
         cdef cnp.ndarray tmparr
         cdef Number obj_val[1]
-
-        ## Begin by setting up initial condition
-        if( self.warm_start ):
-            tmparr = utils.arraySanitize( self.prob.soln.final, dtype=Number_dtype )
-        else:
-            tmparr = utils.arraySanitize( self.prob.init, dtype=Number_dtype )
-        memcpy( self.x, utils.getPtr( tmparr ), self.N * sizeof( Number ) )
 
         self.processOptions()
 

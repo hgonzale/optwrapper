@@ -26,7 +26,6 @@ Cub = 1.5 * np.ones( (3,) )
 Cub[2] = 4
 
 prob = ow.qp.Problem( N=9, Nconslin=3 )
-prob.initPoint( np.zeros( (9,) ) )
 prob.consBox( lb = -2 * np.ones( (9,) ),
               ub =  2 * np.ones( (9,) ) )
 prob.objFctn( quad=Q, lin=L )
@@ -46,13 +45,13 @@ print( "Value: " + str( optimal_value ) )
 print( "Final point: " + str( optimal_soln ) )
 
 print( "\nFirst run..." )
+solver.initPoint( np.zeros( (9,) ) )
 solver.solve()
 print( prob.soln.getStatus() )
 print( "Value: " + str( prob.soln.value ) )
 print( "Final point: " + str( prob.soln.final ) )
 print( "Retval: " + str( prob.soln.retval ) )
 
-prob.initPoint( -5 * np.ones( (9,) ) )
 solver.warmStart()
 print( "\nSecond run..." )
 solver.solve()
