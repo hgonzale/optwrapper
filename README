@@ -1,10 +1,11 @@
-OptWrapper v0.6
+OptWrapper v0.7
 ---------------
 
 This is a python wrapper for numerical optimization libraries. It contains two general types of objects: problems and solvers. This version has been tested using Python 2.7 and 3.5, and Cython 0.21.
 
 Currently we implement the following problems:
-- Quadratic and Linear Programming Problems (qp.Problem)
+- Linear Programming Problems (lp.Problem)
+- Quadratic Programming Problems (qp.Problem)
 - Nonlinear Programming Problem (nlp.Problem), and its sparse gradient version (nlp.SparseProblem)
 - Constrained Optimal Control Problem (ocp.Problem)
 - Constrained Switched Optimal Control Problem (socp.Problem)
