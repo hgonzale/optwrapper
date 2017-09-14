@@ -96,7 +96,7 @@ if( env.GetOption( "silent" ) ):
 spy_str = "python setup.py {0}".format( " ".join( args ) )
 spy_build_str = spy_str + " build"
 spy_install_str = spy_str + " install --record={0}".format( env.GetOption( "manifest_file" ) )
-if( GetOption( "install_local" ) ):
+if( env.GetOption( "install_local" ) ):
     spy_install_str += " --user"
 
 ### Create targets
