@@ -1,4 +1,5 @@
 import numpy as np
+from optwrapper import lp
 
 class Problem( lp.Problem ):
     """
@@ -22,6 +23,13 @@ class Problem( lp.Problem ):
         self.objQ = None
 
 
+    def checkSetup( self ):
+        out = super().checkSetup()
+
+        out = out and ( self.objL is not None and
+                        self.objQ is not None )
+
+
     def objFctn( self, quad=None, lin=None ):
         """
         sets objective function of the form: 0.5 * x.dot(Q).dot(x) + L.dot(x).
@@ -34,9 +42,11 @@ class Problem( lp.Problem ):
 
         super().objFctn( lin )
 
-        if( quad is not None ):
-            self.objQ = np.asfortranarray( quad )
+        if( self.objL.shape != ( self.N, ) ):
+            raise ValueError( "Array L must have size (" + str(self.N) + ",)." )
 
-            if( self.objQ.shape != ( self.N, self.N ) ):
-                raise ValueError( "Array Q must have size (" + str(self.N) + "," +
-                                  str(self.N) + ")." )
+        self.objQ = np.asfortranarray( quad )
+
+        if( self.objQ.shape != ( self.N, self.N ) ):
+            raise ValueError( "Array Q must have size (" + str(self.N) + "," +
+                              str(self.N) + ")." )
