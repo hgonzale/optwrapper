@@ -9,36 +9,43 @@ minor = "7+"
 
 environ[ "CC" ] = "@cc@"
 
-include_dirs = [ np.get_include() ] + @headers@
+extra_params = { "include_dirs": @headers@ + [ np.get_include() ],
+                 "extra_compile_args": ["-O2", "-Wno-unused-variables"] }
 
 extensions = list()
 extensions.append( Extension( "optwrapper.utils",
                               sources = [ "optwrapper/utils.pyx" ],
-                              include_dirs = include_dirs ) )
+                              **extra_params ) )
 extensions.append( Extension( "optwrapper.base",
                               sources = [ "optwrapper/base.pyx" ],
-                              include_dirs = include_dirs ) )
+                              **extra_params ) )
 if( @lssol@ ):
     extensions.append( Extension( "optwrapper.lssol",
                                   sources = [ "optwrapper/lssol.pyx" ],
-                                  include_dirs = include_dirs,
-                                  libraries = [ "lssol" ] ) )
+                                  libraries = [ "lssol" ],
+                                  **extra_params ) )
 if( @npsol@ ):
     extensions.append( Extension( "optwrapper.npsol",
                                   sources = [ "optwrapper/npsol.pyx" ],
-                                  include_dirs = include_dirs,
                                   libraries = [ "npsol",
-                                                "lssol" ] ) )
+                                                "lssol" ],
+                                  **extra_params ) )
 if( @snopt@ ):
     extensions.append( Extension( "optwrapper.snopt",
                                   sources = [ "optwrapper/snopt.pyx" ],
-                                  include_dirs = include_dirs,
-                                  libraries = [ "snopt" ] ) )
+                                  libraries = [ "snopt" ],
+                                  **extra_params ) )
 if( @ipopt@ ):
     extensions.append( Extension( "optwrapper.ipopt",
                                   sources = [ "optwrapper/ipopt.pyx" ],
-                                  include_dirs = include_dirs,
-                                  libraries = [ "ipopt" ] ) )
+                                  libraries = [ "ipopt" ],
+                                  **extra_params ) )
+if( @qpoases@ ):
+    extensions.append( Extension( "optwrapper.qpoases",
+                                  sources = [ "optwrapper/qpoases.pyx" ],
+                                  libraries = [ "qpoases" ],
+                                  language = "c++",
+                                  **extra_params ) )
 
 setup( name = "optwrapper",
        version = "{0}.{1}".format( major, minor ),
