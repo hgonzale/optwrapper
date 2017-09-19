@@ -1,4 +1,5 @@
 import numpy as np
+from optwrapper import lp
 
 class Problem( lp.Problem ):
     """

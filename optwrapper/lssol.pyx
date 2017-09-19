@@ -11,7 +11,7 @@ from .typedefs cimport *
 cimport lssolh as lssol   ## import every function exposed in lssol.h
 cimport utils
 cimport base
-import qp
+import lp, qp
 
 ## we use these definitions to wrap C arrays in numpy arrays
 ## we can safely assume 64-bit values since we already checked using scons
