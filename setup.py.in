@@ -8,9 +8,10 @@ major = "0"
 minor = "7+"
 
 environ[ "CC" ] = "@cc@"
+environ[ "CXX" ] = "@cxx@"
 
 extra_params = { "include_dirs": @headers@ + [ np.get_include() ],
-                 "extra_compile_args": ["-O2", "-Wno-unused-variables"] }
+                 "extra_compile_args": ["-Wno-unused-variable"] }
 
 extensions = list()
 extensions.append( Extension( "optwrapper.utils",

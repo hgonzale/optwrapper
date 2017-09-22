@@ -73,8 +73,9 @@ if( not env.GetOption( "clean" ) and
                           conf.CheckHeader( "snopt.h" ) )
     repl[ "@ipopt@" ] = ( conf.CheckLib( "ipopt" ) and
                           conf.CheckHeader( "coin/IpStdCInterface.h" ) )
-    repl[ "@qpoases@" ] = ( conf.CheckLib( "qpoases" ) and
-                            conf.CheckHeader( "qpOASES.hpp" ) )
+    repl[ "@qpoases@" ] = ( conf.CheckCXX() and
+                            conf.CheckLib( "qpoases", language="C++" ) and
+                            conf.CheckHeader( "qpOASES.hpp", language="C++" ) )
 
 env = conf.Finish()
 

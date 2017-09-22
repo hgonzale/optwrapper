@@ -19,3 +19,7 @@ if( @snopt@ ):
 if( @ipopt@ ):
     from optwrapper import ipopt
     __all__ += [ "ipopt" ]
+
+if( @qpoases@ ):
+    from optwrapper import qpoases
+    __all__ += [ "qpoases" ]
