@@ -1,5 +1,6 @@
 import numpy as np
 from optwrapper import lp
+from enum import Enum
 
 class Problem( lp.Problem ):
     """
@@ -21,9 +22,19 @@ class Problem( lp.Problem ):
 
         super().__init__( N, Nconslin )
         self.objQ = None
+        self.objQtype = None
 
 
-    def objFctn( self, quad=None, lin=None ):
+    def checkSetup( self ):
+        out = super().checkSetup()
+
+        out = out and ( self.objL is not None and
+                        self.objQ is not None )
+
+        return out
+
+
+    def objFctn( self, quad=None, lin=None, quadtype=None ):
         """
         sets objective function of the form: 0.5 * x.dot(Q).dot(x) + L.dot(x).
 
@@ -35,9 +46,24 @@ class Problem( lp.Problem ):
 
         super().objFctn( lin )
 
-        if( quad is not None ):
-            self.objQ = np.asfortranarray( quad )
+        if( self.objL.shape != ( self.N, ) ):
+            raise ValueError( "Array L must have size (" + str(self.N) + ",)." )
 
-            if( self.objQ.shape != ( self.N, self.N ) ):
-                raise ValueError( "Array Q must have size (" + str(self.N) + "," +
-                                  str(self.N) + ")." )
+        self.objQ = np.asfortranarray( quad )
+
+        if( self.objQ.shape != ( self.N, self.N ) ):
+            raise ValueError( "Array Q must have size (" + str(self.N) + "," +
+                              str(self.N) + ")." )
+
+        if( quadtype ):
+            if( not isinstance( quadtype, QuadType ) ):
+                raise ValueError( "argument 'quadtype' must be of type 'qp.QuadType'" )
+            self.quadtype = quadtype
+
+
+class QuadType( Enum ):
+    indef = 1
+    posdef = 2
+    possemidef = 3
+    identity = 4
+    zero = 5

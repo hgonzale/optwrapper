@@ -107,7 +107,7 @@ cdef class Solver( base.Solver ):
         self.warm_start = False
 
         ## Set problem type
-        if( isinstance( prob, qp.Problem ) and prob.objQ is not None ):
+        if( isinstance( prob, qp.Problem ) ):
             self.options[ "Problem type" ] = "QP2"
         elif( isinstance( prob, lp.Problem ) ):
             if( prob.objL is not None ):
@@ -133,7 +133,7 @@ cdef class Solver( base.Solver ):
             self.deallocate()
             self.allocate()
 
-        ## Copy information from prob to NPSOL's working arrays
+        ## Copy information from prob to LSSOL's working arrays
         tmparr = utils.arraySanitize( prob.lb, dtype=doublereal_dtype, fortran=True )
         memcpy( &self.bl[0], utils.getPtr( tmparr ), prob.N * sizeof( doublereal ) )
 
@@ -159,6 +159,8 @@ cdef class Solver( base.Solver ):
 
 
     def initPoint( self, init ):
+        cdef cnp.ndarray tmparr
+
         if( not self.mem_alloc ):
             raise ValueError( "Internal memory has not been allocated" )
 

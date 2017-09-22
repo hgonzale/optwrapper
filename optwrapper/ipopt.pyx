@@ -405,7 +405,7 @@ cdef class Solver( base.Solver ):
         if( self.options[ "output_file" ] != "stdout" ):
             os.close(1)
             os.dup( old_stdout ) # should dup to 1
-            os.close( old_stdout ) # get rid of left overs
+            os.close( old_stdout ) # get rid of leftovers
 
         ## disable warm start after execution
         self.warm_start = False

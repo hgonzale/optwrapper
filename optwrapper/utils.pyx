@@ -482,9 +482,10 @@ cdef class OptPair:
 
 
 cdef class Options:
-    def __init__( self, dict legacy=None ):
+    def __init__( self, dict legacy=None, int case_sensitive=False ):
         self.legacy = dict()
         self.data = dict()
+        self.case_sensitive = case_sensitive
 
         if( legacy is not None ):
             self.legacyInsert( legacy )
@@ -501,7 +502,7 @@ cdef class Options:
             dtype == NONE ):
             raise TypeError( "invalid datatype" )
 
-        if( dtype == STR ):
+        if( dtype == STR and not self.case_sensitive ):
             value = value.lower()
 
         mykey = self.sanitizeKey( key )
@@ -545,8 +546,7 @@ cdef class Options:
 
     def __contains__( self, key ):
         cdef str mykey = self.sanitizeKey( key )
-        return bool( mykey in self.data and
-                     self.data[mykey] )
+        return bool( mykey in self.data and self.data[mykey] )
 
     def __str__( self ):
         return str( self.data )
@@ -558,11 +558,16 @@ cdef class Options:
 
     cpdef legacyInsert( self, dict legacy ):
         for (key,value) in legacy.iteritems():
-            self.legacy[ key.lower() ] = value.lower()
+            if( not self.case_sensitive ):
+                self.legacy[ key.lower() ] = value.lower()
+            else:
+                self.legacy.update( legacy )
 
 
     cdef str sanitizeKey( self, str key ):
-        cdef str lkey = key.lower()
+        cdef str lkey = key
+        if( not self.case_sensitive ):
+            lkey = key.lower()
 
         if( lkey in self.legacy ):
             return self.legacy[ lkey ]

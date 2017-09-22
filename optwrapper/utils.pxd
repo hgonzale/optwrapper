@@ -47,6 +47,7 @@ cdef class OptPair:
 cdef class Options:
     cdef public dict data
     cdef dict legacy
+    cdef int case_sensitive
 
     cpdef legacyInsert( self, dict legacy )
     cdef str sanitizeKey( self, str key )

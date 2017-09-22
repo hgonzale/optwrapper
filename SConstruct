@@ -43,8 +43,11 @@ conf = Configure( env,
 ### Configure
 ## add folders to include path
 repl = { "@headers@": [ "/usr/local/include" ],
-         "@cc@": "gcc" } ## we need an openmp-compatible compiler, using gcc by default
+         "@cc@": "gcc",   ## we need an openmp-compatible compiler, using gcc by default
+         "@cxx@": "g++" } ## we need an openmp-compatible compiler, using g++ by default
+
 env[ "CC" ] = repl[ "@cc@" ]
+env[ "CXX" ] = repl[ "@cxx@" ]
 env.Append( CPPPATH = repl[ "@headers@" ] )
 
 if( not env.GetOption( "clean" ) and
@@ -70,6 +73,9 @@ if( not env.GetOption( "clean" ) and
                           conf.CheckHeader( "snopt.h" ) )
     repl[ "@ipopt@" ] = ( conf.CheckLib( "ipopt" ) and
                           conf.CheckHeader( "coin/IpStdCInterface.h" ) )
+    repl[ "@qpoases@" ] = ( conf.CheckCXX() and
+                            conf.CheckLib( "qpoases", language="C++" ) and
+                            conf.CheckHeader( "qpOASES.hpp", language="C++" ) )
 
 env = conf.Finish()
 
