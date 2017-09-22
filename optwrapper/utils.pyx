@@ -482,7 +482,7 @@ cdef class OptPair:
 
 
 cdef class Options:
-    def __init__( self, dict legacy=None, case_sensitive=False ):
+    def __init__( self, dict legacy=None, int case_sensitive=False ):
         self.legacy = dict()
         self.data = dict()
         self.case_sensitive = case_sensitive
@@ -565,7 +565,7 @@ cdef class Options:
 
 
     cdef str sanitizeKey( self, str key ):
-        cdef str lkey
+        cdef str lkey = key
         if( not self.case_sensitive ):
             lkey = key.lower()
 
