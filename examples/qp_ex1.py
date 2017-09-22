@@ -31,11 +31,11 @@ prob.consBox( lb = -2 * np.ones( (9,) ),
 prob.objFctn( quad=Q, lin=L )
 prob.consLinear( C, lb=Clb, ub=Cub )
 
-solver = ow.lssol.Solver( prob ) ## change this line to use another solver
+solver = ow.qpoases.Solver( prob ) ## change this line to use another solver
 solver.debug = True
-solver.options[ "printFile" ] = "debugp.txt"
-solver.options[ "summaryFile" ] = "debugs.txt"
-solver.options[ "printLevel" ] = 10
+# solver.options[ "printFile" ] = "debugp.txt"
+# solver.options[ "summaryFile" ] = "debugs.txt"
+# solver.options[ "enableRamping" ] = ow.qpoases.Params.BT_FALSE
 
 optimal_soln = np.array( [ 2, -.23333333, -.26666667, -.3, -.1, 2, 2, -1.77777778, -.45555556 ] )
 optimal_value = -8.067777633666992

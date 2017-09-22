@@ -3,23 +3,14 @@ cimport numpy as cnp
 from cython.operator cimport dereference as deref
 
 cimport qpoaseshpp as qpoases
-from utils cimport getPtr, arraySanitize
+from qpoaseshpp cimport *
+from utils cimport getPtr, arraySanitize, Options as uOptions
 cimport base
-import qp
+import qp, lp
 
-
-cdef int real_type = cnp.NPY_FLOAT64
 cdef type real_dtype = np.float64
-cdef int int_type = cnp.NPY_INT64
-cdef type int_dtype = np.int64
-if( sizeof( int_t ) == 4 ):
-    int_type = cnp.NPY_INT32
-    int_dtype = np.int32
-
-
 
 cdef class Soln( base.Soln ):
-    cdef public returnValue retval
     cdef public cnp.ndarray dual
 
     def __init__( self ):
@@ -187,48 +178,279 @@ cdef class Soln( base.Soln ):
 
         return statusInfo[ self.retval ]
 
+class Params:
+    BT_FALSE              = qpoases.BT_FALSE
+    BT_TRUE               = qpoases.BT_TRUE
+
+    PL_DEBUG_ITER         = qpoases.PL_DEBUG_ITER
+    PL_TABULAR            = qpoases.PL_TABULAR
+    PL_NONE               = qpoases.PL_NONE
+    PL_LOW                = qpoases.PL_LOW
+    PL_MEDIUM             = qpoases.PL_MEDIUM
+    PL_HIGH               = qpoases.PL_HIGH
+
+    HST_ZERO              = qpoases.HST_ZERO
+    HST_IDENTITY          = qpoases.HST_IDENTITY
+    HST_POSDEF            = qpoases.HST_POSDEF
+    HST_POSDEF_NULLSPACE  = qpoases.HST_POSDEF_NULLSPACE
+    HST_SEMIDEF           = qpoases.HST_SEMIDEF
+    HST_INDEF             = qpoases.HST_INDEF
+    HST_UNKNOWN           = qpoases.HST_UNKNOWN
+
+    ST_LOWER              = qpoases.ST_LOWER
+    ST_INACTIVE           = qpoases.ST_INACTIVE
+    ST_UPPER              = qpoases.ST_UPPER
+    ST_INFEASIBLE_LOWER   = qpoases.ST_INFEASIBLE_LOWER
+    ST_INFEASIBLE_UPPER   = qpoases.ST_INFEASIBLE_UPPER
+    ST_UNDEFINED          = qpoases.ST_UNDEFINED
+
+
+cdef class OptionsWrap:
+    cdef qpoases.Options *ptr
+
+    def __cinit__( self ):
+        self.ptr = new qpoases.Options()
+
+    def __dealloc__( self ):
+        del self.ptr
+
+    @property
+    def printLevel( self ): return self.ptr.printLevel
+    @printLevel.setter
+    def printLevel( self, val ): self.ptr.printLevel = val
+
+    @property
+    def enableRamping( self ): return self.ptr.enableRamping
+    @enableRamping.setter
+    def enableRamping( self, val ): self.ptr.enableRamping = val
+
+    @property
+    def enableFarBounds( self ): return self.ptr.enableFarBounds
+    @enableFarBounds.setter
+    def enableFarBounds( self, val ): self.ptr.enableFarBounds = val
+
+    @property
+    def enableFlippingBounds( self ): return self.ptr.enableFlippingBounds
+    @enableFlippingBounds.setter
+    def enableFlippingBounds( self, val ): self.ptr.enableFlippingBounds = val
+
+    @property
+    def enableRegularisation( self ): return self.ptr.enableRegularisation
+    @enableRegularisation.setter
+    def enableRegularisation( self, val ): self.ptr.enableRegularisation = val
+
+    @property
+    def enableFullLITests( self ): return self.ptr.enableFullLITests
+    @enableFullLITests.setter
+    def enableFullLITests( self, val ): self.ptr.enableFullLITests = val
+
+    @property
+    def enableNZCTests( self ): return self.ptr.enableNZCTests
+    @enableNZCTests.setter
+    def enableNZCTests( self, val ): self.ptr.enableNZCTests = val
+
+    @property
+    def enableDriftCorrection( self ): return self.ptr.enableDriftCorrection
+    @enableDriftCorrection.setter
+    def enableDriftCorrection( self, val ): self.ptr.enableDriftCorrection = val
+
+    @property
+    def enableCholeskyRefactorisation( self ): return self.ptr.enableCholeskyRefactorisation
+    @enableCholeskyRefactorisation.setter
+    def enableCholeskyRefactorisation( self, val ): self.ptr.enableCholeskyRefactorisation = val
+
+    @property
+    def enableEqualities( self ): return self.ptr.enableEqualities
+    @enableEqualities.setter
+    def enableEqualities( self, val ): self.ptr.enableEqualities = val
+
+    @property
+    def terminationTolerance( self ): return self.ptr.terminationTolerance
+    @terminationTolerance.setter
+    def terminationTolerance( self, val ): self.ptr.terminationTolerance = val
+
+    @property
+    def boundTolerance( self ): return self.ptr.boundTolerance
+    @boundTolerance.setter
+    def boundTolerance( self, val ): self.ptr.boundTolerance = val
+
+    @property
+    def boundRelaxation( self ): return self.ptr.boundRelaxation
+    @boundRelaxation.setter
+    def boundRelaxation( self, val ): self.ptr.boundRelaxation = val
+
+    @property
+    def epsNum( self ): return self.ptr.epsNum
+    @epsNum.setter
+    def epsNum( self, val ): self.ptr.epsNum = val
+
+    @property
+    def epsDen( self ): return self.ptr.epsDen
+    @epsDen.setter
+    def epsDen( self, val ): self.ptr.epsDen = val
+
+    @property
+    def maxPrimalJump( self ): return self.ptr.maxPrimalJump
+    @maxPrimalJump.setter
+    def maxPrimalJump( self, val ): self.ptr.maxPrimalJump = val
+
+    @property
+    def maxDualJump( self ): return self.ptr.maxDualJump
+    @maxDualJump.setter
+    def maxDualJump( self, val ): self.ptr.maxDualJump = val
+
+    @property
+    def initialRamping( self ): return self.ptr.initialRamping
+    @initialRamping.setter
+    def initialRamping( self, val ): self.ptr.initialRamping = val
+
+    @property
+    def finalRamping( self ): return self.ptr.finalRamping
+    @finalRamping.setter
+    def finalRamping( self, val ): self.ptr.finalRamping = val
+
+    @property
+    def initialFarBounds( self ): return self.ptr.initialFarBounds
+    @initialFarBounds.setter
+    def initialFarBounds( self, val ): self.ptr.initialFarBounds = val
+
+    @property
+    def growFarBounds( self ): return self.ptr.growFarBounds
+    @growFarBounds.setter
+    def growFarBounds( self, val ): self.ptr.growFarBounds = val
+
+    @property
+    def initialStatusBounds( self ): return self.ptr.initialStatusBounds
+    @initialStatusBounds.setter
+    def initialStatusBounds( self, val ): self.ptr.initialStatusBounds = val
+
+    @property
+    def epsFlipping( self ): return self.ptr.epsFlipping
+    @epsFlipping.setter
+    def epsFlipping( self, val ): self.ptr.epsFlipping = val
+
+    @property
+    def numRegularisationSteps( self ): return self.ptr.numRegularisationSteps
+    @numRegularisationSteps.setter
+    def numRegularisationSteps( self, val ): self.ptr.numRegularisationSteps = val
+
+    @property
+    def epsRegularisation( self ): return self.ptr.epsRegularisation
+    @epsRegularisation.setter
+    def epsRegularisation( self, val ): self.ptr.epsRegularisation = val
+
+    @property
+    def numRefinementSteps( self ): return self.ptr.numRefinementSteps
+    @numRefinementSteps.setter
+    def numRefinementSteps( self, val ): self.ptr.numRefinementSteps = val
+
+    @property
+    def epsIterRef( self ): return self.ptr.epsIterRef
+    @epsIterRef.setter
+    def epsIterRef( self, val ): self.ptr.epsIterRef = val
+
+    @property
+    def epsLITests( self ): return self.ptr.epsLITests
+    @epsLITests.setter
+    def epsLITests( self, val ): self.ptr.epsLITests = val
+
+    @property
+    def epsNZCTests( self ): return self.ptr.epsNZCTests
+    @epsNZCTests.setter
+    def epsNZCTests( self, val ): self.ptr.epsNZCTests = val
+
+    @property
+    def rcondSMin( self ): return self.ptr.rcondSMin
+    @rcondSMin.setter
+    def rcondSMin( self, val ): self.ptr.rcondSMin = val
+
+    @property
+    def enableInertiaCorrection( self ): return self.ptr.enableInertiaCorrection
+    @enableInertiaCorrection.setter
+    def enableInertiaCorrection( self, val ): self.ptr.enableInertiaCorrection = val
+
+    @property
+    def enableDropInfeasibles( self ): return self.ptr.enableDropInfeasibles
+    @enableDropInfeasibles.setter
+    def enableDropInfeasibles( self, val ): self.ptr.enableDropInfeasibles = val
+
+    @property
+    def dropBoundPriority( self ): return self.ptr.dropBoundPriority
+    @dropBoundPriority.setter
+    def dropBoundPriority( self, val ): self.ptr.dropBoundPriority = val
+
+    @property
+    def dropEqConPriority( self ): return self.ptr.dropEqConPriority
+    @dropEqConPriority.setter
+    def dropEqConPriority( self, val ): self.ptr.dropEqConPriority = val
+
+    @property
+    def dropIneqConPriority( self ): return self.ptr.dropIneqConPriority
+    @dropIneqConPriority.setter
+    def dropIneqConPriority( self, val ): self.ptr.dropIneqConPriority = val
+
 
 
 cdef class Solver( base.Solver ):
-    cdef QProblem *ptr
-    cdef QProblemB *bptr
-    cdef Options *optptr
+    cdef qpoases.QProblem *ptr
+    cdef qpoases.QProblemB *bptr
+    cdef OptionsWrap optptrw
     cdef int warm_start
-
-    def __dealloc__(self):
+    cdef int cons_prob
+    cdef qpoases.HessianType quadtype
 
     def __init__( self, prob=None ):
         super().__init__()
 
         self.prob = None
+        self.warm_start = False
+        self.cons_prob = False
+        self.quadtype = qpoases.HST_UNKNOWN
 
-        self.options = utils.Options( case_sensitive = True )
-        self.options[ "nWSR" ] = 10
+        self.options = uOptions( case_sensitive = True )
+        self.options[ "nWSR" ] = 100
         self.options[ "setTo" ] = "default"
+        self.options[ "printLevel" ] = qpoases.PL_NONE
 
         if( prob ):
             self.setupProblem( prob )
 
 
     def setupProblem( self, prob ):
+        if( not isinstance( prob, lp.Problem ) ):
+            raise TypeError( "Argument prob must be an instance of lp.Problem" )
+
         if( not prob.checkSetup() ):
             raise ValueError( "Argument 'prob' has not been properly configured" )
 
         self.prob = prob
+        self.optptrw = OptionsWrap()
         self.warm_start = False
+        self.cons_prob = ( self.prob.Nconslin > 0 )
 
-        self.optptr = new Options()
+        if( isinstance( prob, qp.Problem ) ):
+            self.quadtype = qpoases.HST_UNKNOWN
+            if( self.prob.objQtype is qp.QuadType.indef ):
+                self.quadtype = qpoases.HST_INDEF
+            elif( self.prob.objQtype is qp.QuadType.posdef ):
+                self.quadtype = qpoases.HST_POSDEF
+            elif( self.prob.objQtype is qp.QuadType.possemidef ):
+                self.quadtype = qpoases.HST_SEMIDEF
+            elif( self.prob.objQtype is qp.QuadType.identity ):
+                self.quadtype = qpoases.HST_IDENTITY
+            elif( self.prob.objQtype is qp.QuadType.zero ):
+                self.quadtype = qpoases.HST_ZERO
+        else: ## isinstance( prob, lp.Problem )
+            self.quadtype = qpoases.HST_ZERO
 
-        if( self.prob.Nconslin > 0 ):
-            self.ptr = new QProblem( self.prob.N, self.prob.Nconslin, HST_UNKNOWN )
+        if( self.cons_prob ):
+            self.ptr = new QProblem( self.prob.N, self.prob.Nconslin, self.quadtype )
         else:
-            self.bptr = new QProblemB( self.prob.N, HST_UNKNOWN )
+            self.bptr = new QProblemB( self.prob.N, self.quadtype )
 
 
     def __dealloc__( self ):
-        del self.optptr
-
-        if( self.prob.Nconslin > 0 ):
+        if( self.cons_prob ):
             del self.ptr
         else:
             del self.bptr
@@ -238,136 +460,144 @@ cdef class Solver( base.Solver ):
         self.warm_start = True
 
 
-    ## FIXME
     cdef processOptions( self ):
         if( self.options[ "setTo" ] == "default" ):
-            self.optptr.setToDefault()
+            self.optptrw.ptr.setToDefault()
         elif( self.options[ "setTo" ] == "reliable" ):
-            self.optptr.setToReliable()
+            if( self.debug ):
+                print( "initializing parameters as 'reliable'" )
+            self.optptrw.ptr.setToReliable()
         elif( self.options[ "setTo" ] == "mpc" ):
-            self.optptr.setToMPC()
+            if( self.debug ):
+                print( "initializing parameters as 'MPC'" )
+            self.optptrw.ptr.setToMPC()
         elif( self.options[ "setTo" ] == "fast" ):
-            self.optptr.setToFast()
+            if( self.debug ):
+                print( "initializing parameters as 'fast'" )
+            self.optptrw.ptr.setToFast()
         else:
             raise ValueError( "options['setTo'] has an invalid value" )
 
         for item in self.options:
             if( item == "nWSR" or item == "setTo" or item == "cputime" ):
                 continue
-            setattr( self.optptr, item, self.options.value )
 
-        if( self.optptr.ensureConsistency() != SUCCESSFUL_RETURN ):
+            if( self.debug ):
+                print( "processing option {} = {}".format( item, self.options[item].value ) )
+
+            setattr( self.optptrw, item, self.options[ item ].value )
+
+        if( self.optptrw.ptr.ensureConsistency() != SUCCESSFUL_RETURN ):
             raise ValueError( "invalid option value" )
 
-        if( self.prob.Nconslin > 0 ):
-            self.ptr.setOptions( self.optptr ) )
+        if( self.cons_prob ):
+            self.ptr.setOptions( deref( self.optptrw.ptr ) )
         else:
-            self.bptr.setOptions( self.optptr ) )
+            self.bptr.setOptions( deref( self.optptrw.ptr ) )
 
 
     def solve( self ):
         cdef int_t tmpnWSR
         cdef real_t tmpcputime
+        cdef real_t *objQptr
+        cdef real_t *objLptr
+        cdef real_t *conslinAptr
+        cdef real_t *lbptr
+        cdef real_t *ubptr
+        cdef real_t *conslinlbptr
+        cdef real_t *conslinubptr
+
+        if( self.quadtype != qpoases.HST_IDENTITY and self.quadtype != qpoases.HST_ZERO ):
+            objQptr = <real_t*> getPtr( arraySanitize( self.prob.objQ, dtype=real_dtype ) )
+        else:
+            objQptr = NULL
+
+        objLptr = <real_t*> getPtr( arraySanitize( self.prob.objL, dtype=real_dtype ) )
+        lbptr = <real_t*> getPtr( arraySanitize( self.prob.lb, dtype=real_dtype ) )
+        ubptr = <real_t*> getPtr( arraySanitize( self.prob.ub, dtype=real_dtype ) )
+
+        tmpnWSR = <int_t> self.options[ "nWSR" ].value
 
         self.prob.soln = Soln()
         self.processOptions()
 
-        tmpnWSR = int( self.options[ "nWSR" ] )
+        if( self.cons_prob ):
+            conslinAptr = <real_t*> getPtr( arraySanitize( self.prob.conslinA, dtype=real_dtype ) )
+            conslinlb = <real_t*> getPtr( arraySanitize( self.prob.conslinlb, dtype=real_dtype ) )
+            conslinub = <real_t*> getPtr( arraySanitize( self.prob.conslinub, dtype=real_dtype ) )
 
-        if( self.prob.Nconslin > 0 ):
             if( "cputime" in self.options ):
-                tmpcputime = float( self.options[ "cputime" ] )
+                tmpcputime = <real_t> self.options[ "cputime" ].value
                 if( not self.warm_start ):
-                    self.prob.soln.retval = self.ptr.init(
-                        <double*> getPtr( arraySanitize( self.prob.objQ, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.objL, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.conslinA, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.lb, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.ub, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.conslinlb, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.conslinub, dtype=real_dtype ) ),
-                        <int&>    tmpnWSR,
-                        <double*> &tmpcputime )
+                    self.prob.soln.retval = self.ptr.init( objQptr, objLptr,
+                                                           conslinAptr,
+                                                           lbptr, ubptr,
+                                                           conslinlb, conslinub,
+                                                           <int_t&> tmpnWSR,
+                                                           <real_t*> &tmpcputime )
                 else:
                     self.warm_start = False
-                    self.prob.soln.retval = self.ptr.hotstart(
-                        <double*> getPtr( arraySanitize( self.prob.objL, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.lb, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.ub, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.conslinlb, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.conslinub, dtype=real_dtype ) ),
-                        <int&>    tmpnWSR,
-                        <double*> &tmpcputime )
+                    self.prob.soln.retval = self.ptr.hotstart( objLptr,
+                                                               lbptr, ubptr,
+                                                               conslinlb, conslinub,
+                                                               <int_t&> tmpnWSR,
+                                                               <real_t*> &tmpcputime )
             else:
                 if( not self.warm_start ):
-                    self.prob.soln.retval = self.ptr.init(
-                        <double*> getPtr( arraySanitize( self.prob.objQ, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.objL, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.conslinA, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.lb, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.ub, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.conslinlb, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.conslinub, dtype=real_dtype ) ),
-                        <int&>    tmpnWSR )
+                    self.prob.soln.retval = self.ptr.init( objQptr, objLptr,
+                                                           conslinAptr,
+                                                           lbptr, ubptr,
+                                                           conslinlb, conslinub,
+                                                           <int_t&> tmpnWSR )
                 else:
                     self.warm_start = False
-                    self.prob.soln.retval = self.ptr.hotstart(
-                        <double*> getPtr( arraySanitize( self.prob.objL, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.lb, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.ub, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.conslinlb, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.conslinub, dtype=real_dtype ) ),
-                        <int&>    tmpnWSR )
+                    self.prob.soln.retval = self.ptr.hotstart( objLptr,
+                                                               lbptr, ubptr,
+                                                               conslinlb, conslinub,
+                                                               <int_t&> tmpnWSR )
 
             self.prob.soln.final = arraySanitize( np.empty( ( self.prob.N, ), dtype=real_dtype ) )
             self.prob.soln.dual = arraySanitize( np.empty( ( self.prob.N + self.prob.Nconslin,),
                                                            dtype=real_dtype ) )
 
             self.prob.soln.value = self.ptr.getObjVal()
-            self.ptr.getPrimalSolution( <double*> getPtr( self.prob.soln.final ) )
-            self.ptr.getDualSolution( <double*> getPtr( self.prob.soln.dual ) )
+            self.ptr.getPrimalSolution( <real_t*> getPtr( self.prob.soln.final ) )
+            self.ptr.getDualSolution( <real_t*> getPtr( self.prob.soln.dual ) )
 
         else: ## self.prob.Nconslin == 0
+            if( self.debug ):
+                print( "using QProblemB class since Nconslin is zero" )
+
             if( "cputime" in self.options ):
-                tmpcputime = float( self.options[ "cputime" ] )
+                tmpcputime = <real_t> self.options[ "cputime" ].value
                 if( not self.warm_start ):
-                    self.prob.soln.retval = self.bptr.init(
-                        <double*> getPtr( arraySanitize( self.prob.objQ, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.objL, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.lb, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.ub, dtype=real_dtype ) ),
-                        <int&>    tmpnWSR,
-                        <double*> &tmpcputime )
+                    self.prob.soln.retval = self.bptr.init( objQptr, objLptr,
+                                                            lbptr, ubptr,
+                                                            <int_t&> tmpnWSR,
+                                                            <real_t*> &tmpcputime )
                 else:
                     self.warm_start = False
-                    self.prob.soln.retval = self.bptr.hotstart(
-                        <double*> getPtr( arraySanitize( self.prob.objL, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.lb, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.ub, dtype=real_dtype ) ),
-                        <int&>    tmpnWSR,
-                        <double*> &tmpcputime )
+                    self.prob.soln.retval = self.bptr.hotstart( objLptr,
+                                                                lbptr, ubptr,
+                                                                <int_t&> tmpnWSR,
+                                                                <real_t*> &tmpcputime )
             else:
                 if( not self.warm_start ):
-                    self.prob.soln.retval = self.bptr.init(
-                        <double*> getPtr( arraySanitize( self.prob.objQ, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.objL, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.lb, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.ub, dtype=real_dtype ) ),
-                        <int&>    tmpnWSR )
+                    self.prob.soln.retval = self.bptr.init( objQptr, objLptr,
+                                                            lbptr, ubptr,
+                                                            <int_t&> tmpnWSR )
                 else:
                     self.warm_start = False
-                    self.prob.soln.retval = self.bptr.hotstart(
-                        <double*> getPtr( arraySanitize( self.prob.objL, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.lb, dtype=real_dtype ) ),
-                        <double*> getPtr( arraySanitize( self.prob.ub, dtype=real_dtype ) ),
-                        <int&>    tmpnWSR )
+                    self.prob.soln.retval = self.bptr.hotstart( objLptr,
+                                                                lbptr, ubptr,
+                                                                <int_t&> tmpnWSR )
 
             self.prob.soln.final = arraySanitize( np.empty( ( self.prob.N, ), dtype=real_dtype ) )
             self.prob.soln.dual = arraySanitize( np.empty( ( self.prob.N + self.prob.Nconslin,),
                                                            dtype=real_dtype ) )
 
             self.prob.soln.value = self.bptr.getObjVal()
-            self.bptr.getPrimalSolution( <double*> getPtr( self.prob.soln.final ) )
-            self.bptr.getDualSolution( <double*> getPtr( self.prob.soln.dual ) )
+            self.bptr.getPrimalSolution( <real_t*> getPtr( self.prob.soln.final ) )
+            self.bptr.getDualSolution( <real_t*> getPtr( self.prob.soln.dual ) )
 
         ## endif
