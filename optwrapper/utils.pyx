@@ -548,6 +548,7 @@ cdef class Options:
         cdef str mykey = self.sanitizeKey( key )
         return bool( mykey in self.data and self.data[mykey] )
 
+
     def __str__( self ):
         return str( self.data )
 
@@ -573,3 +574,7 @@ cdef class Options:
             return self.legacy[ lkey ]
 
         return lkey
+
+
+    def toDict( self ):
+        return { key:self.data[key].value for key in self.data }

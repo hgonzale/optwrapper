@@ -1,7 +1,9 @@
 ## define shell classes to fix basic interfaces
 
 cdef class Soln:
-    pass
+    def getStatus( self ):
+        return str()
+
 
 cdef class Solver:
     def __init__( self ):
