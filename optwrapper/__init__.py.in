@@ -1,6 +1,5 @@
 ## Import problems
 from optwrapper import lp, qp, nlp, ocp, socp
-
 __all__ = [ "lp", "qp", "nlp", "ocp", "socp" ]
 
 ## Import solvers
@@ -23,3 +22,8 @@ if( @ipopt@ ):
 if( @qpoases@ ):
     from optwrapper import qpoases
     __all__ += [ "qpoases" ]
+
+if( @scipy@ ):
+    from optwrapper import scipy_linprog
+    __all__ += [ "scipy_linprog" ]
+

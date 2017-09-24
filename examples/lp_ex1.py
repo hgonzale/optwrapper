@@ -25,7 +25,7 @@ prob.consBox( lb = -2 * np.ones( (9,) ),
 prob.objFctn( lin=L )
 prob.consLinear( C, lb=Clb, ub=Cub )
 
-solver = ow.qpoases.Solver( prob ) ## change this line to use another solver
+solver = ow.scipy_linprog.Solver( prob ) ## change this line to use another solver
 solver.debug = True
 # solver.options[ "printFile" ] = "debugp.txt"
 # solver.options[ "summaryFile" ] = "debugs.txt"
