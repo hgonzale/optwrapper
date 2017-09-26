@@ -2,7 +2,6 @@ import numpy as np
 import scipy.optimize
 
 from optwrapper import base, utils, lp
-import ipdb
 
 class Soln( base.Soln ):
     def __init__( self ):
@@ -54,12 +53,12 @@ class Solver( base.Solver ):
             conseq = ( self.prob.conslinlb == self.prob.conslinub )
             ineqlb = np.logical_and( ~conseq, np.isfinite( self.prob.conslinlb ) )
             inequb = np.logical_and( ~conseq, np.isfinite( self.prob.conslinub ) )
-            if( any( ineqlb ) or any( inequb ) ):
+            if( np.any( ineqlb ) or np.any( inequb ) ):
                 A_ub = np.vstack( ( self.prob.conslinA[ np.ix_( inequb, ~consvar ) ],
                                     - self.prob.conslinA[ np.ix_( ineqlb, ~consvar ) ] ) )
                 b_ub = np.hstack( ( self.prob.conslinub[ inequb ],
                                     - self.prob.conslinlb[ ineqlb ] ) )
-            if( any( conseq ) ):
+            if( np.any( conseq ) ):
                 A_eq = self.prob.conslinA[ np.ix_( conseq, ~consvar ) ]
                 b_eq = self.prob.conslinub[ conseq ]
 
