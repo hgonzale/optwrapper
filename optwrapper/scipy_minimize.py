@@ -25,7 +25,6 @@ class Solver( base.Solver ):
         self.warm_start = False
 
         self.options = utils.Options()
-        self.options[ "method" ] = None
 
         if( prob ):
             self.setupProblem( prob )
@@ -45,6 +44,15 @@ class Solver( base.Solver ):
         self.init = np.copy( init )
 
 
+    def warmStart( self ):
+        if( not isinstance( self.prob.soln, Soln ) ):
+            return False
+
+        self.initPoint( self.prob.soln.final )
+
+        return True
+
+
     def solve( self ):
         def fun( x ):
             out = np.zeros( 1 )
@@ -60,16 +68,18 @@ class Solver( base.Solver ):
                 out += self.prob.objmixedA
             return out
 
-        @lru_cache
+        @lru_cache( maxsize = 16 )
         def myconsf( x ):
+            x = np.array( x ) ## undo tuple'ing of x
             out = np.zeros( (self.prob.Ncons,) )
             self.prob.consf( out, x )
             if( self.prob.consmixedA is not None ):
                 out += self.prob.consmixedA.dot( x )
             return out
 
-        @lru_cache
+        @lru_cache( maxsize = 16 )
         def myconsg( x ):
+            x = np.array( x ) ## undo tuple'ing of x
             out = np.zeros( ( self.prob.Ncons, self.prob.N ) )
             self.prob.consg( out, x )
             if( self.prob.consmixedA is not None ):
@@ -110,22 +120,26 @@ class Solver( base.Solver ):
                 ineqlb = np.logical_and( ~eq, np.isfinite( self.prob.conslb ) )
                 inequb = np.logical_and( ~eq, np.isfinite( self.prob.consub ) )
 
+                ## must pass tuple(x) as argument since it needs to be hashable by lru_cache
                 out.extend(
                     map( lambda idx: { "type": "eq",
-                                       "fun": lambda x: myconsf(x)[idx] - self.prob.consub[idx],
-                                       "jac": lambda x: myconsg(x)[idx] },
+                                       "fun": lambda x: myconsf( tuple(x) )[idx] \
+                                                        - self.prob.consub[idx],
+                                       "jac": lambda x: myconsg( tuple(x) )[idx] },
                          eq.nonzero()[0] )
                 )
                 out.extend(
                     map( lambda idx: { "type": "ineq",
-                                       "fun": lambda x: - myconsf(x)[idx] + self.prob.consub[idx],
-                                       "jac": lambda x: - myconsg(x)[idx] },
+                                       "fun": lambda x: - myconsf( tuple(x) )[idx] \
+                                                        + self.prob.consub[idx],
+                                       "jac": lambda x: - myconsg( tuple(x) )[idx] },
                          inequb.nonzero()[0] )
                 )
                 out.extend(
                     map( lambda idx: { "type": "ineq",
-                                       "fun": lambda x: myconsf(x)[idx] - self.prob.conslb[idx],
-                                       "jac": lambda x: myconsg(x)[idx] },
+                                       "fun": lambda x: myconsf( tuple(x) )[idx] \
+                                                        - self.prob.conslb[idx],
+                                       "jac": lambda x: myconsg( tuple(x) )[idx] },
                          ineqlb.nonzero()[0] )
                 )
 

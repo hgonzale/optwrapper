@@ -23,7 +23,6 @@ class Solver( base.Solver ):
         self.warm_start = False
 
         self.options = utils.Options()
-        self.options[ "method" ] = "simplex"
 
         if( prob ):
             self.setupProblem( prob )

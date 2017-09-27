@@ -23,7 +23,6 @@ if( @qpoases@ ):
     from optwrapper import qpoases
     __all__ += [ "qpoases" ]
 
-if( @scipy@ ):
-    from optwrapper import scipy_linprog
-    __all__ += [ "scipy_linprog" ]
-
+if( @scipy_optimize@ ):
+    from optwrapper import scipy_linprog, scipy_minimize
+    __all__ += [ "scipy_linprog", "scipy_minimize" ]
