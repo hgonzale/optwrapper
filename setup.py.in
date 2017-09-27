@@ -34,7 +34,7 @@ if( @npsol@ ):
 if( @snopt@ ):
     extensions.append( Extension( "optwrapper.snopt",
                                   sources = [ "optwrapper/snopt.pyx" ],
-                                  libraries = [ "snopt" ],
+                                  libraries = [ "snopt7" ],
                                   **extra_params ) )
 if( @ipopt@ ):
     extensions.append( Extension( "optwrapper.ipopt",
