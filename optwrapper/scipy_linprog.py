@@ -62,8 +62,10 @@ class Solver( base.Solver ):
                 A_eq = self.prob.conslinA[ np.ix_( conseq, ~consvar ) ]
                 b_eq = self.prob.conslinub[ conseq ]
 
-        options = self.options.toDict()
-        del options[ "method" ] ## remove internal options
+        extraopts = self.options.toDict()
+        ## remove internal options
+        if( "method" in extraopts ):
+            del extraopts[ "method" ]
 
         res = scipy.optimize.linprog( c = c,
                                       A_ub = A_ub,
@@ -71,13 +73,13 @@ class Solver( base.Solver ):
                                       A_eq = A_eq,
                                       b_eq = b_eq,
                                       bounds = bounds,
-                                      method = self.options["method"].value,
-                                      options = options )
+                                      method = self.options[ "method" ].value,
+                                      options = extraopts )
 
         self.prob.soln = Soln()
         self.prob.soln.final = np.empty( (self.prob.N,) )
         self.prob.soln.final[ consvar ] = self.prob.ub[ consvar ]
-        self.prob.soln.final[ ~consvar ] = res.x
+        self.prob.soln.final[ ~consvar ] = np.copy( res.x )
         self.prob.soln.retval = res.status
         self.prob.soln.message = res.message
         self.prob.soln.value = res.fun
