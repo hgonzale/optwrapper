@@ -69,7 +69,7 @@ if( not env.GetOption( "clean" ) and
     repl[ "@npsol@" ] = ( repl[ "@lssol@" ] and
                           conf.CheckLib( "npsol" ) and
                           conf.CheckHeader( "npsol.h" ) )
-    repl[ "@snopt@" ] = ( conf.CheckLib( "snopt" ) and
+    repl[ "@snopt@" ] = ( conf.CheckLib( "snopt7" ) and
                           conf.CheckHeader( "snopt.h" ) )
     repl[ "@ipopt@" ] = ( conf.CheckLib( "ipopt" ) and
                           conf.CheckHeader( "coin/IpStdCInterface.h" ) )
