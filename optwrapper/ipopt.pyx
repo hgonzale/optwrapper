@@ -259,6 +259,7 @@ cdef class Solver( base.Solver ):
 
         if( self.nlp_alloc ):
             ipopt.FreeIpoptProblem( self.nlp )
+            self.nlp_alloc = False
 
         self.nlp = ipopt.CreateIpoptProblem( self.N, self.x_L, self.x_U,
                                              self.Ntotcons, self.g_L, self.g_U,
@@ -333,6 +334,7 @@ cdef class Solver( base.Solver ):
     def __dealloc__( self ):
         if( self.nlp_alloc ):
             ipopt.FreeIpoptProblem( self.nlp )
+            self.nlp_alloc = False
 
         self.deallocate()
 

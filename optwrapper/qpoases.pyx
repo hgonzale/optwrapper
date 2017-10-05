@@ -397,6 +397,7 @@ cdef class Solver( base.Solver ):
     cdef OptionsWrap optptrw
     cdef int warm_start
     cdef int cons_prob
+    cdef int nlp_alloc
     cdef qpoases.HessianType quadtype
 
     def __init__( self, prob=None ):
@@ -405,6 +406,7 @@ cdef class Solver( base.Solver ):
         self.prob = None
         self.warm_start = False
         self.cons_prob = False
+        self.nlp_alloc = False
         self.quadtype = qpoases.HST_UNKNOWN
 
         self.options = uOptions( case_sensitive = True )
@@ -443,17 +445,25 @@ cdef class Solver( base.Solver ):
         else: ## isinstance( prob, lp.Problem )
             self.quadtype = qpoases.HST_ZERO
 
+        ## free ptr/bptr if recycling solver
+        self.__dealloc__()
+
         if( self.cons_prob ):
             self.ptr = new QProblem( self.prob.N, self.prob.Nconslin, self.quadtype )
         else:
             self.bptr = new QProblemB( self.prob.N, self.quadtype )
 
+        self.nlp_alloc = True
+
 
     def __dealloc__( self ):
-        if( self.cons_prob ):
-            del self.ptr
-        else:
-            del self.bptr
+        if( self.nlp_alloc ):
+            if( self.cons_prob ):
+                del self.ptr
+            else:
+                del self.bptr
+
+            self.nlp_alloc = False
 
 
     def warmStart( self ):
