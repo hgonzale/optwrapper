@@ -217,8 +217,6 @@ cdef class sMatrix:
 
     cdef void copyData( self, double* data ):
         memcpy( data, self.data, self.nnz * sizeof( double ) )
-        for k in range( self.nnz ):
-            data[k] = self.data[k]
 
 
     cdef double get_elem_at( self, int64_t row, int64_t col ):

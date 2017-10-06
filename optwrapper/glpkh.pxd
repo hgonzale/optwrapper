@@ -66,6 +66,20 @@ cdef extern from "glpk.h":
         GLP_ORD_AMD  ## approx. minimum degree (AMD)
         GLP_ORD_SYMAMD  ## approx. minimum degree (SYMAMD)
 
+        ## integer optimizer control parameters
+        GLP_BR_FFV  ## first fractional variable
+        GLP_BR_LFV  ## last fractional variable
+        GLP_BR_MFV  ## most fractional variable
+        GLP_BR_DTH  ## heuristic by Driebeck and Tomlin
+        GLP_BR_PCH  ## hybrid pseudocost heuristic
+        GLP_BT_DFS  ## depth first search
+        GLP_BT_BFS  ## breadth first search
+        GLP_BT_BLB  ## best local bound
+        GLP_BT_BPH  ## best projection heuristic
+        GLP_PP_NONE  ## disable preprocessing
+        GLP_PP_ROOT  ## preprocessing only on root level
+        GLP_PP_ALL  ## preprocessing on all levels
+
         ## enable/disable flag:
         GLP_ON  ## enable something
         GLP_OFF  ## disable something
@@ -107,32 +121,29 @@ cdef extern from "glpk.h":
         GLP_KKT_DB  ## dual bounds
         GLP_KKT_CS  ## complementary slackness
 
-
     ## problem object (obscure struct)
     ctypedef struct glp_prob
-
 
     ## simplex method control parameters
     ctypedef struct glp_smcp:
         cdef int msg_lev  ## message level
         cdef int meth  ## simplex method option
-        cdef int pricing            ## pricing technique
-        cdef int r_test             ## ratio test technique
-        cdef double tol_bnd         ## primal feasibility tolerance
-        cdef double tol_dj          ## dual feasibility tolerance
-        cdef double tol_piv         ## pivot tolerance
-        cdef double obj_ll          ## lower objective limit
-        cdef double obj_ul          ## upper objective limit
-        cdef int it_lim             ## simplex iteration limit
-        cdef int tm_lim             ## time limit, ms
-        cdef int out_frq            ## display output frequency, ms
-        cdef int out_dly            ## display output delay, ms
-        cdef int presolve           ## enable/disable using LP presolver
-        cdef int excl               ## exclude fixed non-basic variables
-        cdef int shift              ## shift bounds of variables to zero
-        cdef int aorn               ## option to use A or N
-        cdef double foo_bar[33]     ## (reserved)
-
+        cdef int pricing  ## pricing technique
+        cdef int r_test  ## ratio test technique
+        cdef double tol_bnd  ## primal feasibility tolerance
+        cdef double tol_dj  ## dual feasibility tolerance
+        cdef double tol_piv  ## pivot tolerance
+        cdef double obj_ll  ## lower objective limit
+        cdef double obj_ul  ## upper objective limit
+        cdef int it_lim  ## simplex iteration limit
+        cdef int tm_lim  ## time limit, ms
+        cdef int out_frq  ## display output frequency, ms
+        cdef int out_dly  ## display output delay, ms
+        cdef int presolve  ## enable/disable using LP presolver
+        cdef int excl  ## exclude fixed non-basic variables
+        cdef int shift  ## shift bounds of variables to zero
+        cdef int aorn  ## option to use A or N
+        cdef double foo_bar[33]  ## (reserved)
 
     ## interior-point solver control parameters
     ctypedef struct glp_iptcp:
@@ -140,6 +151,42 @@ cdef extern from "glpk.h":
         cdef int ord_alg  ## ordering algorithm
         cdef double foo_bar[48]  ## (reserved)
 
+    ## branch-and-bound tree (obscure struct)
+    ctypedef struct glp_tree
+
+    ## function pointer for glp_iocp.cb_func
+    ctypedef void (*cb_func_fp)(glp_tree *T, void *info)
+
+    ## integer optimizer control parameters
+    ctypedef struct glp_iocp:
+        cdef int msg_lev  ## message level (see glp_smcp)
+        cdef int br_tech  ## branching technique
+        cdef int bt_tech  ## backtracking technique
+        cdef double tol_int  ## mip.tol_int
+        cdef double tol_obj  ## mip.tol_obj
+        cdef int tm_lim  ## mip.tm_lim (milliseconds)
+        cdef int out_frq  ## mip.out_frq (milliseconds)
+        cdef int out_dly  ## mip.out_dly (milliseconds)
+        cdef cb_func_fp cb_func  ## mip.cb_func
+        cdef void *cb_info  ## mip.cb_info
+        cdef int cb_size  ## mip.cb_size
+        cdef int pp_tech  ## preprocessing technique
+        cdef double mip_gap  ## relative MIP gap tolerance
+        cdef int mir_cuts  ## MIR cuts (GLP_ON/GLP_OFF)
+        cdef int gmi_cuts  ## Gomorys cuts (GLP_ON/GLP_OFF)
+        cdef int cov_cuts  ## cover cuts (GLP_ON/GLP_OFF)
+        cdef int clq_cuts  ## clique cuts (GLP_ON/GLP_OFF)
+        cdef int presolve  ## enable/disable using MIP presolver
+        cdef int binarize  ## try to binarize integer variables
+        cdef int fp_heur  ## feasibility pump heuristic
+        cdef int ps_heur  ## proximity search heuristic
+        cdef int ps_tm_lim  ## proxy time limit, milliseconds
+        cdef int sr_heur  ## simple rounding heuristic
+        cdef int use_sol  ## use existing solution
+        cdef const char *save_sol  ## filename to save every new solution
+        cdef int alien  ## use alien solver
+        cdef int flip  ## use long-step dual simplex
+        cdef double foo_bar[23]  ## (reserved)
 
     ## create problem object
     glp_prob *glp_create_prob()

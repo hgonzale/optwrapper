@@ -47,6 +47,11 @@ if( @qpoases@ ):
                                   libraries = [ "qpoases" ],
                                   language = "c++",
                                   **extra_params ) )
+if( @glpk@ ):
+    extensions.append( Extension( "optwrapper.glpk",
+                                  sources = [ "optwrapper/glpk.pyx" ],
+                                  libraries = [ "glpk" ],
+                                  **extra_params ) )
 
 setup( name = "optwrapper",
        version = "{0}.{1}".format( major, minor ),

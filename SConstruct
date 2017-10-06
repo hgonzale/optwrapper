@@ -76,6 +76,8 @@ if( not env.GetOption( "clean" ) and
     repl[ "@qpoases@" ] = ( conf.CheckCXX() and
                             conf.CheckLib( "qpoases", language="C++" ) and
                             conf.CheckHeader( "qpOASES.hpp", language="C++" ) )
+    repl[ "@glpk@" ] = ( conf.CheckLib( "glpk" ) and
+                         conf.CheckHeader( "glpk.h" ) )
     repl[ "@scipy_optimize@" ] = conf.CheckPythonLib( "scipy.optimize" )
 
 env = conf.Finish()
