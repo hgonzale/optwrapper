@@ -26,3 +26,7 @@ if( @qpoases@ ):
 if( @scipy_optimize@ ):
     from optwrapper import scipy_linprog, scipy_minimize
     __all__ += [ "scipy_linprog", "scipy_minimize" ]
+
+if( @glpk@ ):
+    from optwrapper import glpk
+    __all__ += [ "glpk" ]

@@ -1,6 +1,7 @@
 import numpy as np
 cimport numpy as cnp
 from libc.stdlib cimport malloc, free
+from libc.stdint cimport int32_t, int64_t
 
 cimport glpkh as glpk
 from utils cimport getPtr, arraySanitize, Options, sMatrix
@@ -88,17 +89,18 @@ cdef class Solver( base.Solver ):
 
         self.prob = prob
 
-        ## free ptr/bptr if recycling solver
-        self.__dealloc__()
-
-        self.ptr = glpk.glp_create_prob()
-        self.nlp_alloc = True
+        if( not self.nlp_alloc ):
+            self.ptr = glpk.glp_create_prob()
+            self.nlp_alloc = True
+        else:
+            ## recycle pointer if already allocated
+            glpk.glp_erase_prob( self.ptr )
 
         ## set problem as minimization
-        glpk.glp_set_obj_dir( self.ptr, GLP_MIN )
+        glpk.glp_set_obj_dir( self.ptr, glpk.GLP_MIN )
 
-        glpk.glp_add_cols( ptr, self.prob.N )
-        glpk.glp_add_rows( ptr, self.prob.Nconslin )
+        glpk.glp_add_cols( self.ptr, self.prob.N )
+        glpk.glp_add_rows( self.ptr, self.prob.Nconslin )
 
         for k in range( self.prob.N ):
             if( np.isinf( self.prob.lb[k] ) and np.isinf( self.prob.ub[k] ) ):
@@ -149,9 +151,11 @@ cdef class Solver( base.Solver ):
         ## first element of every array is reserved by GLPK
         if( Asparse.nnz > 0 ):
             if( sizeof(int) == 8 ):
-                Asparse.copyIdxs( &self.Arows[1], &self.Acols[1], roffset=1, coffset=1 )
+                Asparse.copyIdxs( <int64_t *> &self.Arows[1], <int64_t *> &self.Acols[1],
+                                  roffset=1, coffset=1 )
             else:
-                Asparse.copyIdxs32( &self.Arows[1], &self.Acols[1], roffset=1, coffset=1 )
+                Asparse.copyIdxs32( <int32_t *> &self.Arows[1], <int32_t *> &self.Acols[1],
+                                    roffset=1, coffset=1 )
             Asparse.copyData( &self.Adata[1] )
             glpk.glp_load_matrix( self.ptr, self.Annz, self.Arows, self.Acols, self.Adata )
 
@@ -192,7 +196,7 @@ cdef class Solver( base.Solver ):
 
     def __dealloc__( self ):
         if( self.nlp_alloc ):
-            del self.ptr
+            glpk.glp_delete_prob( self.ptr )
             self.nlp_alloc = False
 
         self.deallocate()
@@ -308,7 +312,7 @@ cdef class Solver( base.Solver ):
         self.prob.soln.dual = np.zeros( ( self.prob.N + self.prob.Nconslin,) )
 
         if( self.options[ "solver" ].value == "simplex" ):
-            retval = glpk.glp_simplex( self.ptr, self.opt_smcp )
+            self.prob.soln.retval = glpk.glp_simplex( self.ptr, &self.opt_smcp )
 
             self.prob.soln.value = glpk.glp_get_obj_val( self.ptr )
             for k in range( self.prob.N ):
@@ -318,7 +322,7 @@ cdef class Solver( base.Solver ):
                 self.prob.soln.dual[ k + self.prob.N ] = glpk.glp_get_row_dual( self.ptr, k+1 )
 
         elif( self.options[ "solver" ].value == "exact" ):
-            retval = glpk.glp_exact( self.ptr, self.opt_smcp )
+            self.prob.soln.retval = glpk.glp_exact( self.ptr, &self.opt_smcp )
 
             self.prob.soln.value = glpk.glp_get_obj_val( self.ptr )
             for k in range( self.prob.N ):
@@ -328,7 +332,7 @@ cdef class Solver( base.Solver ):
                 self.prob.soln.dual[ k + self.prob.N ] = glpk.glp_get_row_dual( self.ptr, k+1 )
 
         elif( self.options[ "solver" ].value == "interior" ):
-            retval = glpk.glp_interior( self.ptr, self.opt_iptcp )
+            self.prob.soln.retval = glpk.glp_interior( self.ptr, &self.opt_iptcp )
 
             self.prob.soln.value = glpk.glp_ipt_obj_val( self.ptr )
             for k in range( self.prob.N ):
@@ -345,9 +349,3 @@ cdef class Solver( base.Solver ):
         else:
             raise ValueError( "unknown solver {}".format( self.options[ "solver" ].value ) )
 
-
-
-
-
-
-        ## endif
