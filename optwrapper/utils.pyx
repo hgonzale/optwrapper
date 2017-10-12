@@ -10,7 +10,7 @@ from cython.parallel cimport prange
 from libc.stdint cimport int32_t, int64_t
 from libc.string cimport memcpy, memset
 from libc.stdlib cimport malloc, free
-from libc.stdio cimport printf
+from libc.stdio cimport printf, fflush
 
 ## Numpy must be initialized whenever is called from C or Cython
 cnp.import_array()
@@ -149,30 +149,33 @@ cdef class sMatrix:
 
         """
 
-        print( "nrows: {0} - ncols: {1} - nnz: {2} - data_alloc: {3}".format( self.nrows,
-                                                                              self.ncols,
-                                                                              self.nnz,
-                                                                              self.data_alloc ) )
+        printf( "nrows: %ld - ncols: %ld - nnz: %ld - data_alloc: %d\n",
+                <long int> self.nrows,
+                <long int> self.ncols,
+                <long int> self.nnz,
+                self.data_alloc )
 
-        print( "rptr: [ " ),
+        printf( "rptr: [ " ),
         for k in range( self.nrows+1 ):
-            printf( "%d ", self.rptr[k] )
-        print( "]" )
+            printf( "%ld ", <long int> self.rptr[k] )
+        printf( "]\n" )
 
-        print( "ridx: [ " ),
+        printf( "ridx: [ " ),
         for k in range( self.nnz ):
-            printf( "%d ", self.ridx[k] )
-        print( "]" )
+            printf( "%ld ", <long int> self.ridx[k] )
+        printf( "]\n" )
 
-        print( "cidx: [ " ),
+        printf( "cidx: [ " ),
         for k in range( self.nnz ):
-            printf( "%d ", self.cidx[k] )
-        print( "]" )
+            printf( "%ld ", <long int> self.cidx[k] )
+        printf( "]\n" )
 
-        print( "data: [ " ),
+        printf( "data: [ " ),
         for k in range( self.nnz ):
             printf( "%f ", self.data[k] )
-        print( "]" )
+        printf( "]\n" )
+
+        fflush( NULL )
 
 
     def __dealloc__( self ):
@@ -355,8 +358,8 @@ cdef class sMatrix:
         """
         A.add_sparse(B)
 
-        Compute A = A + B, where B is an sMatrix.
-        Zero entries in A are left unchanged.
+        Compute A <- A + B, where B is an sMatrix.
+        Only non-zero entries in A are updated.
 
         """
 
@@ -367,11 +370,16 @@ cdef class sMatrix:
             self.ncols != A.ncols ):
             raise ValueError( "Argument must have same dimensions as original matrix" )
 
+        ## create a temp nrows-long array to enable parallel iteration
         sidx = <int64_t *> malloc( self.nrows * sizeof( int64_t ) )
         memcpy( sidx, self.rptr, self.nrows * sizeof( int64_t ) )
 
+        ## parallel for loop
         for row in prange( self.nrows, nogil=True ):
+            ## for each element in A
             for aidx in range( A.rptr[row], A.rptr[row+1] ):
+                ## sidx[row] contains idx of current self element
+                ## search for element in self such that self.cidx[sidx[row]] == A.cidx[aidx]
                 while( sidx[row] < self.rptr[row+1] and
                        self.cidx[ sidx[row] ] <= A.cidx[aidx] ):
                     if( self.cidx[ sidx[row] ] == A.cidx[aidx] ):
