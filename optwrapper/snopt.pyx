@@ -121,20 +121,28 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
         memset( f, 0, nF[0] * sizeof( doublereal ) )
         farr = utils.wrap1dPtr( f, nF[0], doublereal_type )
         extprob.objf( farr[0:1], xarr )
+        if( objAsparse.nnz > 0 ):
+            farr[0:1] += objAsparse.dot( xarr )
         if( extprob.Ncons > 0 ):
             extprob.consf( farr[1+extprob.Nconslin:], xarr )
+            if( consAsparse.nnz > 0 ):
+                farr[1+extprob.Nconslin:] += consAsparse.dot( xarr )
 
     if( needG[0] > 0 ):
         ## we zero out all arrays in case the user does not modify all the values,
         ## e.g., in sparse problems.
         memset( G, 0, lenG[0] * sizeof( doublereal ) )
-        if( consGsparse.nnz > 0 ):
+        if( objGsparse.nnz > 0 ):
             objGsparse.setDataPtr( &G[0] )
             extprob.objg( objGsparse, xarr )
+            if( objAsparse.nnz > 0 ):
+                objGsparse.add_sparse( objAsparse )
             # objGsparse.print_debug()
         if( extprob.Ncons > 0 and consGsparse.nnz > 0 ):
             consGsparse.setDataPtr( &G[objGsparse.nnz] )
             extprob.consg( consGsparse, xarr )
+            if( consAsparse.nnz > 0 ):
+                consGsparse.add_sparse( consAsparse )
             # consGsparse.print_debug()
         # print( "G: [" ),
         # for k in range( lenG[0] ):
@@ -278,16 +286,21 @@ cdef class Solver( base.Solver ):
 
         ## Create objGsparse and consGsparse. Set lenG
         if( isinstance( prob, nlp.SparseProblem ) and prob.objgpattern is not None ):
-            tmpobjgpattern = prob.objgpattern
+            tmpobjgpattern = np.asarray( prob.objgpattern, dtype=np.bool )
         else:
-            tmpobjgpattern = np.ones( ( 1, self.n[0] ) )
+            tmpobjgpattern = np.ones( ( 1, self.n[0] ), dtype=np.bool )
         objGsparse = utils.sMatrix( tmpobjgpattern )
 
         if( isinstance( prob, nlp.SparseProblem ) and prob.consgpattern is not None ):
-            tmpconsgpattern = prob.consgpattern
+            tmpconsgpattern = np.asarray( prob.consgpattern, dtype=np.bool )
         else:
-            tmpconsgpattern = np.ones( ( prob.Ncons, self.n[0] ) )
+            tmpconsgpattern = np.ones( ( prob.Ncons, self.n[0] ), dtype=np.bool )
         consGsparse = utils.sMatrix( tmpconsgpattern )
+
+        print( "objGsparse" )
+        objGsparse.print_debug()
+        print( "consGsparse" )
+        consGsparse.print_debug()
 
         if( objGsparse.nnz + consGsparse.nnz > 0 ):
             self.lenG[0] = objGsparse.nnz + consGsparse.nnz
@@ -296,25 +309,34 @@ cdef class Solver( base.Solver ):
             self.lenG[0] = 1
             self.neG[0] = 0
 
-        ## Create objAsparse, consAsparse, and intAsparse. Set lenG
+        ## Create objAsparse, consAsparse, and intAsparse. Set lenA
         if( prob.objmixedA is not None ):
-            tmpobjasparse = prob.objmixedA * ~tmpobjgpattern
+            objAsparse = utils.sMatrix( prob.objmixedA * tmpobjgpattern, copy_data=True )
+            tmpAsparse = [ prob.objmixedA * ~tmpobjgpattern ]
         else:
-            tmpobjasparse = np.zeros( ( 1, self.n[0] ) )
-        ## TODO!
-        objAsparse = utils.sMatrix( tmpobjasparse, copy_data=True )
+            objAsparse = utils.sMatrix( np.zeros( ( 1, self.n[0] ) ) )
+            tmpAsparse = [ np.zeros( ( 1, self.n[0] ) ) ]
 
-        tmpconsasparse = list()
         if( prob.Nconslin > 0 ):
-            tmpconsasparse += [ prob.conslinA ]
-        if( prob.consmixedA is not None ):
-            tmpconsasparse += [ prob.consmixedA * ~tmpconsgpattern ]
-        else:
-            tmpconsasparse += [ np.zeros( ( prob.Ncons, self.n[0] ) ) ]
-        consAsparse = utils.sMatrix( np.vstack( tmpconsasparse ), copy_data=True )
+            tmpAsparse += [ prob.conslinA ]
 
-        if( objAsparse.nnz + consAsparse.nnz > 0 ):
-            self.lenA[0] = objAsparse.nnz + consAsparse.nnz
+        if( prob.consmixedA is not None ):
+            consAsparse = utils.sMatrix( prob.consmixedA * tmpconsgpattern, copy_data=True )
+            tmpAsparse += [ prob.consmixedA * ~tmpconsgpattern ]
+        else:
+            consAsparse = utils.sMatrix( np.zeros( ( prob.Ncons, self.n[0] ) ) )
+            tmpAsparse += [ np.zeros( ( prob.Ncons, self.n[0] ) ) ]
+        intAsparse = utils.sMatrix( np.vstack( tmpAsparse ), copy_data=True )
+
+        print( "objAsparse" )
+        objAsparse.print_debug()
+        print( "consAsparse" )
+        consAsparse.print_debug()
+        print( "intAsparse" )
+        intAsparse.print_debug()
+
+        if( intAsparse.nnz > 0 ):
+            self.lenA[0] = intAsparse.nnz
             self.neA[0] = self.lenA[0]
         else: ## Minimum allowed values, pg. 16
             self.lenA[0] = 1
@@ -342,10 +364,10 @@ cdef class Solver( base.Solver ):
                                      <int64_t *> &self.jGvar[objGsparse.nnz],
                                      roffset = 1 + prob.Nconslin )
         ## copy index data of A
-        self.Asparse.copyFortranIdxs( <int64_t *> &self.iAfun[0],
-                                      <int64_t *> &self.jAvar[0] )
+        intAsparse.copyFortranIdxs( <int64_t *> &self.iAfun[0],
+                                    <int64_t *> &self.jAvar[0] )
         ## copy matrix data of A
-        self.Asparse.copyData( &self.A[0] )
+        intAsparse.copyData( &self.A[0] )
 
         ## copy general constraints limits
         ## objective function knows no limits (https://i.imgur.com/UuQbJ.gif)
@@ -726,13 +748,6 @@ cdef class Solver( base.Solver ):
                         ( self.mem_size_ws[0] * 8 * sizeof(char) +
                           self.mem_size_ws[1] * sizeof(integer) +
                           self.mem_size_ws[2] * sizeof(doublereal) ) / 1024 / 1024 ) )
-
-            if( isinstance( self.prob, nlp.SparseProblem ) ):
-                if( self.prob.Nconslin > 0 ):
-                    print( ">>> Sparse A: {0:r}".format( self.Asparse ) )
-                print( ">>> Sparse gradient obj: {0:r}".format( objGsparse ) )
-                if( self.prob.Ncons > 0 ):
-                    print( ">>> Sparse gradient cons: {0:r}".format( consGsparse ) )
 
         ## Execute SNOPT
         snopt.snopta_( self.Start, self.nF,
