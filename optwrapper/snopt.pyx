@@ -97,6 +97,8 @@ cdef class Soln( base.Soln ):
 
 ## helper static function usrfun that evaluate user-defined functions in Solver.prob
 cdef object extprob
+cdef utils.sMatrix objAsparse
+cdef utils.sMatrix consAsparse
 cdef utils.sMatrix objGsparse
 cdef utils.sMatrix consGsparse
 
@@ -126,7 +128,7 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
         ## we zero out all arrays in case the user does not modify all the values,
         ## e.g., in sparse problems.
         memset( G, 0, lenG[0] * sizeof( doublereal ) )
-        if( objGsparse.nnz > 0 ):
+        if( consGsparse.nnz > 0 ):
             objGsparse.setDataPtr( &G[0] )
             extprob.objg( objGsparse, xarr )
             # objGsparse.print_debug()
@@ -171,7 +173,6 @@ cdef class Solver( base.Solver ):
     cdef integer Start[1]
     cdef integer summaryFileUnit[1]
     cdef integer printFileUnit[1]
-    cdef utils.sMatrix Asparse
 
     cdef int mem_alloc
     cdef integer mem_size[4]
@@ -254,8 +255,11 @@ cdef class Solver( base.Solver ):
 
     def setupProblem( self, prob ):
         cdef cnp.ndarray tmparr
+        cdef utils.sMatrix intAsparse ## temp sMatrix to populate self.iAfun, self.jAvar, and self.A
 
         global extprob
+        global objAsparse
+        global consAsparse
         global objGsparse
         global consGsparse
 
@@ -272,43 +276,49 @@ cdef class Solver( base.Solver ):
         self.n[0] = prob.N
         self.nF[0] = 1 + prob.Nconslin + prob.Ncons
 
-        ## Create Asparse, set lenA
-        if( prob.objmixedA is not None ):
-            tmplist = ( prob.objmixedA, )
-        else:
-            tmplist = ( np.zeros( ( 1, self.n[0] ) ), )
-        if( prob.Nconslin > 0 ):
-            tmplist += ( prob.conslinA, )
-        if( prob.consmixedA is not None ):
-            tmplist += ( prob.consmixedA, )
-        else:
-            tmplist += ( np.zeros( ( prob.Ncons, self.n[0] ) ), )
-        self.Asparse = utils.sMatrix( np.vstack( tmplist ), copy_data=True )
-        # print( Asparse[:] )
-
-        if( self.Asparse.nnz > 0 ):
-            self.lenA[0] = self.Asparse.nnz
-            self.neA[0] = self.lenA[0]
-        else: ## Minimum allowed values, pg. 16
-            self.lenA[0] = 1
-            self.neA[0] = 0
-
-        ## Create objGsparse and consGsparse, set lenG
+        ## Create objGsparse and consGsparse. Set lenG
         if( isinstance( prob, nlp.SparseProblem ) and prob.objgpattern is not None ):
-            objGsparse = utils.sMatrix( prob.objgpattern )
+            tmpobjgpattern = prob.objgpattern
         else:
-            objGsparse = utils.sMatrix( np.ones( ( 1, self.n[0] ) ) )
+            tmpobjgpattern = np.ones( ( 1, self.n[0] ) )
+        objGsparse = utils.sMatrix( tmpobjgpattern )
 
         if( isinstance( prob, nlp.SparseProblem ) and prob.consgpattern is not None ):
-            consGsparse = utils.sMatrix( prob.consgpattern )
+            tmpconsgpattern = prob.consgpattern
         else:
-            consGsparse = utils.sMatrix( np.ones( ( prob.Ncons, self.n[0] ) ) )
+            tmpconsgpattern = np.ones( ( prob.Ncons, self.n[0] ) )
+        consGsparse = utils.sMatrix( tmpconsgpattern )
+
         if( objGsparse.nnz + consGsparse.nnz > 0 ):
             self.lenG[0] = objGsparse.nnz + consGsparse.nnz
             self.neG[0] = self.lenG[0]
         else:
             self.lenG[0] = 1
             self.neG[0] = 0
+
+        ## Create objAsparse, consAsparse, and intAsparse. Set lenG
+        if( prob.objmixedA is not None ):
+            tmpobjasparse = prob.objmixedA * ~tmpobjgpattern
+        else:
+            tmpobjasparse = np.zeros( ( 1, self.n[0] ) )
+        ## TODO!
+        objAsparse = utils.sMatrix( tmpobjasparse, copy_data=True )
+
+        tmpconsasparse = list()
+        if( prob.Nconslin > 0 ):
+            tmpconsasparse += [ prob.conslinA ]
+        if( prob.consmixedA is not None ):
+            tmpconsasparse += [ prob.consmixedA * ~tmpconsgpattern ]
+        else:
+            tmpconsasparse += [ np.zeros( ( prob.Ncons, self.n[0] ) ) ]
+        consAsparse = utils.sMatrix( np.vstack( tmpconsasparse ), copy_data=True )
+
+        if( objAsparse.nnz + consAsparse.nnz > 0 ):
+            self.lenA[0] = objAsparse.nnz + consAsparse.nnz
+            self.neA[0] = self.lenA[0]
+        else: ## Minimum allowed values, pg. 16
+            self.lenA[0] = 1
+            self.neA[0] = 0
 
         ## Allocate if necessary
         if( self.mustAllocate( self.n[0], self.nF[0], self.lenA[0], self.lenG[0] ) ):
