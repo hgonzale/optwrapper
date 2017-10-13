@@ -63,12 +63,15 @@ if( not env.GetOption( "clean" ) and
 
     ## List of shared libraries and their headers to check
     ## these define string substitutions in setup.py.in
-    repl[ "@lssol@" ] = ( conf.CheckLib( "lssol" ) and
+    check_f2c = conf.CheckHeader( "f2c.h" )
+    repl[ "@lssol@" ] = ( check_f2c and
+                          conf.CheckLib( "lssol" ) and
                           conf.CheckHeader( "lssol.h" ) )
     repl[ "@npsol@" ] = ( repl[ "@lssol@" ] and
                           conf.CheckLib( "npsol" ) and
                           conf.CheckHeader( "npsol.h" ) )
-    repl[ "@snopt@" ] = ( conf.CheckLib( "snopt7" ) and
+    repl[ "@snopt@" ] = ( check_f2c and
+                          conf.CheckLib( "snopt7" ) and
                           conf.CheckHeader( "snopt.h" ) )
     repl[ "@ipopt@" ] = ( conf.CheckLib( "ipopt" ) and
                           conf.CheckHeader( "coin/IpStdCInterface.h" ) )

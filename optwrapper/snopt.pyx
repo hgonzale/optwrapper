@@ -108,7 +108,7 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
                  char *cu, integer *lencu,
                  integer *iu, integer *leniu,
                  doublereal *ru, integer *lenru ):
-    ## FYI: Dual variables are at rw[ iw[329] ] onward, pg.25
+    ## FYI: Dual variables are at ru[ iu[329] ] onward, pg.25
 
     if( status[0] >= 2 ): ## Final call, do nothing
         return 0
@@ -137,13 +137,11 @@ cdef int usrfun( integer *status, integer *n, doublereal *x,
             extprob.objg( objGsparse, xarr )
             if( objAsparse.nnz > 0 ):
                 objGsparse.add_sparse( objAsparse )
-            # objGsparse.print_debug()
         if( extprob.Ncons > 0 and consGsparse.nnz > 0 ):
             consGsparse.setDataPtr( &G[objGsparse.nnz] )
             extprob.consg( consGsparse, xarr )
             if( consAsparse.nnz > 0 ):
                 consGsparse.add_sparse( consAsparse )
-            # consGsparse.print_debug()
         # print( "G: [" ),
         # for k in range( lenG[0] ):
         #     printf( "%f ", G[k] )
@@ -311,21 +309,22 @@ cdef class Solver( base.Solver ):
 
         ## Create objAsparse, consAsparse, and intAsparse. Set lenA
         if( prob.objmixedA is not None ):
-            objAsparse = utils.sMatrix( prob.objmixedA * tmpobjgpattern, copy_data=True )
-            tmpAsparse = [ prob.objmixedA * ~tmpobjgpattern ]
+            tmpobjmixeda = prob.objmixedA
         else:
-            objAsparse = utils.sMatrix( np.zeros( ( 1, self.n[0] ) ) )
-            tmpAsparse = [ np.zeros( ( 1, self.n[0] ) ) ]
+            tmpobjmixeda = np.zeros( ( 1, self.n[0] ) )
+        objAsparse = utils.sMatrix( tmpobjmixeda * tmpobjgpattern, copy_data=True )
+        tmpAsparse = [ tmpobjmixeda * ~tmpobjgpattern ]
 
         if( prob.Nconslin > 0 ):
             tmpAsparse += [ prob.conslinA ]
 
         if( prob.consmixedA is not None ):
-            consAsparse = utils.sMatrix( prob.consmixedA * tmpconsgpattern, copy_data=True )
-            tmpAsparse += [ prob.consmixedA * ~tmpconsgpattern ]
+            tmpconsmixeda = prob.consmixedA
         else:
-            consAsparse = utils.sMatrix( np.zeros( ( prob.Ncons, self.n[0] ) ) )
-            tmpAsparse += [ np.zeros( ( prob.Ncons, self.n[0] ) ) ]
+            tmpconsmixeda = np.zeros( ( prob.Ncons, self.n[0] ) )
+        consAsparse = utils.sMatrix( tmpconsmixeda * tmpconsgpattern, copy_data=True )
+        tmpAsparse += [ tmpconsmixeda * ~tmpconsgpattern ]
+
         intAsparse = utils.sMatrix( np.vstack( tmpAsparse ), copy_data=True )
 
         print( "objAsparse" )
