@@ -42,7 +42,7 @@ conf = Configure( env,
 ## add folders to include path
 repl = { "@headers@": [ "/usr/local/include" ],
          "@cc@": "gcc",   ## we need an openmp-compatible compiler, using gcc by default
-         "@cxx@": "g++" } ## we need an openmp-compatible compiler, using g++ by default
+         "@cxx@": "g++" }
 
 env[ "CC" ] = repl[ "@cc@" ]
 env[ "CXX" ] = repl[ "@cxx@" ]

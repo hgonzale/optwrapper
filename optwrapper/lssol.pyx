@@ -15,10 +15,13 @@ import lp, qp
 
 ## we use these definitions to wrap C arrays in numpy arrays
 ## we can safely assume 64-bit values since we already checked using scons
-cdef int doublereal_type = cnp.NPY_FLOAT64
 cdef int integer_type = cnp.NPY_INT64
-cdef type doublereal_dtype = np.float64
 cdef type integer_dtype = np.int64
+cdef int doublereal_type = cnp.NPY_FLOAT64
+cdef type doublereal_dtype = np.float64
+if( sizeof( integer ) == 4 ):
+    integer_type = cnp.NPY_INT32
+    integer_dtype = np.int32
 
 
 cdef class Soln( base.Soln ):

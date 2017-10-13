@@ -5,7 +5,7 @@ from __future__ import division
 from libc.string cimport memcpy, memset
 from libc.stdlib cimport malloc, free
 from libc.stdio cimport printf
-from libc.stdint cimport int64_t
+from libc.stdint cimport int32_t, int64_t
 cimport numpy as cnp
 import numpy as np
 import os
@@ -18,10 +18,13 @@ import nlp
 
 ## we use these definitions to wrap C arrays in numpy arrays
 ## we can safely assume 64-bit values since we already checked using scons
-cdef int doublereal_type = cnp.NPY_FLOAT64
 cdef int integer_type = cnp.NPY_INT64
-cdef type doublereal_dtype = np.float64
 cdef type integer_dtype = np.int64
+cdef int doublereal_type = cnp.NPY_FLOAT64
+cdef type doublereal_dtype = np.float64
+if( sizeof( integer ) == 4 ):
+    integer_type = cnp.NPY_INT32
+    integer_dtype = np.int32
 
 
 cdef class Soln( base.Soln ):
@@ -353,18 +356,32 @@ cdef class Solver( base.Solver ):
         tmparr = utils.arraySanitize( prob.ub, dtype=doublereal_dtype, fortran=True )
         memcpy( self.xupp, utils.getPtr( tmparr ), self.n[0] * sizeof( doublereal ) )
 
-        ## copy index data of G
-        ## row 0 of G belongs to objg
-        objGsparse.copyFortranIdxs( <int64_t *> &self.iGfun[0],
-                                    <int64_t *> &self.jGvar[0] )
-        ## rows 1:(1 + prob.Nconslin) of G are empty, these are pure linear constraints
-        ## rows (1 + prob.Nconslin):(1 + prob.Nconslin + prob.Ncons) of G belong to consg
-        consGsparse.copyFortranIdxs( <int64_t *> &self.iGfun[objGsparse.nnz],
-                                     <int64_t *> &self.jGvar[objGsparse.nnz],
-                                     roffset = 1 + prob.Nconslin )
-        ## copy index data of A
-        intAsparse.copyFortranIdxs( <int64_t *> &self.iAfun[0],
-                                    <int64_t *> &self.jAvar[0] )
+        if( sizeof( integer ) == 4 ):
+            ## copy index data of G
+            ## row 0 of G belongs to objg
+            objGsparse.copyFortranIdxs32( <int32_t *> &self.iGfun[0],
+                                          <int32_t *> &self.jGvar[0] )
+            ## rows 1:(1 + prob.Nconslin) of G are empty, these are pure linear constraints
+            ## rows (1 + prob.Nconslin):(1 + prob.Nconslin + prob.Ncons) of G belong to consg
+            consGsparse.copyFortranIdxs32( <int32_t *> &self.iGfun[objGsparse.nnz],
+                                           <int32_t *> &self.jGvar[objGsparse.nnz],
+                                           roffset = 1 + prob.Nconslin )
+            ## copy index data of A
+            intAsparse.copyFortranIdxs32( <int32_t *> &self.iAfun[0],
+                                          <int32_t *> &self.jAvar[0] )
+        else:
+            ## copy index data of G
+            ## row 0 of G belongs to objg
+            objGsparse.copyFortranIdxs( <int64_t *> &self.iGfun[0],
+                                        <int64_t *> &self.jGvar[0] )
+            ## rows 1:(1 + prob.Nconslin) of G are empty, these are pure linear constraints
+            ## rows (1 + prob.Nconslin):(1 + prob.Nconslin + prob.Ncons) of G belong to consg
+            consGsparse.copyFortranIdxs( <int64_t *> &self.iGfun[objGsparse.nnz],
+                                         <int64_t *> &self.jGvar[objGsparse.nnz],
+                                         roffset = 1 + prob.Nconslin )
+            ## copy index data of A
+            intAsparse.copyFortranIdxs( <int64_t *> &self.iAfun[0],
+                                        <int64_t *> &self.jAvar[0] )
         ## copy matrix data of A
         intAsparse.copyData( &self.A[0] )
 

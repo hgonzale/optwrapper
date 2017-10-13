@@ -200,6 +200,12 @@ cdef class sMatrix:
         self.copyIdxs( ridx, cidx, roffset + 1, coffset + 1 )
 
 
+    cdef inline void copyFortranIdxs32( self, int32_t* ridx, int32_t* cidx,
+                                        int32_t roffset=0, int32_t coffset=0 ):
+        ## have to add one to offsets because Fortran
+        self.copyIdxs32( ridx, cidx, roffset + 1, coffset + 1 )
+
+
     cdef void copyIdxs( self, int64_t* ridx, int64_t* cidx,
                         int64_t roffset=0, int64_t coffset=0 ):
         memcpy( ridx, self.ridx, self.nnz * sizeof( int64_t ) )
