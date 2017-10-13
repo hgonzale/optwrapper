@@ -29,7 +29,6 @@ def CheckSizeOf( context, dtype ):
     context.Result( ret[1] )
     return int( ret[1] )
 
-
 ### Main
 python_exe = "python3"
 env = Environment( ENV = environ,
@@ -64,53 +63,63 @@ AddOption( "--local",
            action = "store_true",
            help = "Install locally in user's home directory" )
 
-AddOption( "--with-fortran-64int",
-           dest = "with_64int",
+AddOption( "--fortran-64int",
+           dest = "fort_64int",
            default = False,
            action = "store_true",
-           help = "Set Fortran integers to int64_t" )
+           help = "Set Fortran integers to int64_t, otherwise use int32_t" )
 
 setup_args = []
 if( env.GetOption( "no_exec" ) ):
-    setyp_args.append( "--dry-run" )
+    setup_args.append( "--dry-run" )
 
 if( env.GetOption( "silent" ) ):
     setup_args.append( "--quiet" )
 
 if( not env.GetOption( "clean" ) and
     not env.GetOption( "help" ) ):
-    if( not conf.CheckCC() or
-        not conf.CheckPythonLib( "numpy", python_exe ) or
-        not conf.CheckProg( "cython" ) ):
+    ## numpy is absolutely required
+    if( not conf.CheckPythonLib( "numpy", python_exe ) ):
         Exit(1)
 
     ## Check double size
-    double_size = conf.CheckSizeOf( "double" )
-    if( double_size != 8 ):
-        print( "unsupported double variable size: {}".format( double_size ) )
+    if( conf.CheckSizeOf( "double" ) != 8 ):
+        print( "unsupported double variable size" )
         Exit(1)
 
     ## Set Fortran integer type
-    repl[ "@integer_type@" ] = ( "int64_t" if env.GetOption( "with_64int" ) else "int32_t" )
+    repl[ "@integer_type@" ] = ( "int64_t" if env.GetOption( "fort_64int" ) else "int32_t" )
+    repl[ "@uinteger_type@" ] = ( "uint64_t" if env.GetOption( "fort_64int" ) else "uint32_t" )
 
     ## List of shared libraries and their headers to check
     ## these define string substitutions in setup.py.in
+    check_cc = conf.CheckCC()
+    check_cython = conf.CheckProg( "cython" )
     check_f2c = conf.CheckHeader( "f2c.h" )
-    repl[ "@lssol@" ] = ( check_f2c and
+    repl[ "@lssol@" ] = ( check_cc and
+                          check_f2c and
+                          check_cython and
                           conf.CheckLib( "lssol" ) and
                           conf.CheckHeader( "lssol.h" ) )
     repl[ "@npsol@" ] = ( repl[ "@lssol@" ] and
                           conf.CheckLib( "npsol" ) and
                           conf.CheckHeader( "npsol.h" ) )
-    repl[ "@snopt@" ] = ( check_f2c and
+    repl[ "@snopt@" ] = ( check_cc and
+                          check_f2c and
+                          check_cython and
                           conf.CheckLib( "snopt7" ) and
                           conf.CheckHeader( "snopt.h" ) )
-    repl[ "@ipopt@" ] = ( conf.CheckLib( "ipopt" ) and
+    repl[ "@ipopt@" ] = ( check_cc and
+                          check_cython and
+                          conf.CheckLib( "ipopt" ) and
                           conf.CheckHeader( "coin/IpStdCInterface.h" ) )
-    repl[ "@qpoases@" ] = ( conf.CheckCXX() and
+    repl[ "@qpoases@" ] = ( check_cython and
+                            conf.CheckCXX() and
                             conf.CheckLib( "qpoases", language="C++" ) and
                             conf.CheckHeader( "qpOASES.hpp", language="C++" ) )
-    repl[ "@glpk@" ] = ( conf.CheckLib( "glpk" ) and
+    repl[ "@glpk@" ] = ( check_cc and
+                         check_cython and
+                         conf.CheckLib( "glpk" ) and
                          conf.CheckHeader( "glpk.h" ) )
     repl[ "@scipy_optimize@" ] = ( conf.CheckPythonLib( "scipy.optimize", python_exe ) and
                                    conf.CheckPythonLib( "functools", python_exe ) )
