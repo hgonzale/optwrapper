@@ -7,7 +7,7 @@ def CheckProg( context, cmd ):
     context.Result( result )
     return result
 
-def CheckPythonLib( context, lib ):
+def CheckPythonLib( context, lib, python_exe ):
     context.Message( "Checking for Python {} library... ".format( lib ) )
     fp = open( devnull, "w" )
     result = ( call( ( python_exe, "-c", "import {}".format( lib ) ), stdout=fp, stderr=fp ) == 0 )
@@ -52,7 +52,7 @@ env.Append( CPPPATH = repl[ "@headers@" ] )
 if( not env.GetOption( "clean" ) and
     not env.GetOption( "help" ) ):
     if( not conf.CheckCC() or
-        not conf.CheckPythonLib( "numpy" ) or
+        not conf.CheckPythonLib( "numpy", python_exe ) or
         not conf.CheckProg( "cython" ) ):
         Exit(1)
 
@@ -77,7 +77,8 @@ if( not env.GetOption( "clean" ) and
                             conf.CheckHeader( "qpOASES.hpp", language="C++" ) )
     repl[ "@glpk@" ] = ( conf.CheckLib( "glpk" ) and
                          conf.CheckHeader( "glpk.h" ) )
-    repl[ "@scipy_optimize@" ] = conf.CheckPythonLib( "scipy.optimize" )
+    repl[ "@scipy_optimize@" ] = ( conf.CheckPythonLib( "scipy.optimize", python_exe ) and
+                                   conf.CheckPythonLib( "functools", python_exe ) )
 
 env = conf.Finish()
 
