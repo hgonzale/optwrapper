@@ -2,17 +2,15 @@ from subprocess import call
 from os import environ, devnull
 
 def CheckProg( context, cmd ):
-    context.Message( "Checking for {0} command... ".format( cmd ) )
-    result = WhereIs( cmd )
-    result = result is not None
+    context.Message( "Checking for {} command... ".format( cmd ) )
+    result = ( WhereIs( cmd ) is not None )
     context.Result( result )
     return result
 
 def CheckPythonLib( context, lib ):
-    context.Message( "Checking for Python {0} library... ".format( lib ) )
+    context.Message( "Checking for Python {} library... ".format( lib ) )
     fp = open( devnull, "w" )
-    result = ( call( ( "python", "-c", "import {0}".format( lib ) ),
-                   stdout=fp, stderr=fp ) == 0 )
+    result = ( call( ( python_exe, "-c", "import {}".format( lib ) ), stdout=fp, stderr=fp ) == 0 )
     fp.close()
     context.Result( result )
     return result
@@ -33,6 +31,7 @@ def CheckSizeOf( context, dtype ):
 
 
 ### Main
+python_exe = "python3"
 env = Environment( ENV = environ,
                    tools = ( "default", "textfile" ) )
 conf = Configure( env,
@@ -102,7 +101,7 @@ if( env.GetOption( "no_exec" ) ):
 if( env.GetOption( "silent" ) ):
     args.append( "--quiet" )
 
-spy_str = "python setup.py {0}".format( " ".join( args ) )
+spy_str = python_exe + " setup.py {}".format( " ".join( args ) )
 spy_build_str = spy_str + " build"
 spy_install_str = spy_str + " install --record={0}".format( env.GetOption( "manifest_file" ) )
 if( env.GetOption( "install_local" ) ):
