@@ -1,0 +1,17 @@
+## Fortran datatypes definitions, copied from f2c.h
+from libc.stdint cimport int32_t, int64_t
+
+ctypedef @integer_type@ integer
+ctypedef unsigned @integer_type@ uinteger
+ctypedef char* address
+ctypedef short int shortint
+ctypedef float real
+ctypedef double doublereal
+ctypedef integer logical
+ctypedef shortint shortlogical
+ctypedef char logical1
+ctypedef char integer1
+
+ctypedef integer flag
+ctypedef integer ftnlen
+ctypedef integer ftnint

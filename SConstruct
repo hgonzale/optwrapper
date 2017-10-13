@@ -49,6 +49,34 @@ env[ "CC" ] = repl[ "@cc@" ]
 env[ "CXX" ] = repl[ "@cxx@" ]
 env.Append( CPPPATH = repl[ "@headers@" ] )
 
+### Process arguments
+AddOption( "--manifest",
+           dest = "manifest_file",
+           type = "string",
+           nargs = 1,
+           action = "store",
+           default = "install_manifest.txt",
+           help = "Manifest to record installed files" )
+
+AddOption( "--local",
+           dest = "install_local",
+           default = False,
+           action = "store_true",
+           help = "Install locally in user's home directory" )
+
+AddOption( "--with-fortran-64int",
+           dest = "with_64int",
+           default = False,
+           action = "store_true",
+           help = "Set Fortran integers to int64_t" )
+
+setup_args = []
+if( env.GetOption( "no_exec" ) ):
+    setyp_args.append( "--dry-run" )
+
+if( env.GetOption( "silent" ) ):
+    setup_args.append( "--quiet" )
+
 if( not env.GetOption( "clean" ) and
     not env.GetOption( "help" ) ):
     if( not conf.CheckCC() or
@@ -56,10 +84,14 @@ if( not env.GetOption( "clean" ) and
         not conf.CheckProg( "cython" ) ):
         Exit(1)
 
-    ## Check sizes of integer and doublereal from typedefs.pxd
-    if( conf.CheckSizeOf( "long int" ) != 8 or
-        conf.CheckSizeOf( "double" ) != 8 ):
+    ## Check double size
+    double_size = conf.CheckSizeOf( "double" )
+    if( double_size != 8 ):
+        print( "unsupported double variable size: {}".format( double_size ) )
         Exit(1)
+
+    ## Set Fortran integer type
+    repl[ "@integer_type@" ] = ( "int64_t" if env.GetOption( "with_64int" ) else "int32_t" )
 
     ## List of shared libraries and their headers to check
     ## these define string substitutions in setup.py.in
@@ -85,36 +117,17 @@ if( not env.GetOption( "clean" ) and
 
 env = conf.Finish()
 
-### Process arguments
-AddOption( "--manifest",
-           dest = "manifest_file",
-           type = "string",
-           nargs = 1,
-           action = "store",
-           default = "install_manifest.txt",
-           help = "Manifest to record installed files" )
-AddOption( "--local",
-           dest = "install_local",
-           default = False,
-           action = "store_true",
-           help = "Install locally in user's home directory" )
-
-args = []
-if( env.GetOption( "no_exec" ) ):
-    args.append( "--dry-run" )
-if( env.GetOption( "silent" ) ):
-    args.append( "--quiet" )
-
-spy_str = python_exe + " setup.py {}".format( " ".join( args ) )
-spy_build_str = spy_str + " build"
-spy_install_str = spy_str + " install --record={0}".format( env.GetOption( "manifest_file" ) )
-if( env.GetOption( "install_local" ) ):
-    spy_install_str += " --user"
-
 ### Create targets
 spy = env.Substfile( "setup.py.in", SUBST_DICT=repl )
 init = env.Substfile( "optwrapper/__init__.py.in", SUBST_DICT=repl )
-spy_build = env.Command( "build", None, spy_build_str ) ## target "build" is *not* a file
+typedefs = env.Substfile( "optwrapper/typedefs.pxd.in", SUBST_DICT=repl )
+
+spy_str = python_exe + " setup.py {}".format( " ".join( setup_args ) )
+spy_build = env.Command( "build", None, spy_str + " build" ) ## target "build" is *not* a file
+
+spy_install_str = spy_str + " install --record={}".format( env.GetOption( "manifest_file" ) )
+if( env.GetOption( "install_local" ) ):
+    spy_install_str += " --user"
 spy_inst = env.Command( "install", None, spy_install_str ) ## target "install" is *not* a file
 
 ### Determine cleans
@@ -129,6 +142,7 @@ if( env.FindFile( env.GetOption( "manifest_file" ), "." ) ):
 ### Hierarchy
 env.AlwaysBuild( spy_build ) ## run setup.py in case the source files have changed
 env.Depends( spy_build, init )
+env.Depends( spy_build, typedefs )
 env.Depends( spy_build, spy )
 env.Depends( spy_inst, spy )
 env.Default( spy_build )
