@@ -26,6 +26,8 @@ cdef class sMatrix:
                           int32_t roffset=*, int32_t coffset=* )
     cdef void copyFortranIdxs( self, int64_t* ridx, int64_t* cidx,
                                int64_t roffset=*, int64_t coffset=* )
+    cdef void copyFortranIdxs32( self, int32_t* ridx, int32_t* cidx,
+                                 int32_t roffset=*, int32_t coffset=* )
     cdef void copyData( self, double* data )
     cdef double get_elem_at( self, int64_t row, int64_t col )
     cdef bint set_elem_at( self, int64_t row, int64_t col, double val )

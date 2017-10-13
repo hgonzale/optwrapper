@@ -94,3 +94,4 @@ debug*.txt
 install_manifest.txt
 setup.py
 __init__.py
+typedefs.pxd
