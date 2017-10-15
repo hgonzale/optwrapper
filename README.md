@@ -1,4 +1,4 @@
-OptWrapper v0.8
+OptWrapper v0.9
 ---------------
 
 This is a python wrapper for numerical optimization libraries. Documentation is available at:
