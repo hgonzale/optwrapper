@@ -15,16 +15,19 @@ def CheckPythonLib( context, lib, python_exe ):
     context.Result( result )
     return result
 
-def CheckSizeOf( context, dtype ):
+def CheckSizeOf( context, dtype, include=None ):
     context.Message( "Getting size of " + dtype + "... " )
     program = """
       #include <stdlib.h>
       #include <stdio.h>
-      int main() {
-        printf( "%d", (int) sizeof( """ + dtype + """ ) );
+      {0}
+      int main() {{
+        printf( "%d", (int) sizeof( {1} ) );
         return 0;
-      }
-      """
+      }}
+    """.format( "#include <{}>".format(include) if include is not None else str(),
+                dtype )
+
     ret = context.TryRun( program, ".c" )
     context.Result( ret[1] )
     return int( ret[1] )
@@ -56,13 +59,11 @@ AddOption( "--manifest",
            action = "store",
            default = "install_manifest.txt",
            help = "Manifest to record installed files" )
-
 AddOption( "--local",
            dest = "install_local",
            default = False,
            action = "store_true",
            help = "Install locally in user's home directory" )
-
 AddOption( "--fortran-64int",
            dest = "fort_64int",
            default = False,
@@ -82,20 +83,35 @@ if( not env.GetOption( "clean" ) and
     if( not conf.CheckPythonLib( "numpy", python_exe ) ):
         Exit(1)
 
+    ## First set of checks
+    check_cc = conf.CheckCC()
+    check_cython = conf.CheckProg( "cython" )
+    check_f2c = conf.CheckHeader( "f2c.h" )
+    check_integer = conf.CheckSizeOf( "integer", "f2c.h" )
+
+    ## Check consistency on Fortran integer size between f2c.h and user option
+    if( check_integer != 4 and
+        not env.GetOption( "fort_64int" ) ):
+        print( "f2c integer is not int32_t" )
+        Exit(1)
+    elif( check_integer != 8 and
+          env.GetOption( "fort_64int" ) ):
+        print( "f2c integer is not int64_t" )
+        Exit(1)
     ## Check double size
     if( conf.CheckSizeOf( "double" ) != 8 ):
         print( "unsupported double variable size" )
         Exit(1)
+    ## Check consistency on Fortran doublereal size in f2c.h
+    if( conf.CheckSizeOf( "doublereal", "f2c.h" ) != 8 ):
+        print( "f2c doublereal is not float64_t" )
+        Exit(1)
 
     ## Set Fortran integer type
-    repl[ "@integer_type@" ] = ( "int64_t" if env.GetOption( "fort_64int" ) else "int32_t" )
-    repl[ "@uinteger_type@" ] = ( "uint64_t" if env.GetOption( "fort_64int" ) else "uint32_t" )
+    repl[ "@integer_type@" ] = "int64_t" if env.GetOption( "fort_64int" ) else "int32_t"
+    repl[ "@uinteger_type@" ] = "uint64_t" if env.GetOption( "fort_64int" ) else "uint32_t"
 
-    ## List of shared libraries and their headers to check
-    ## these define string substitutions in setup.py.in
-    check_cc = conf.CheckCC()
-    check_cython = conf.CheckProg( "cython" )
-    check_f2c = conf.CheckHeader( "f2c.h" )
+    ## Decide which wrappers we can build
     repl[ "@lssol@" ] = ( check_cc and
                           check_f2c and
                           check_cython and
