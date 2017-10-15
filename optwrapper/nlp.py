@@ -392,7 +392,7 @@ class SparseProblem( Problem ):
                                   + "," + str(self.N) + ")." )
 
 
-    def checkPattern( self, Ntries=100, debug=False ):
+    def checkPattern( self, Ntries=10, debug=False ):
         """
         checks if sparse patterns cover all nonzero entries in user defined gradients by
         evaluating objg() and consg() at random points drawn from a Gaussian distribution.
