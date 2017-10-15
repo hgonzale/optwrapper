@@ -400,18 +400,23 @@ class Problem:
 
             """
 
-            if( self.icostdupattern is None or
-                self.icostdxpattern is None or
-                self.fcostdxpattern is None ):
-                return None
+            icdxpat = ( self.icostdxpattern
+                        if self.icostdxpattern is not None
+                        else np.ones( (self.Nstates,) ) )
+            icdupat = ( self.icostdupattern
+                        if self.icostdupattern is not None
+                        else np.ones( (self.Ninputs,) ) )
+            fcdxpat = ( self.fcostdxpattern
+                        if self.fcostdxpattern is not None
+                        else np.ones( (self.Nstates,) ) )
 
             out = np.zeros( ( feuler.N, ), dtype=np.int )
 
             for k in range( Nsamples ):
-                out[ stidx[:,k] ] = self.icostdxpattern
-                out[ uidx[:,k] ] = self.icostdupattern
+                out[ stidx[:,k] ] = icdxpat
+                out[ uidx[:,k] ] = icdupat
 
-            out[ stidx[:,Nsamples] ] = self.fcostdxpattern
+            out[ stidx[:,Nsamples] ] = fcdxpat
 
             return out
 
@@ -425,7 +430,6 @@ class Problem:
             ( st, u ) = decode( s )
 
             ## initial condition collocation constraint
-            out[ dconsidx[:,0] ] = - self.init
             for k in range( Nsamples ):
                 ## Forward Euler collocation equality constraints
                 out[ dconsidx[:,k+1] ] = - deltaT * self.vfield( st[:,k], u[:,k], grad=False )
@@ -446,6 +450,36 @@ class Problem:
             for k in range( Nsamples ):
                 out[ dconsidx[:,k+1], stidx[:,k+1] ] = 1.0
                 out[ dconsidx[:,k+1], stidx[:,k] ] = -1.0
+
+            return out
+
+
+        def conslb():
+            """
+            constraints lower bounds
+
+            """
+            if( self.Ncons > 0 ):
+                out = np.concatenate( ( np.zeros( (dconsidx.size,) ),
+                                        np.tile( self.conslb, (Nsamples,) ) ) )
+            else:
+                out = np.zeros( (dconsidx.size,) )
+            out[ dconsidx[:,0] ] = self.init
+
+            return out
+
+
+        def consub():
+            """
+            constraints upper bounds
+
+            """
+            if( self.Ncons > 0 ):
+                out = np.concatenate( ( np.zeros( (dconsidx.size,) ),
+                                        np.tile( self.consub, (Nsamples,) ) ) )
+            else:
+                out = np.zeros( (dconsidx.size,) )
+            out[ dconsidx[:,0] ] = self.init
 
             return out
 
@@ -473,19 +507,25 @@ class Problem:
 
             """
 
-            if( self.vfielddxpattern is None or
-                self.vfielddupattern is None or
-                ( self.Ncons > 0 and self.consdxpattern is None ) ):
-                return None
+            vfdxpat = ( self.vfielddxpattern
+                        if self.vfielddxpattern is not None
+                        else np.ones( (self.Nstates,self.Nstates) ) )
+            vfdupat = ( self.vfielddupattern
+                        if self.vfielddupattern is not None
+                        else np.ones( (self.Nstates,self.Ninputs) ) )
+            if( self.Ncons > 0 ):
+                consdxpat = ( self.consdxpattern
+                              if self.consdxpattern is not None
+                              else np.ones( (self.Ncons,self.Ninputs) ) )
 
             out = np.zeros( ( feuler.Ncons, feuler.N ), dtype=np.int )
 
             for k in range( Nsamples ):
-                out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] = self.vfielddxpattern
-                out[ np.ix_( dconsidx[:,k+1], uidx[:,k] ) ] = self.vfielddupattern
+                out[ np.ix_( dconsidx[:,k+1], stidx[:,k] ) ] = vfdxpat
+                out[ np.ix_( dconsidx[:,k+1], uidx[:,k] ) ] = vfdupat
 
                 if( self.Ncons > 0 ):
-                    out[ np.ix_( iconsidx[:,k], stidx[:,k+1] ) ] = self.consdxpattern
+                    out[ np.ix_( iconsidx[:,k], stidx[:,k+1] ) ] = consdxpat
 
             return out
 
@@ -495,18 +535,10 @@ class Problem:
                         encode( self.consstub, self.consinub ) )
         feuler.objFctn( objf )
         feuler.objGrad( objg, pattern=objgpattern() )
-        if( self.Ncons > 0 ):
-            feuler.consFctn( consf,
-                             lb=np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
-                                                  np.tile( self.conslb, ( Nsamples, ) ) ) ),
-                             ub=np.concatenate( ( np.zeros( ( dconsidx.size, ) ),
-                                                  np.tile( self.consub, ( Nsamples, ) ) ) ),
-                             A=consA() )
-        else:
-            feuler.consFctn( consf,
-                             lb=np.zeros( ( dconsidx.size, ) ),
-                             ub=np.zeros( ( dconsidx.size, ) ),
-                             A=consA() )
+        feuler.consFctn( consf,
+                         lb=conslb(),
+                         ub=consub(),
+                         A=consA() )
 
         feuler.consGrad( consg, pattern=consgpattern() )
 
