@@ -173,6 +173,7 @@ cdef class Solver( base.Solver ):
     cdef integer *jGvar
     cdef integer *xstate
     cdef integer *Fstate
+    cdef integer nS[1]
     cdef char *cw
     cdef integer *iw
     cdef doublereal *rw
@@ -298,14 +299,9 @@ cdef class Solver( base.Solver ):
             tmpconsgpattern = np.ones( ( prob.Ncons, self.n[0] ), dtype=np.bool )
         consGsparse = utils.sMatrix( tmpconsgpattern )
 
-        print( "objGsparse" )
-        objGsparse.print_debug()
-        print( "consGsparse" )
-        consGsparse.print_debug()
-
         if( objGsparse.nnz + consGsparse.nnz > 0 ):
             self.lenG[0] = objGsparse.nnz + consGsparse.nnz
-            self.neG[0] = self.lenG[0]
+            self.neG[0] = objGsparse.nnz + consGsparse.nnz
         else:
             self.lenG[0] = 1
             self.neG[0] = 0
@@ -330,16 +326,9 @@ cdef class Solver( base.Solver ):
 
         intAsparse = utils.sMatrix( np.vstack( tmpAsparse ), copy_data=True )
 
-        print( "objAsparse" )
-        objAsparse.print_debug()
-        print( "consAsparse" )
-        consAsparse.print_debug()
-        print( "intAsparse" )
-        intAsparse.print_debug()
-
         if( intAsparse.nnz > 0 ):
             self.lenA[0] = intAsparse.nnz
-            self.neA[0] = self.lenA[0]
+            self.neA[0] = intAsparse.nnz
         else: ## Minimum allowed values, pg. 16
             self.lenA[0] = 1
             self.neA[0] = 0
@@ -385,10 +374,14 @@ cdef class Solver( base.Solver ):
         ## copy matrix data of A
         intAsparse.copyData( &self.A[0] )
 
-        ## copy general constraints limits
         ## objective function knows no limits (https://i.imgur.com/UuQbJ.gif)
         self.Flow[0] = -np.inf
         self.Fupp[0] = np.inf
+
+        ## warmstart parameter, number of superbasic variables
+        self.nS[0] = 0
+
+        ## copy general constraints limits
         ## linear constraints limits
         if( prob.Nconslin > 0 ):
             tmparr = utils.arraySanitize( prob.conslinlb, dtype=doublereal_dtype, fortran=True )
@@ -584,6 +577,8 @@ cdef class Solver( base.Solver ):
         memcpy( self.Fstate, utils.getPtr( tmparr ),
                 self.nF[0] * sizeof( integer ) )
 
+        self.nS[0] = self.prob.soln.nS
+
         self.Start[0] = 2
         return True
 
@@ -596,7 +591,7 @@ cdef class Solver( base.Solver ):
         cdef bytes myopt
 
         if( len( option ) > 72 ):
-            raise ValueError( "option string is too long: {0}".format( option ) )
+            raise ValueError( "option string is too long: {}".format( option ) )
 
         myopt = option.encode( "ascii" )
         snopt.snset_( myopt,
@@ -605,7 +600,7 @@ cdef class Solver( base.Solver ):
                       len( myopt ), lencw[0]*8 )
 
         if( inform_out[0] != 0 ):
-            raise ValueError( "Could not process option: {0}".format( option ) )
+            raise ValueError( "Could not process option: {}".format( option ) )
 
         return inform_out[0]
 
@@ -639,9 +634,6 @@ cdef class Solver( base.Solver ):
 
 
     def solve( self ):
-        global objGsparse
-        global consGsparse
-
         cdef integer mincw[1]
         cdef integer miniw[1]
         cdef integer minrw[1]
@@ -654,7 +646,6 @@ cdef class Solver( base.Solver ):
         cdef doublereal tmprw[500]
         cdef integer *nxname = [ 1 ] ## Do not provide vars names
         cdef integer *nFname = [ 1 ] ## Do not provide cons names
-        cdef integer nS[1]
         cdef integer nInf[1]
         cdef doublereal sInf[1]
         cdef doublereal *ObjAdd = [ 0.0 ]
@@ -778,7 +769,7 @@ cdef class Solver( base.Solver ):
                        self.F, self.Fstate, self.Fmul,
                        inform_out,
                        mincw, miniw, minrw,
-                       nS, nInf, sInf,
+                       self.nS, nInf, sInf,
                        self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
                        self.cw, self.lencw, self.iw, self.leniw, self.rw, self.lenrw,
                        len( probname ), len( xnames ), len( Fnames ),
@@ -816,7 +807,7 @@ cdef class Solver( base.Solver ):
                                                           integer_type ) )
         self.prob.soln.Fmul = np.copy( utils.wrap1dPtr( self.Fmul, self.nF[0],
                                                         doublereal_type ) )
-        self.prob.soln.nS = int( nS[0] )
+        self.prob.soln.nS = int( self.nS[0] )
         self.prob.soln.retval = int( inform_out[0] )
 
         return( self.prob.soln.final,
